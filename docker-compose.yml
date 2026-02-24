@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: stock-screener-db
+    environment:
+      POSTGRES_DB: stock_screener
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    container_name: stock-screener-server
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres123@postgres:5432/stock_screener
+      PORT: 3000
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    dns:
+      - 8.8.8.8
+    restart: unless-stopped
+
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    container_name: stock-screener-client
+    ports:
+      - "20000:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  pgdata:

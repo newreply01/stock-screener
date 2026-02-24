@@ -1,0 +1,27 @@
+# Stage 1: Build Client
+FROM node:22 AS client-build
+WORKDIR /build/client
+COPY client/package*.json ./
+RUN npm install
+COPY client/ ./
+RUN npm run build
+
+# Stage 2: Server Runtime
+FROM node:22
+
+WORKDIR /app
+
+# Copy root package.json (defines workspace or common scripts if any, though server strictly needs its own dependencies usually managed in root in this mono-repo setup)
+COPY package*.json ./
+RUN npm install --omit=dev
+
+COPY server/ ./server/
+COPY init-db.sql ./
+
+# Copy built frontend assets from Stage 1
+# server/index.js expects ../client/dist, so we place it at /app/client/dist
+COPY --from=client-build /build/client/dist ./client/dist
+
+EXPOSE 3000
+
+CMD ["node", "server/index.js"]

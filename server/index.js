@@ -1,0 +1,67 @@
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+require('dotenv').config();
+
+const { initDatabase } = require('./db');
+const { startScheduler } = require('./scheduler');
+const screenerRoutes = require('./routes/screener');
+const watchlistRoutes = require('./routes/watchlist');
+const filterRoutes = require('./routes/filters');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(express.json());
+
+// API Routes
+app.use('/api/watchlists', watchlistRoutes);
+app.use('/api/filters', filterRoutes);
+app.use('/api', screenerRoutes);
+
+
+// 託管靜態檔案 (Vite build output)
+const distPath = path.join(__dirname, '..', 'client', 'dist');
+app.use(express.static(distPath));
+
+// 所有其他路由導向 index.html (SPA)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+});
+
+async function start() {
+    try {
+        // 啟動時確保 DB 初始化
+        await initDatabase();
+
+        const { catchUp } = require('./fetcher');
+
+        // 啟動排程
+        startScheduler();
+
+        // 啟動時檢查是否需要補齊資料 (Background)
+        setImmediate(() => {
+            console.log('🔄 啟動自動補齊檢查...');
+            catchUp().catch(err => console.error('補齊失敗:', err));
+
+            console.log('📰 啟動初始新聞抓取...');
+            const { syncAllNews } = require('./news_fetcher');
+            syncAllNews().catch(err => console.error('新聞抓取失敗:', err));
+
+            console.log('📊 啟動基本面資料補齊 (FinMind)...');
+            const { syncAllStocksFinancials } = require('./finmind_fetcher');
+            syncAllStocksFinancials().catch(err => console.error('基本面同步失敗:', err));
+        });
+
+        app.listen(PORT, () => {
+            console.log(`\n🚀 台股篩選器已啟動 (Local)`);
+            console.log(`📡 URL: http://localhost:${PORT}`);
+        });
+    } catch (err) {
+        console.error('啟動失敗:', err);
+        process.exit(1);
+    }
+}
+
+start();
