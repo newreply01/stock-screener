@@ -4,19 +4,16 @@ LABEL "language"="nodejs"
 LABEL "framework"="vite"
 WORKDIR /app
 
-# 只複製 package 文件，利用 Docker 快取
-COPY client/package.json client/package-lock.json ./client/
-
-# 安裝前端依賴（包括 devDependencies 用於構建）
-WORKDIR /app/client
-RUN npm ci
-
-# 複製所有原始碼 (包含 client 下的其他檔案)
-WORKDIR /app
+# 複製整個專案到構建階段
 COPY . .
 
-# 構建前端
+# 進入 client 目錄
 WORKDIR /app/client
+
+# 使用 npm ci 確保安裝鎖定文件中的確切版本
+RUN npm ci
+
+# 構建前端
 RUN npm run build
 
 # Stage 2: Server Runtime
