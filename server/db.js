@@ -3,31 +3,39 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-// 支援多種連線字串變數名稱
+// 偵錯日誌：列出所有相關的環境變數 (隱藏敏感資訊)
+console.log('🔍 偵測資料庫環境變數:');
+const envKeys = ['DATABASE_URL', 'POSTGRES_URL', 'POSTGRES_URI', 'POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_USER', 'POSTGRES_DATABASE', 'DB_HOST', 'DB_PORT'];
+envKeys.forEach(key => {
+    if (process.env[key]) {
+        let val = process.env[key];
+        if (key.includes('URL') || key.includes('URI') || key.includes('PASSWORD')) {
+            val = val.replace(/:([^:@]+)@/, ':****@');
+        }
+        console.log(`  - ${key}: ${val}`);
+    }
+});
+
 const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_URI;
 
 const poolConfig = dbUrl 
     ? { 
         connectionString: dbUrl,
-        ssl: dbUrl.includes('zeabur.cloud') || dbUrl.includes('sjc1.clusters.zeabur.com') || dbUrl.includes('amazonaws.com') 
+        // 如果不是 localhost，則嘗試開啟 SSL (Zeabur 有時內網也需要，或至少不應報錯)
+        ssl: (!dbUrl.includes('localhost') && !dbUrl.includes('127.0.0.1'))
           ? { rejectUnauthorized: false } 
           : false
       }
     : {
-        // 支援 Zeabur 自動注入的 POSTGRES_* 變數以及手動的 DB_* 變數
         user: process.env.POSTGRES_USER || process.env.DB_USER || 'postgres',
         host: process.env.POSTGRES_HOST || process.env.DB_HOST || 'localhost',
         database: process.env.POSTGRES_DATABASE || process.env.DB_NAME || 'stock_screener',
         password: process.env.POSTGRES_PASSWORD || process.env.DB_PASSWORD || 'postgres123',
         port: parseInt(process.env.POSTGRES_PORT || process.env.DB_PORT || '5432'),
+        ssl: (process.env.POSTGRES_HOST && !process.env.POSTGRES_HOST.includes('localhost'))
+          ? { rejectUnauthorized: false }
+          : false
     };
-
-if (dbUrl) {
-    const maskedUrl = dbUrl.replace(/:([^:@]+)@/, ':****@');
-    console.log(`📡 使用連線字串: ${maskedUrl}`);
-} else {
-    console.log(`📡 使用手動設定連線: ${poolConfig.host}:${poolConfig.port} (User: ${poolConfig.user}, DB: ${poolConfig.database})`);
-}
 
 const pool = new Pool(poolConfig);
 
