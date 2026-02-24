@@ -14,7 +14,8 @@ WORKDIR /app/client
 RUN npm install
 
 # 顯式安裝 @vitejs/plugin-react 以確保它被安裝 (解決 Zeabur 構建異常)
-RUN npm install --save-dev @vitejs/plugin-react
+#RUN npm install --save-dev @vitejs/plugin-react
+RUNnpm i -D @vitejs/plugin-react
 
 # 構建前端
 RUN npm run build
