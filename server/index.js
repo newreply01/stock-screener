@@ -1,13 +1,13 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-require('dotenv').config();
-
 const { initDatabase } = require('./db');
 const { startScheduler } = require('./scheduler');
-const screenerRoutes = require('./routes/screener');
 const watchlistRoutes = require('./routes/watchlist');
+const screenerRoutes = require('./routes/screener');
 const filterRoutes = require('./routes/filters');
+
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,11 +15,10 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// API Routes
-app.use('/api/watchlists', watchlistRoutes);
+// Routes
+app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/filters', filterRoutes);
 app.use('/api', screenerRoutes);
-
 
 // 託管靜態檔案 (Vite build output)
 const distPath = path.join(__dirname, '..', 'client', 'dist');
@@ -31,10 +30,29 @@ app.get('*', (req, res) => {
 });
 
 async function start() {
-    try {
-        // 啟動時確保 DB 初始化
-        await initDatabase();
+    let retries = 0;
+    const maxRetries = 10;
+    
+    while (retries < maxRetries) {
+        try {
+            // 啟動時確保 DB 初始化
+            await initDatabase();
+            console.log('✅ 資料庫連線與初始化成功');
+            break;
+        } catch (err) {
+            retries++;
+            console.error(`❌ 資料庫連接失敗 (${retries}/${maxRetries}):`, err.message);
+            if (retries < maxRetries) {
+                console.log(`⏳ 等待 5 秒後進行第 ${retries + 1} 次重試...`);
+                await new Promise(resolve => setTimeout(resolve, 5000));
+            } else {
+                console.error('💥 達到最大重試次數，無法連接到資料庫，程式終止');
+                process.exit(1);
+            }
+        }
+    }
 
+    try {
         const { catchUp } = require('./fetcher');
 
         // 啟動排程
@@ -55,11 +73,11 @@ async function start() {
         });
 
         app.listen(PORT, () => {
-            console.log(`\n🚀 台股篩選器已啟動 (Local)`);
-            console.log(`📡 URL: http://localhost:${PORT}`);
+            console.log(`\n🚀 台股篩選器已啟動`);
+            console.log(`📡 PORT: ${PORT}`);
         });
     } catch (err) {
-        console.error('啟動失敗:', err);
+        console.error('啟動流程發生錯誤:', err);
         process.exit(1);
     }
 }
