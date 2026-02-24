@@ -3,10 +3,12 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-const poolConfig = process.env.DATABASE_URL 
+const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_URI;
+
+const poolConfig = dbUrl 
     ? { 
-        connectionString: process.env.DATABASE_URL,
-        ssl: process.env.DATABASE_URL.includes('zeabur.cloud') || process.env.DATABASE_URL.includes('amazonaws.com') 
+        connectionString: dbUrl,
+        ssl: dbUrl.includes('zeabur.cloud') || dbUrl.includes('sjc1.clusters.zeabur.com') || dbUrl.includes('amazonaws.com') 
           ? { rejectUnauthorized: false } 
           : false
       }
@@ -17,6 +19,13 @@ const poolConfig = process.env.DATABASE_URL
         password: process.env.DB_PASSWORD || 'postgres123',
         port: parseInt(process.env.DB_PORT || '5432'),
     };
+
+if (dbUrl) {
+    const maskedUrl = dbUrl.replace(/:([^:@]+)@/, ':****@');
+    console.log(`📡 使用連線字串: ${maskedUrl}`);
+} else {
+    console.log(`📡 使用手動設定連線: ${poolConfig.host}:${poolConfig.port}`);
+}
 
 const pool = new Pool(poolConfig);
 
