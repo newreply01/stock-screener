@@ -10,8 +10,11 @@ COPY . .
 # 進入 client 目錄
 WORKDIR /app/client
 
-# 清理 npm 快取並使用 npm install 重新生成依賴
-RUN npm cache clean --force && npm install
+# 使用 npm install 安裝所有依賴
+RUN npm install
+
+# 顯式安裝 @vitejs/plugin-react 以確保它被安裝 (解決 Zeabur 構建異常)
+RUN npm install --save-dev @vitejs/plugin-react
 
 # 構建前端
 RUN npm run build
