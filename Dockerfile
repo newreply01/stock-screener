@@ -10,8 +10,8 @@ COPY . .
 # 進入 client 目錄
 WORKDIR /app/client
 
-# 使用 npm ci 確保安裝鎖定文件中的確切版本
-RUN npm ci
+# 清理 npm 快取並使用 npm install 重新生成依賴
+RUN npm cache clean --force && npm install
 
 # 構建前端
 RUN npm run build
@@ -22,7 +22,7 @@ LABEL "language"="nodejs"
 LABEL "framework"="express"
 WORKDIR /app
 
-# 只複製 package 文件，利用 Docker 快取
+# 只複製 package 文件
 COPY package.json package-lock.json ./
 
 # 安裝後端生產依賴
@@ -33,7 +33,6 @@ COPY server/ ./server/
 COPY init-db.sql ./
 
 # 從 Stage 1 複製已編譯的前端靜態文件
-# server/index.js 預期路徑為 ../client/dist
 COPY --from=client-build /app/client/dist ./client/dist
 
 EXPOSE 8080
