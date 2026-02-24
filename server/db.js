@@ -21,10 +21,7 @@ const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.en
 const poolConfig = dbUrl 
     ? { 
         connectionString: dbUrl,
-        // 如果不是 localhost，則嘗試開啟 SSL (Zeabur 有時內網也需要，或至少不應報錯)
-        ssl: (!dbUrl.includes('localhost') && !dbUrl.includes('127.0.0.1'))
-          ? { rejectUnauthorized: false } 
-          : false
+        ssl: false // 已確認 sjc1.clusters.zeabur.com 不支援 SSL，強制關閉以修復連線
       }
     : {
         user: process.env.POSTGRES_USER || process.env.DB_USER || 'postgres',
@@ -32,9 +29,7 @@ const poolConfig = dbUrl
         database: process.env.POSTGRES_DATABASE || process.env.DB_NAME || 'stock_screener',
         password: process.env.POSTGRES_PASSWORD || process.env.DB_PASSWORD || 'postgres123',
         port: parseInt(process.env.POSTGRES_PORT || process.env.DB_PORT || '5432'),
-        ssl: (process.env.POSTGRES_HOST && !process.env.POSTGRES_HOST.includes('localhost'))
-          ? { rejectUnauthorized: false }
-          : false
+        ssl: false // 同步關閉手動連線設定的 SSL
     };
 
 const pool = new Pool(poolConfig);
