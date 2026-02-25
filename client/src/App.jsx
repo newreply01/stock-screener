@@ -173,7 +173,7 @@ function App() {
       )}
       <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
     </Layout>
-    </Layout >
+
   )
 }
 export default App
