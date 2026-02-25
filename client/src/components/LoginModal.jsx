@@ -153,7 +153,7 @@ export default function LoginModal({ isOpen, onClose }) {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none text-sm font-medium transition-all"
+                                className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none text-sm font-medium transition-all"
                             />
                         </div>
 
@@ -166,7 +166,7 @@ export default function LoginModal({ isOpen, onClose }) {
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                                 minLength={mode === 'register' ? 6 : undefined}
-                                className="w-full pl-11 pr-11 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none text-sm font-medium transition-all"
+                                className="w-full pl-11 pr-11 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none text-sm font-medium transition-all"
                             />
                             <button
                                 type="button"
