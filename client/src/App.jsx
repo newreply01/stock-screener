@@ -11,11 +11,12 @@ import StockDetail from './components/StockDetail'
 import WatchlistDashboard from './components/WatchlistDashboard'
 import ComparisonChart from './components/ComparisonChart'
 import ProfilePage from './components/ProfilePage'
+import LoginModal from './components/LoginModal'
 import { screenStocks, getStats, getWatchlists, addStockToWatchlist, removeStockFromWatchlist } from './utils/api'
 import { useAuth } from './context/AuthContext'
 
 function App() {
-  const { requireLogin, user } = useAuth()
+  const { requireLogin, user, showLoginModal, setShowLoginModal } = useAuth()
   const [results, setResults] = useState({ data: [], total: 0, page: 1, totalPages: 0, latestDate: null })
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -170,7 +171,9 @@ function App() {
           onClose={() => setActiveCompareSymbols([])}
         />
       )}
+      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
     </Layout>
+    </Layout >
   )
 }
 export default App

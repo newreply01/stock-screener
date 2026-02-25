@@ -50,7 +50,7 @@ export default function StockSearchAutocomplete({ onSelectStock }) {
     };
 
     return (
-        <div ref={wrapperRef} className="relative w-full max-w-md z-50">
+        <div ref={wrapperRef} className="relative w-full max-w-md z-10">
             <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     {loading ? (

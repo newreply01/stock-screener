@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Search, User, Menu, Bell, Globe, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import LoginModal from './LoginModal';
 
 export default function Header({ currentView = 'dashboard' }) {
     const { user, logout, showLoginModal, setShowLoginModal } = useAuth();
@@ -152,7 +151,7 @@ export default function Header({ currentView = 'dashboard' }) {
                 </div>
             </div>
 
-            <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
+
         </header>
     );
 }
