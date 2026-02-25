@@ -146,6 +146,9 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
                     }
                 }
                 setDetectedPatterns(latestPatterns);
+                if (onPatternsDetected) {
+                    onPatternsDetected(latestPatterns);
+                }
 
                 // --- Indicators Calculation ---
                 const ma20Data = [];
