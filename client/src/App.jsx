@@ -122,7 +122,7 @@ function App() {
             symbol={mainStock?.symbol}
             activePatterns={activePatterns}
             onPatternsChange={setActivePatterns}
-            onStockSelect={(s) => { setMainStock(s); setDetailStock(null); }}
+            onStockSelect={(s) => { setMainStock(s); setDetailStock(null); setSearchTerm(s.symbol); setPage(1); }}
           >
             <ResultTable
               results={results}

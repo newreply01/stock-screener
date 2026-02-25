@@ -206,10 +206,14 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
                     });
                 }
 
-                // Cleanup existing
-                if (mainChartInstance.current) mainChartInstance.current.remove();
-                if (rsiChartInstance.current) rsiChartInstance.current.remove();
-                if (macdChartInstance.current) macdChartInstance.current.remove();
+                // Cleanup existing chart instances AND force-clear DOM containers
+                if (mainChartInstance.current) { mainChartInstance.current.remove(); mainChartInstance.current = null; }
+                if (rsiChartInstance.current) { rsiChartInstance.current.remove(); rsiChartInstance.current = null; }
+                if (macdChartInstance.current) { macdChartInstance.current.remove(); macdChartInstance.current = null; }
+                // Force-clear any leftover DOM children to prevent chart stacking
+                if (mainChartRef.current) mainChartRef.current.innerHTML = '';
+                if (rsiChartRef.current) rsiChartRef.current.innerHTML = '';
+                if (macdChartRef.current) macdChartRef.current.innerHTML = '';
 
                 const commonOptions = {
                     layout: { background: { type: 'solid', color: '#ffffff' }, textColor: '#64748b', fontSize: 10 },
@@ -301,9 +305,12 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
 
         return () => {
             isMounted = false;
-            if (mainChartInstance.current) mainChartInstance.current.remove();
-            if (rsiChartInstance.current) rsiChartInstance.current.remove();
-            if (macdChartInstance.current) macdChartInstance.current.remove();
+            if (mainChartInstance.current) { mainChartInstance.current.remove(); mainChartInstance.current = null; }
+            if (rsiChartInstance.current) { rsiChartInstance.current.remove(); rsiChartInstance.current = null; }
+            if (macdChartInstance.current) { macdChartInstance.current.remove(); macdChartInstance.current = null; }
+            if (mainChartRef.current) mainChartRef.current.innerHTML = '';
+            if (rsiChartRef.current) rsiChartRef.current.innerHTML = '';
+            if (macdChartRef.current) macdChartRef.current.innerHTML = '';
         };
     }, [stock, period]);
 
@@ -339,10 +346,10 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
                 </div>
                 <div className="flex flex-col items-end">
                     <div className="text-2xl font-black text-slate-800 tracking-tighter">
-                        {parseFloat(stock.close_price).toFixed(2)}
+                        {stock.close_price ? parseFloat(stock.close_price).toFixed(2) : '--'}
                     </div>
-                    <div className={`text-sm font-black flex items-center justify-end gap-1 ${parseFloat(stock.change_percent) >= 0 ? 'text-red-500' : 'text-green-600'}`}>
-                        {parseFloat(stock.change_percent) >= 0 ? '▲' : '▼'}{Math.abs(parseFloat(stock.change_percent)).toFixed(2)}%
+                    <div className={`text-sm font-black flex items-center justify-end gap-1 ${stock.change_percent && parseFloat(stock.change_percent) >= 0 ? 'text-red-500' : 'text-green-600'}`}>
+                        {stock.change_percent ? `${parseFloat(stock.change_percent) >= 0 ? '▲' : '▼'}${Math.abs(parseFloat(stock.change_percent)).toFixed(2)}%` : '--'}
                     </div>
                 </div>
             </div>
