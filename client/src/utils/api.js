@@ -1,4 +1,5 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
+import { authFetch } from './auth';
 
 export async function screenStocks(params = {}) {
     const searchParams = new URLSearchParams();
@@ -88,13 +89,13 @@ export async function getAIReport(symbol) {
 }
 
 export async function getWatchlists() {
-    const res = await fetch(`${API_BASE}/watchlists`);
+    const res = await authFetch(`${API_BASE}/watchlists`);
     if (!res.ok) throw new Error('獲取自選股失敗');
     return res.json();
 }
 
 export async function addStockToWatchlist(watchlistId, symbol) {
-    const res = await fetch(`${API_BASE}/watchlists/${watchlistId}/symbols`, {
+    const res = await authFetch(`${API_BASE}/watchlists/${watchlistId}/symbols`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ symbol })
@@ -104,7 +105,7 @@ export async function addStockToWatchlist(watchlistId, symbol) {
 }
 
 export async function removeStockFromWatchlist(watchlistId, symbol) {
-    const res = await fetch(`${API_BASE}/watchlists/${watchlistId}/symbols/${symbol}`, {
+    const res = await authFetch(`${API_BASE}/watchlists/${watchlistId}/symbols/${symbol}`, {
         method: 'DELETE'
     });
     if (!res.ok) throw new Error('移除自選股失敗');
@@ -112,13 +113,13 @@ export async function removeStockFromWatchlist(watchlistId, symbol) {
 }
 
 export async function getSavedFilters() {
-    const res = await fetch(`${API_BASE}/filters`);
+    const res = await authFetch(`${API_BASE}/filters`);
     if (!res.ok) throw new Error('獲取篩選器失敗');
     return res.json();
 }
 
 export async function saveFilter(name, filters) {
-    const res = await fetch(`${API_BASE}/filters`, {
+    const res = await authFetch(`${API_BASE}/filters`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, filters })
@@ -128,7 +129,7 @@ export async function saveFilter(name, filters) {
 }
 
 export async function deleteFilter(id) {
-    const res = await fetch(`${API_BASE}/filters/${id}`, {
+    const res = await authFetch(`${API_BASE}/filters/${id}`, {
         method: 'DELETE'
     });
     if (!res.ok) throw new Error('刪除篩選器失敗');

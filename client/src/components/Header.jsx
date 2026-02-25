@@ -1,6 +1,12 @@
-import { Search, User, Menu, Bell, Globe } from 'lucide-react';
+import { useState } from 'react';
+import { Search, User, Menu, Bell, Globe, LogOut } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import LoginModal from './LoginModal';
 
 export default function Header({ currentView = 'dashboard' }) {
+    const { user, logout } = useAuth();
+    const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
     const dispatchView = (view) => {
         window.dispatchEvent(new CustomEvent('muchstock-view', { detail: view }));
     };
@@ -93,12 +99,43 @@ export default function Header({ currentView = 'dashboard' }) {
                             <Bell className="w-5 h-5" />
                         </button>
                         <div className="h-6 w-px bg-white/10 mx-1"></div>
-                        <button className="flex items-center gap-2 pl-2 group">
-                            <div className="w-8 h-8 rounded-full bg-brand-primary/20 border border-brand-primary/30 flex items-center justify-center group-hover:bg-brand-primary/30 transition-colors">
-                                <User className="w-4 h-4 text-brand-primary" />
+                        {user ? (
+                            <div className="flex items-center gap-3 relative group/menu">
+                                <button className="flex items-center gap-2 pl-2">
+                                    <div className="w-8 h-8 rounded-full bg-brand-primary/20 border border-brand-primary/30 flex items-center justify-center overflow-hidden">
+                                        {user.avatar_url ? (
+                                            <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-sm font-bold text-brand-primary">{user.name?.[0] || user.email?.[0]}</span>
+                                        )}
+                                    </div>
+                                    <span className="text-sm font-medium hidden sm:block text-gray-300 group-hover/menu:text-white transition-colors">{user.name || user.email.split('@')[0]}</span>
+                                </button>
+
+                                {/* Dropdown */}
+                                <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all transform origin-top-right translate-y-2 group-hover/menu:translate-y-0 z-50 overflow-hidden">
+                                    <div className="p-3 border-b border-slate-50">
+                                        <p className="text-sm font-bold text-slate-800 truncate">{user.name || 'User'}</p>
+                                        <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                                    </div>
+                                    <div className="p-1">
+                                        <button
+                                            onClick={logout}
+                                            className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        >
+                                            <LogOut className="w-4 h-4" /> 登出
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                            <span className="text-sm font-medium hidden sm:block text-gray-300 group-hover:text-white transition-colors">會員登入</span>
-                        </button>
+                        ) : (
+                            <button onClick={() => setIsLoginModalOpen(true)} className="flex items-center gap-2 pl-2 group">
+                                <div className="w-8 h-8 rounded-full bg-brand-primary/20 border border-brand-primary/30 flex items-center justify-center group-hover:bg-brand-primary/30 transition-colors">
+                                    <User className="w-4 h-4 text-brand-primary" />
+                                </div>
+                                <span className="text-sm font-medium hidden sm:block text-gray-300 group-hover:text-white transition-colors">會員登入</span>
+                            </button>
+                        )}
                     </div>
 
                     <button className="lg:hidden p-2 text-gray-300 hover:text-white transition-colors">
@@ -106,6 +143,8 @@ export default function Header({ currentView = 'dashboard' }) {
                     </button>
                 </div>
             </div>
+
+            <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
         </header>
     );
 }

@@ -6,7 +6,7 @@ const TWSE_MI_INDEX = 'https://www.twse.com.tw/exchangeReport/MI_INDEX?response=
 const TPEX_DAILY_URL = 'https://www.tpex.org.tw/web/stock/aftertrading/daily_close_quotes/stk_quote_result.php?l=zh-tw&o=json';
 const TWSE_PE_URL = 'https://www.twse.com.tw/rwd/zh/afterTrading/BWIBBU_d?response=json';
 const TWSE_INST_URL = 'https://www.twse.com.tw/rwd/zh/fund/T86?response=json&selectType=ALL';
-const TPEX_INST_URL = 'https://www.tpex.org.tw/web/stock/aftertrading/equity_mutual_fund_trader/gen_trader_result.php?l=zh-tw&o=json';
+const TPEX_INST_URL = 'https://www.tpex.org.tw/web/stock/3insti/daily_trade/3itrade_hedge_result.php?l=zh-tw&o=json&se=EW&t=D';
 
 // 工具函式
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -193,14 +193,14 @@ async function fetchInstitutional(dateObj) {
 
             const foreignBuy = parseNumber(row[2]);
             const foreignSell = parseNumber(row[3]);
-            const foreignNet = parseNumber(row[4]);
-            const trustBuy = parseNumber(row[5]);
-            const trustSell = parseNumber(row[6]);
-            const trustNet = parseNumber(row[7]);
-            const dealerNet = parseNumber(row[8]);
-            const dealerBuy = parseNumber(row[9]);
-            const dealerSell = parseNumber(row[10]);
-            const totalNet = parseNumber(row[11]);
+            const foreignNet = parseNumber(row[4]) + (parseNumber(row[7]) || 0);
+            const trustBuy = parseNumber(row[8]);
+            const trustSell = parseNumber(row[9]);
+            const trustNet = parseNumber(row[10]);
+            const dealerNet = parseNumber(row[11]);
+            const dealerBuy = parseNumber(row[12]) + parseNumber(row[15]);
+            const dealerSell = parseNumber(row[13]) + parseNumber(row[16]);
+            const totalNet = parseNumber(row[18]);
 
             await query(
                 `INSERT INTO institutional (symbol, trade_date, foreign_buy, foreign_sell, foreign_net, trust_buy, trust_sell, trust_net, dealer_buy, dealer_sell, dealer_net, total_net)
@@ -234,28 +234,44 @@ async function fetchTPExInstitutional(dateObj) {
             return;
         }
 
-        if (!json.aaData || json.aaData.length === 0) {
+        const dataRows = (json.tables && json.tables[0] && json.tables[0].data) ? json.tables[0].data : json.aaData;
+        if (!dataRows || dataRows.length === 0) {
             console.log(`[TPEx-Inst] ${rocDate} 無資料`);
             return;
         }
 
         let count = 0;
-        for (const row of json.aaData) {
+        for (const row of dataRows) {
             const symbol = row[0];
             if (!/^\d{4,6}$/.test(symbol)) continue;
 
             await ensureStock(symbol);
 
-            const foreignBuy = parseNumber(row[8]);
-            const foreignSell = parseNumber(row[9]);
-            const foreignNet = parseNumber(row[10]);
-            const trustBuy = parseNumber(row[11]);
-            const trustSell = parseNumber(row[12]);
-            const trustNet = parseNumber(row[13]);
-            const dealerNet = parseNumber(row[16]);
-            const dealerBuy = parseNumber(row[14]);
-            const dealerSell = parseNumber(row[15]);
-            const totalNet = parseNumber(row[19]);
+            let foreignBuy, foreignSell, foreignNet, trustBuy, trustSell, trustNet, dealerBuy, dealerSell, dealerNet, totalNet;
+
+            if (row.length >= 24) {
+                foreignBuy = parseNumber(row[8]);
+                foreignSell = parseNumber(row[9]);
+                foreignNet = parseNumber(row[10]);
+                trustBuy = parseNumber(row[11]);
+                trustSell = parseNumber(row[12]);
+                trustNet = parseNumber(row[13]);
+                dealerBuy = parseNumber(row[20]);
+                dealerSell = parseNumber(row[21]);
+                dealerNet = parseNumber(row[22]);
+                totalNet = parseNumber(row[23]);
+            } else {
+                foreignBuy = parseNumber(row[8]);
+                foreignSell = parseNumber(row[9]);
+                foreignNet = parseNumber(row[10]);
+                trustBuy = parseNumber(row[11]);
+                trustSell = parseNumber(row[12]);
+                trustNet = parseNumber(row[13]);
+                dealerBuy = parseNumber(row[14]);
+                dealerSell = parseNumber(row[15]);
+                dealerNet = parseNumber(row[16]);
+                totalNet = parseNumber(row[19]);
+            }
 
             await query(
                 `INSERT INTO institutional (symbol, trade_date, foreign_buy, foreign_sell, foreign_net, trust_buy, trust_sell, trust_net, dealer_buy, dealer_sell, dealer_net, total_net)
