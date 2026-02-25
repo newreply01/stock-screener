@@ -17,19 +17,19 @@ const CATEGORIES = [
 const PERIODS = ['日K', '週K', '月K'];
 
 const CLASSIC_PATTERNS = [
-    { id: 'red_three_soldiers', name: '紅三兵', en: 'Red Three Soldiers', desc: '連續三天收紅K，顯示多頭強勢' },
-    { id: 'three_black_crows', name: '三隻烏鴉', en: 'Three Black Crows', desc: '連續三天收黑K，顯示空頭強勢' },
-    { id: 'morning_star', name: '晨星', en: 'Morning Star', desc: '跌勢末端出現轉折，可能反轉向上' },
-    { id: 'evening_star', name: '夜星', en: 'Evening Star', desc: '漲勢末端出現轉折，可能反轉向下' },
-    { id: 'bullish_engulfing', name: '吞噬型態', en: 'Bullish Engulfing', desc: '陽線完全包覆前一陰線，強烈看漲' },
-    { id: 'bearish_engulfing', name: '空頭吞噬', en: 'Bearish Engulfing', desc: '陰線完全包覆前一陽線，強烈看跌' },
-    { id: 'piercing_line', name: '貫穿/烏雲', en: 'Piercing/Dark Cloud', desc: '穿透前日陰線實體中點以上' },
-    { id: 'hammer', name: '鎚子線', en: 'Hammer', desc: '長下影線實體小，底部反轉訊號' },
-    { id: 'inverted_hammer', name: '倒鎚子', en: 'Inverted Hammer', desc: '長上影線實體小，通常出現在底部' },
-    { id: 'hanging_man', name: '上吊線', en: 'Hanging Man', desc: '高檔出現的長下影線，警示訊號' },
-    { id: 'shooting_star', name: '射擊之星', en: 'Shooting Star', desc: '高檔出現的長上影線，可能見頂' },
-    { id: 'three_inside_up', name: '三內升', en: 'Three Inside Up', desc: '母子型態後隔日收高，多頭確認' },
-    { id: 'three_inside_down', name: '三內降', en: 'Three Inside Down', desc: '母子型態後隔日收低，空頭確認' },
+    { id: 'red_three_soldiers', name: '紅三兵', type: 'bullish', en: 'Red Three Soldiers', desc: '連續三天收紅K，顯示多頭強勢' },
+    { id: 'three_black_crows', name: '三隻烏鴉', type: 'bearish', en: 'Three Black Crows', desc: '連續三天收黑K，顯示空頭強勢' },
+    { id: 'morning_star', name: '晨星', type: 'bullish', en: 'Morning Star', desc: '跌勢末端出現轉折，可能反轉向上' },
+    { id: 'evening_star', name: '夜星', type: 'bearish', en: 'Evening Star', desc: '漲勢末端出現轉折，可能反轉向下' },
+    { id: 'bullish_engulfing', name: '吞噬型態', type: 'bullish', en: 'Bullish Engulfing', desc: '陽線完全包覆前一陰線，強烈看漲' },
+    { id: 'bearish_engulfing', name: '空頭吞噬', type: 'bearish', en: 'Bearish Engulfing', desc: '陰線完全包覆前一陽線，強烈看跌' },
+    { id: 'piercing_line', name: '貫穿/烏雲', type: 'neutral', en: 'Piercing/Dark Cloud', desc: '穿透前日陰線實體中點以上' },
+    { id: 'hammer', name: '鎚子線', type: 'bullish', en: 'Hammer', desc: '長下影線實體小，底部反轉訊號' },
+    { id: 'inverted_hammer', name: '倒鎚子', type: 'bullish', en: 'Inverted Hammer', desc: '長上影線實體小，通常出現在底部' },
+    { id: 'hanging_man', name: '上吊線', type: 'bearish', en: 'Hanging Man', desc: '高檔出現的長下影線，警示訊號' },
+    { id: 'shooting_star', name: '射擊之星', type: 'bearish', en: 'Shooting Star', desc: '高檔出現的長上影線，可能見頂' },
+    { id: 'three_inside_up', name: '三內升', type: 'bullish', en: 'Three Inside Up', desc: '母子型態後隔日收高，多頭確認' },
+    { id: 'three_inside_down', name: '三內降', type: 'bearish', en: 'Three Inside Down', desc: '母子型態後隔日收低，空頭確認' },
 ];
 
 export default function PatternAnalysisDashboard({
@@ -295,17 +295,31 @@ export default function PatternAnalysisDashboard({
                         return true;
                     }).map(pat => {
                         const isDetected = activePatterns.some(p => p.name === pat.name);
+                        const colorTheme = pat.type === 'bullish' ? {
+                            border: 'border-red-500 ring-1 ring-red-500/20',
+                            text: 'text-red-500',
+                            bg: 'bg-red-500'
+                        } : pat.type === 'bearish' ? {
+                            border: 'border-green-600 ring-1 ring-green-600/20',
+                            text: 'text-green-600',
+                            bg: 'bg-green-600'
+                        } : { // neutral
+                            border: 'border-blue-500 ring-1 ring-blue-500/20',
+                            text: 'text-blue-500',
+                            bg: 'bg-blue-500'
+                        };
+
                         return (
-                            <div key={pat.id} className={`bg-white border rounded-2xl p-5 transition-all relative overflow-hidden group shadow-sm ${isDetected ? 'border-brand-primary ring-1 ring-brand-primary/20' : 'border-slate-200 hover:border-slate-300'}`}>
+                            <div key={pat.id} className={`bg-white border rounded-2xl p-5 transition-all relative overflow-hidden group shadow-sm ${isDetected ? colorTheme.border : 'border-slate-200 hover:border-slate-300'}`}>
                                 <div className="flex justify-between items-start mb-4">
                                     <div>
-                                        <h3 className={`font-black text-lg leading-tight transition-colors ${isDetected ? 'text-brand-primary' : 'text-slate-800'}`}>
+                                        <h3 className={`font-black text-lg leading-tight transition-colors ${isDetected ? colorTheme.text : 'text-slate-800'}`}>
                                             {pat.name}
                                         </h3>
                                         <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5">{pat.en}</p>
                                     </div>
                                     {isDetected ? (
-                                        <div className="flex items-center gap-1.5 text-[10px] font-black text-white bg-brand-primary px-2.5 py-1 rounded-full shadow-sm">
+                                        <div className={`flex items-center gap-1.5 text-[10px] font-black text-white ${colorTheme.bg} px-2.5 py-1 rounded-full shadow-sm`}>
                                             <CheckCircle2 className="w-3 h-3" />
                                             <span>ACTIVE</span>
                                         </div>
@@ -318,7 +332,7 @@ export default function PatternAnalysisDashboard({
                                 </div>
                                 <p className="text-sm text-slate-500 font-medium leading-relaxed">{pat.desc}</p>
                                 {isDetected && (
-                                    <div className="absolute top-0 right-0 w-24 h-24 -mr-12 -mt-12 bg-brand-primary/5 rounded-full blur-2xl"></div>
+                                    <div className={`absolute -right-6 -bottom-6 w-24 h-24 rounded-full opacity-[0.04] pointer-events-none transition-transform group-hover:scale-110 ${colorTheme.bg}`} />
                                 )}
                             </div>
                         );
