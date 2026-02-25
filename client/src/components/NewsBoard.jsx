@@ -7,7 +7,7 @@ const NEWS_CATEGORIES = [
     { id: 'tw_stock', label: '台股新聞' },
     { id: 'us_stock', label: '美股雷達' },
     { id: 'tech', label: '科技產業' },
-    { id: 'intl_macro', label: '全球時事' }
+    { id: 'wd_macro', label: '全球時事' }
 ]
 
 export default function NewsBoard() {
@@ -50,19 +50,19 @@ export default function NewsBoard() {
             {/* Header */}
             <div className="bg-slate-900 px-5 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 bg-brand-primary rounded flex items-center justify-center">
-                        <Newspaper className="w-4 h-4 text-white" />
+                    <div className="w-8 h-8 bg-brand-primary rounded flex items-center justify-center">
+                        <Newspaper className="w-5 h-5 text-white" />
                     </div>
-                    <span className="text-white font-bold text-sm tracking-tight">即時財經快訊</span>
+                    <span className="text-white font-bold text-base tracking-tight">即時財經快訊</span>
                 </div>
                 <div className="flex bg-slate-800 rounded-lg p-0.5">
                     {NEWS_CATEGORIES.map(cat => (
                         <button
                             key={cat.id}
                             onClick={() => setActiveTab(cat.id)}
-                            className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all ${activeTab === cat.id
-                                    ? 'bg-brand-primary text-white shadow-sm'
-                                    : 'text-slate-400 hover:text-white'
+                            className={`px-3 py-1.5 text-sm font-bold rounded-md transition-all ${activeTab === cat.id
+                                ? 'bg-brand-primary text-white shadow-sm'
+                                : 'text-slate-400 hover:text-white'
                                 }`}
                         >
                             {cat.label}
@@ -114,10 +114,10 @@ export default function NewsBoard() {
 
                                     {/* Content */}
                                     <div className="flex-grow min-w-0">
-                                        <h4 className="text-[13px] font-bold text-slate-800 leading-tight mb-1.5 group-hover:text-brand-primary transition-colors line-clamp-2">
+                                        <h4 className="text-base font-bold text-slate-800 leading-snug mb-2 group-hover:text-brand-primary transition-colors line-clamp-2">
                                             {item.title}
                                         </h4>
-                                        <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                                        <div className="flex items-center gap-3 text-sm text-slate-500">
                                             <span className="flex items-center gap-1">
                                                 <Clock className="w-3 h-3" />
                                                 {formatDate(item.publish_at)}
@@ -140,8 +140,8 @@ export default function NewsBoard() {
 
             {/* Footer */}
             <div className="p-3 bg-slate-50 border-t border-slate-200 text-center">
-                <a href="https://news.cnyes.com/" target="_blank" className="text-[11px] font-bold text-slate-400 hover:text-brand-primary transition-colors flex items-center justify-center gap-1">
-                    查看更多MuchStock新聞 <ChevronRight className="w-3 h-3" />
+                <a href="https://news.cnyes.com/" target="_blank" className="text-xs font-bold text-slate-400 hover:text-brand-primary transition-colors flex items-center justify-center gap-1">
+                    查看更多MuchStock新聞 <ChevronRight className="w-4 h-4" />
                 </a>
             </div>
         </div>

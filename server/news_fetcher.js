@@ -6,7 +6,7 @@ const CATEGORIES = {
     'tw_stock': '台股新聞',
     'us_stock': '美股雷達',
     'tech': '科技產業',
-    'intl_macro': '全球時事'
+    'wd_macro': '全球時事'
 };
 
 async function fetchCategoryNews(categoryId) {
