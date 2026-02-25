@@ -36,7 +36,8 @@ export default function PatternAnalysisDashboard({
     children,
     selectedStock,
     activePatterns = [],
-    onPatternsChange
+    onPatternsChange,
+    onStockSelect
 }) {
     const [activeCategory, setActiveCategory] = useState('總覽');
     const [activePeriod, setActivePeriod] = useState('日K');
@@ -251,8 +252,9 @@ export default function PatternAnalysisDashboard({
                             <div className="flex-1">
                                 <StockSearchAutocomplete
                                     onSelectStock={(stock) => {
-                                        // Update global search to select this stock
-                                        window.dispatchEvent(new CustomEvent('muchstock-search', { detail: stock.symbol }));
+                                        if (onStockSelect) {
+                                            onStockSelect(stock);
+                                        }
                                     }}
                                 />
                             </div>

@@ -24,6 +24,10 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
     const mainChartInstance = useRef(null);
     const rsiChartInstance = useRef(null);
     const macdChartInstance = useRef(null);
+    const [showMA20, setShowMA20] = useState(true);
+    const [showRSI, setShowRSI] = useState(true);
+    const [showMACD, setShowMACD] = useState(true);
+    const maSeriesRef = useRef(null);
 
     useEffect(() => {
         if (onPatternsDetected) {
@@ -228,8 +232,9 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
                     candleSeries.setMarkers(markers);
                 }
 
-                const maSeries = mainChart.addSeries(LineSeries, { color: '#3b82f6', lineWidth: 1, title: 'MA20' });
+                const maSeries = mainChart.addSeries(LineSeries, { color: '#3b82f6', lineWidth: 1, title: 'MA20', visible: showMA20 });
                 maSeries.setData(ma20Data);
+                maSeriesRef.current = maSeries;
 
                 const volumeSeries = mainChart.addSeries(HistogramSeries, {
                     priceFormat: { type: 'volume' }, priceScaleId: '',
@@ -300,7 +305,7 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
             if (rsiChartInstance.current) rsiChartInstance.current.remove();
             if (macdChartInstance.current) macdChartInstance.current.remove();
         };
-    }, [stock, period]);
+    }, [stock, period, showMA20, showRSI, showMACD]);
 
     if (!stock) return (
         <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 min-h-[500px]">
@@ -319,9 +324,9 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
                             {stock.name} <span className="text-slate-400 font-bold ml-1 text-base">({stock.symbol})</span>
                         </h3>
                         <div className="flex items-center gap-2 mt-1.5">
-                            <span className="text-[9px] font-black text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full uppercase tracking-tighter">MA20</span>
-                            <span className="text-[9px] font-black text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full uppercase tracking-tighter">RSI</span>
-                            <span className="text-[9px] font-black text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full uppercase tracking-tighter">MACD</span>
+                            <button onClick={() => setShowMA20(v => !v)} className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter cursor-pointer transition-all border ${showMA20 ? 'text-blue-600 bg-blue-100 border-blue-200' : 'text-slate-400 bg-slate-100 border-slate-200 line-through'}`}>MA20</button>
+                            <button onClick={() => setShowRSI(v => !v)} className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter cursor-pointer transition-all border ${showRSI ? 'text-purple-600 bg-purple-100 border-purple-200' : 'text-slate-400 bg-slate-100 border-slate-200 line-through'}`}>RSI</button>
+                            <button onClick={() => setShowMACD(v => !v)} className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter cursor-pointer transition-all border ${showMACD ? 'text-orange-600 bg-orange-100 border-orange-200' : 'text-slate-400 bg-slate-100 border-slate-200 line-through'}`}>MACD</button>
                         </div>
                     </div>
                 </div>
@@ -370,19 +375,23 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="relative border border-slate-100 rounded-xl overflow-hidden bg-slate-50/20">
-                            <div className="absolute top-2 left-2 z-10 pointer-events-none">
-                                <span className="text-[9px] font-black text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100 uppercase tracking-tighter">Relative Strength (RSI)</span>
+                        {showRSI && (
+                            <div className="relative border border-slate-100 rounded-xl overflow-hidden bg-slate-50/20">
+                                <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                                    <span className="text-[9px] font-black text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100 uppercase tracking-tighter">Relative Strength (RSI)</span>
+                                </div>
+                                <div ref={rsiChartRef} className="w-full" />
                             </div>
-                            <div ref={rsiChartRef} className="w-full" />
-                        </div>
+                        )}
 
-                        <div className="relative border border-slate-100 rounded-xl overflow-hidden bg-slate-50/20">
-                            <div className="absolute top-2 left-2 z-10 pointer-events-none">
-                                <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 uppercase tracking-tighter">Convergence Divergence (MACD)</span>
+                        {showMACD && (
+                            <div className="relative border border-slate-100 rounded-xl overflow-hidden bg-slate-50/20">
+                                <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                                    <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 uppercase tracking-tighter">Convergence Divergence (MACD)</span>
+                                </div>
+                                <div ref={macdChartRef} className="w-full" />
                             </div>
-                            <div ref={macdChartRef} className="w-full" />
-                        </div>
+                        )}
                     </div>
                 </div>
             </div>
