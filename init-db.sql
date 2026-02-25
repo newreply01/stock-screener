@@ -1,5 +1,19 @@
 -- 台股篩選器資料庫 Schema (PostgreSQL)
 
+-- 使用者資料
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255),
+    name VARCHAR(100),
+    avatar_url TEXT,
+    provider VARCHAR(50) DEFAULT 'local',
+    provider_id VARCHAR(255),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+
 -- 股票基本資料
 CREATE TABLE IF NOT EXISTS stocks (
   symbol VARCHAR(10) PRIMARY KEY,
@@ -138,9 +152,20 @@ CREATE INDEX IF NOT EXISTS idx_indicators_symbol ON indicators(symbol);
 CREATE TABLE IF NOT EXISTS watchlists (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT NOW()
 );
-INSERT INTO watchlists (name) SELECT '我的自選股' WHERE NOT EXISTS (SELECT 1 FROM watchlists);
+-- Migration: Add user_id if missing
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='watchlists' AND column_name='user_id') THEN
+        ALTER TABLE watchlists ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+    END IF;
+END $$;
+
+-- 修改為不再預設插入，由註冊程序處理
+-- INSERT INTO watchlists (name) SELECT '我的自選股' WHERE NOT EXISTS (SELECT 1 FROM watchlists);
+
 
 CREATE TABLE IF NOT EXISTS watchlist_items (
     watchlist_id INTEGER REFERENCES watchlists(id) ON DELETE CASCADE,
@@ -154,5 +179,13 @@ CREATE TABLE IF NOT EXISTS saved_filters (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     filters JSONB NOT NULL,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT NOW()
 );
+-- Migration: Add user_id if missing
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='saved_filters' AND column_name='user_id') THEN
+        ALTER TABLE saved_filters ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+    END IF;
+END $$;

@@ -334,4 +334,27 @@ router.get('/stocks/search', async (req, res) => {
     }
 });
 
+// GET /api/debug/sync-status - 診斷資料同步狀態
+router.get('/debug/sync-status', async (req, res) => {
+    try {
+        const stocksCount = await query('SELECT COUNT(*) FROM stocks');
+        const priceCount = await query('SELECT COUNT(*) FROM daily_prices');
+        const dateRange = await query('SELECT MIN(trade_date) as min_date, MAX(trade_date) as max_date FROM daily_prices');
+        const instCount = await query('SELECT COUNT(*) FROM institutional');
+
+        res.json({
+            success: true,
+            counts: {
+                stocks: stocksCount.rows[0].count,
+                daily_prices: priceCount.rows[0].count,
+                institutional: instCount.rows[0].count
+            },
+            dateRange: dateRange.rows[0],
+            message: priceCount.rows[0].count > 0 ? '資料同步中...' : '資料庫為空或同步尚未開始'
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

@@ -337,6 +337,7 @@ async function fetchTPExInstitutional(dateObj) {
 // ===== 通用抓取區間迴圈 =====
 async function fetchRange(startDate, endDate) {
     console.log(`📅 執行區間抓取: ${toDateHyphen(startDate)} -> ${toDateHyphen(endDate)}`);
+    console.log(`🚀 開始從證交所/櫃買中心獲取歷史資料...`);
     let current = new Date(startDate);
 
     // Normalize time to avoid infinite loops due to DST/Timezone
@@ -440,6 +441,8 @@ async function catchUp() {
     }
 
     console.log('🎉 所有資料檢查與補齊完成！');
+    const finalCheck = await query('SELECT COUNT(*) as count, MAX(trade_date) as max_date FROM daily_prices');
+    console.log(`📊 最終同步狀態: ${finalCheck.rows[0].count} 筆價格資料, 最新日期: ${finalCheck.rows[0].max_date}`);
 }
 
 if (require.main === module) {
