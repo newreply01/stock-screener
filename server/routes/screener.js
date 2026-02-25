@@ -109,13 +109,17 @@ router.get('/stocks/industries', async (req, res) => {
 router.get('/stats', async (req, res) => {
     try {
         const sql = `
+            WITH latest AS (
+                SELECT MAX(trade_date) as m_date FROM daily_prices
+            )
             SELECT 
                 COUNT(*) filter (where change_percent > 0) as up_count,
                 COUNT(*) filter (where change_percent < 0) as down_count,
                 COUNT(*) filter (where change_percent = 0) as flat_count,
-                AVG(change_percent) as avg_change
+                AVG(change_percent) as avg_change,
+                TO_CHAR((SELECT m_date FROM latest), 'YYYY-MM-DD') as "latestDate"
             FROM daily_prices
-            WHERE trade_date = (SELECT MAX(trade_date) FROM daily_prices)
+            WHERE trade_date = (SELECT m_date FROM latest)
         `;
         const result = await query(sql);
         res.json(result.rows[0]);
