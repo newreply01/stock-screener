@@ -11,6 +11,7 @@ import StockDetail from './components/StockDetail'
 import WatchlistDashboard from './components/WatchlistDashboard'
 import ComparisonChart from './components/ComparisonChart'
 import { screenStocks, getStats, getWatchlists, addStockToWatchlist, removeStockFromWatchlist } from './utils/api'
+import { AuthProvider } from './context/AuthContext'
 
 function App() {
   const [results, setResults] = useState({ data: [], total: 0, page: 1, totalPages: 0, latestDate: null })
@@ -21,7 +22,7 @@ function App() {
   const [sortDir, setSortDir] = useState('desc')
   const [page, setPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState('')
-  const [mainStock, setMainStock] = useState(null)
+  const [mainStock, setMainStock] = useState({ symbol: '2330', name: '台積電', industry: '半導體業' })
   const [detailStock, setDetailStock] = useState(null)
   const [currentView, setCurrentView] = useState('dashboard')
   const [activeCompareSymbols, setActiveCompareSymbols] = useState([])
@@ -93,72 +94,74 @@ function App() {
   useEffect(() => { fetchStats(); fetchData() }, [fetchData, fetchStats])
 
   return (
-    <Layout currentView={currentView}>
-      <MarketStats stats={stats} />
-      <div className="container mx-auto px-4 py-8">
-        {currentView === 'screener-config' ? (
-          <ScreenerConfigPage
-            onFilter={(f) => { setFilters(f); setPage(1); setMainStock(null); setCurrentView('dashboard') }}
-            onClear={() => { setFilters({}); setPage(1); setMainStock(null); }}
-            filters={filters}
-            onBack={() => setCurrentView('dashboard')}
-          />
-        ) : currentView === 'watchlist' ? (
-          <WatchlistDashboard
-            onStockClick={(s) => { setMainStock(s); setDetailStock(s) }}
-            watchedSymbols={watchedSymbols}
-            onToggleWatchlist={toggleWatchlist}
-          />
-        ) : currentView === 'institutional' ? (
-          <InstitutionalRankView
-            watchedSymbols={watchedSymbols}
-            onToggleWatchlist={toggleWatchlist}
-          />
-        ) : currentView === 'sentiment' ? (
-          <MarketSentimentView />
-        ) : currentView === 'dashboard' ? (
-          <PatternAnalysisDashboard
-            selectedStock={mainStock}
-            symbol={mainStock?.symbol}
-            activePatterns={activePatterns}
-            onPatternsChange={setActivePatterns}
-            onStockSelect={(s) => { setMainStock(s); setDetailStock(null); setSearchTerm(s.symbol); setPage(1); }}
-          >
-            <ResultTable
-              results={results}
-              loading={loading}
-              sortBy={sortBy}
-              sortDir={sortDir}
-              onSort={(c) => {
-                if (sortBy === c) setSortDir(p => p === 'desc' ? 'asc' : 'desc');
-                else { setSortBy(c); setSortDir('desc'); }
-                setPage(1);
-              }}
-              page={page}
-              onPageChange={setPage}
+    <AuthProvider>
+      <Layout currentView={currentView}>
+        <MarketStats stats={stats} />
+        <div className="container mx-auto px-4 py-8">
+          {currentView === 'screener-config' ? (
+            <ScreenerConfigPage
+              onFilter={(f) => { setFilters(f); setPage(1); setMainStock(null); setCurrentView('dashboard') }}
+              onClear={() => { setFilters({}); setPage(1); setMainStock(null); }}
+              filters={filters}
+              onBack={() => setCurrentView('dashboard')}
+            />
+          ) : currentView === 'watchlist' ? (
+            <WatchlistDashboard
               onStockClick={(s) => { setMainStock(s); setDetailStock(s) }}
               watchedSymbols={watchedSymbols}
               onToggleWatchlist={toggleWatchlist}
-              onCompare={setActiveCompareSymbols}
             />
-          </PatternAnalysisDashboard>
-        ) : <NewsBoard />}
-      </div>
-      {detailStock && (
-        <StockDetail
-          stock={detailStock}
-          onClose={() => setDetailStock(null)}
-          isWatched={watchedSymbols.has(detailStock.symbol)}
-          onToggleWatchlist={() => toggleWatchlist(detailStock.symbol)}
-        />
-      )}
-      {activeCompareSymbols.length > 0 && (
-        <ComparisonChart
-          symbols={activeCompareSymbols}
-          onClose={() => setActiveCompareSymbols([])}
-        />
-      )}
-    </Layout>
+          ) : currentView === 'institutional' ? (
+            <InstitutionalRankView
+              watchedSymbols={watchedSymbols}
+              onToggleWatchlist={toggleWatchlist}
+            />
+          ) : currentView === 'sentiment' ? (
+            <MarketSentimentView />
+          ) : currentView === 'dashboard' ? (
+            <PatternAnalysisDashboard
+              selectedStock={mainStock}
+              symbol={mainStock?.symbol}
+              activePatterns={activePatterns}
+              onPatternsChange={setActivePatterns}
+              onStockSelect={(s) => { setMainStock(s); setDetailStock(null); setSearchTerm(s.symbol); setPage(1); }}
+            >
+              <ResultTable
+                results={results}
+                loading={loading}
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onSort={(c) => {
+                  if (sortBy === c) setSortDir(p => p === 'desc' ? 'asc' : 'desc');
+                  else { setSortBy(c); setSortDir('desc'); }
+                  setPage(1);
+                }}
+                page={page}
+                onPageChange={setPage}
+                onStockClick={(s) => { setMainStock(s); setDetailStock(s) }}
+                watchedSymbols={watchedSymbols}
+                onToggleWatchlist={toggleWatchlist}
+                onCompare={setActiveCompareSymbols}
+              />
+            </PatternAnalysisDashboard>
+          ) : <NewsBoard />}
+        </div>
+        {detailStock && (
+          <StockDetail
+            stock={detailStock}
+            onClose={() => setDetailStock(null)}
+            isWatched={watchedSymbols.has(detailStock.symbol)}
+            onToggleWatchlist={() => toggleWatchlist(detailStock.symbol)}
+          />
+        )}
+        {activeCompareSymbols.length > 0 && (
+          <ComparisonChart
+            symbols={activeCompareSymbols}
+            onClose={() => setActiveCompareSymbols([])}
+          />
+        )}
+      </Layout>
+    </AuthProvider>
   )
 }
 export default App
