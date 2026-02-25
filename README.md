@@ -56,9 +56,3 @@ npm run dev
 - [台灣證券交易所 (TWSE)](https://www.twse.com.tw) — 上市行情、基本面、三大法人
 - [證券櫃檯買賣中心 (TPEx)](https://www.tpex.org.tw) — 上櫃行情
 
-## 環境變數
-
-| 變數 | 說明 | 預設值 |
-|------|------|--------|
-| `DATABASE_URL` | PostgreSQL 連線字串 | `postgresql://postgres:postgres123@localhost:5432/stock_screener` |
-| `PORT` | 後端 Port | `3000` |
