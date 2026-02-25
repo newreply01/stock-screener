@@ -98,10 +98,10 @@ export default function LoginModal({ isOpen, onClose }) {
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="relative bg-gradient-to-r from-brand-primary to-red-500 p-8 text-white text-center">
+                <div className="relative bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-600 p-8 text-white text-center">
                     <button
                         onClick={onClose}
-                        className="absolute top-4 right-4 p-1 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
+                        className="absolute top-4 right-4 p-1.5 rounded-xl bg-white/10 hover:bg-white/20 transition-all border border-white/10"
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -140,7 +140,8 @@ export default function LoginModal({ isOpen, onClose }) {
                                     placeholder="姓名 / 暱稱"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
-                                    className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none text-sm font-medium transition-all"
+                                    className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none text-sm font-medium transition-all"
+                                />
                                 />
                             </div>
                         )}
@@ -180,7 +181,7 @@ export default function LoginModal({ isOpen, onClose }) {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-3 rounded-xl bg-gradient-to-r from-brand-primary to-red-500 text-white font-bold text-sm hover:shadow-lg hover:shadow-red-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {loading ? '處理中...' : mode === 'login' ? '登入' : '註冊'}
                         </button>
@@ -203,7 +204,7 @@ export default function LoginModal({ isOpen, onClose }) {
                         {mode === 'login' ? '還沒有帳號？' : '已有帳號？'}
                         <button
                             onClick={switchMode}
-                            className="text-brand-primary hover:text-red-500 font-bold ml-1 transition-colors"
+                            className="text-indigo-600 hover:text-indigo-700 font-bold ml-1 transition-colors"
                         >
                             {mode === 'login' ? '立即註冊' : '立即登入'}
                         </button>
