@@ -1,6 +1,6 @@
 import { Search, User, Menu, Bell, Globe } from 'lucide-react';
 
-export default function Header() {
+export default function Header({ currentView = 'dashboard' }) {
     const dispatchView = (view) => {
         window.dispatchEvent(new CustomEvent('muchstock-view', { detail: view }));
     };
@@ -37,31 +37,31 @@ export default function Header() {
                     <nav className="hidden lg:flex items-center gap-8 text-[14px] font-semibold">
                         <button
                             onClick={() => dispatchView('dashboard')}
-                            className="text-gray-300 hover:text-white h-16 flex items-center transition-colors px-1 border-b-2 border-transparent hover:border-white/20"
+                            className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'dashboard' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
                         >
                             台股篩選
                         </button>
                         <button
                             onClick={() => dispatchView('institutional')}
-                            className="text-gray-300 hover:text-white h-16 flex items-center transition-colors px-1 border-b-2 border-transparent hover:border-white/20"
+                            className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'institutional' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
                         >
                             三大法人
                         </button>
                         <button
                             onClick={() => dispatchView('sentiment')}
-                            className="text-gray-300 hover:text-white h-16 flex items-center transition-colors px-1 border-b-2 border-transparent hover:border-white/20"
+                            className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'sentiment' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
                         >
                             市場情緒
                         </button>
                         <button
                             onClick={() => dispatchView('screener-config')}
-                            className="text-brand-primary font-bold hover:text-red-400 h-16 flex items-center transition-colors px-1 border-b-2 border-transparent hover:border-brand-primary"
+                            className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'screener-config' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
                         >
                             進階篩選設定
                         </button>
                         <button
                             onClick={() => dispatchView('news')}
-                            className="text-gray-300 hover:text-white h-16 flex items-center transition-colors px-1 border-b-2 border-transparent hover:border-white/20"
+                            className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'news' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
                         >
                             財經新聞
                         </button>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import StockChart from './StockChart';
 import ChipAnalysisChart from './ChipAnalysisChart';
 import AIAnalysisReport from './AIAnalysisReport';
+import StockSearchAutocomplete from './StockSearchAutocomplete';
 import { getInstitutionalData, getAIReport } from '../utils/api';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -16,18 +17,19 @@ const CATEGORIES = [
 const PERIODS = ['日K', '週K', '月K'];
 
 const CLASSIC_PATTERNS = [
-    { id: 'red_three_soldiers', name: '紅三兵', en: 'Red Three Soldiers', desc: '連續三天收紅K，顯示多頭強勢', mockupDetected: true },
-    { id: 'three_black_crows', name: '三隻烏鴉', en: 'Three Black Crows', desc: '連續三天收黑K，顯示空頭強勢', mockupDetected: false },
-    { id: 'morning_star', name: '晨星', en: 'Morning Star', desc: '跌勢末端出現轉折，可能反轉向上', mockupDetected: false },
-    { id: 'evening_star', name: '夜星', en: 'Evening Star', desc: '漲勢末端出現轉折，可能反轉向下', mockupDetected: false },
-    { id: 'bullish_engulfing', name: '吞噬型態', en: 'Bullish Engulfing', desc: '陽線完全包覆前一陰線，強烈看漲', mockupDetected: true },
-    { id: 'piercing_line', name: '貫穿/烏雲', en: 'Piercing/Dark Cloud', desc: '穿透前日陰線實體中點以上', mockupDetected: false },
-    { id: 'hammer', name: '鎚子線', en: 'Hammer', desc: '長下影線實體小，底部反轉訊號', mockupDetected: false },
-    { id: 'inverted_hammer', name: '倒鎚子', en: 'Inverted Hammer', desc: '長上影線實體小，通常出現在底部', mockupDetected: false },
-    { id: 'hanging_man', name: '上吊線', en: 'Hanging Man', desc: '高檔出現的長下影線，警示訊號', mockupDetected: false },
-    { id: 'shooting_star', name: '射擊之星', en: 'Shooting Star', desc: '高檔出現的長上影線，可能見頂', mockupDetected: false },
-    { id: 'three_inside_up', name: '三內升', en: 'Three Inside Up', desc: '母子型態後隔日收高，多頭確認', mockupDetected: false },
-    { id: 'three_inside_down', name: '三內降', en: 'Three Inside Down', desc: '母子型態後隔日收低，空頭確認', mockupDetected: false },
+    { id: 'red_three_soldiers', name: '紅三兵', en: 'Red Three Soldiers', desc: '連續三天收紅K，顯示多頭強勢' },
+    { id: 'three_black_crows', name: '三隻烏鴉', en: 'Three Black Crows', desc: '連續三天收黑K，顯示空頭強勢' },
+    { id: 'morning_star', name: '晨星', en: 'Morning Star', desc: '跌勢末端出現轉折，可能反轉向上' },
+    { id: 'evening_star', name: '夜星', en: 'Evening Star', desc: '漲勢末端出現轉折，可能反轉向下' },
+    { id: 'bullish_engulfing', name: '吞噬型態', en: 'Bullish Engulfing', desc: '陽線完全包覆前一陰線，強烈看漲' },
+    { id: 'bearish_engulfing', name: '空頭吞噬', en: 'Bearish Engulfing', desc: '陰線完全包覆前一陽線，強烈看跌' },
+    { id: 'piercing_line', name: '貫穿/烏雲', en: 'Piercing/Dark Cloud', desc: '穿透前日陰線實體中點以上' },
+    { id: 'hammer', name: '鎚子線', en: 'Hammer', desc: '長下影線實體小，底部反轉訊號' },
+    { id: 'inverted_hammer', name: '倒鎚子', en: 'Inverted Hammer', desc: '長上影線實體小，通常出現在底部' },
+    { id: 'hanging_man', name: '上吊線', en: 'Hanging Man', desc: '高檔出現的長下影線，警示訊號' },
+    { id: 'shooting_star', name: '射擊之星', en: 'Shooting Star', desc: '高檔出現的長上影線，可能見頂' },
+    { id: 'three_inside_up', name: '三內升', en: 'Three Inside Up', desc: '母子型態後隔日收高，多頭確認' },
+    { id: 'three_inside_down', name: '三內降', en: 'Three Inside Down', desc: '母子型態後隔日收低，空頭確認' },
 ];
 
 export default function PatternAnalysisDashboard({
@@ -241,12 +243,28 @@ export default function PatternAnalysisDashboard({
                         </div>
                     </div>
                 ) : (
-                    <StockChart
-                        stock={selectedStock}
-                        period={activePeriod}
-                        onPatternsDetected={onPatternsChange}
-                        onIndicatorStatus={setIndicatorStatus}
-                    />
+                    <div className="flex flex-col gap-4">
+                        <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-4 flex items-center gap-4">
+                            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+                                <Search className="w-5 h-5 text-slate-400" />
+                            </div>
+                            <div className="flex-1">
+                                <StockSearchAutocomplete
+                                    onSelectStock={(stock) => {
+                                        // Update global search to select this stock
+                                        window.dispatchEvent(new CustomEvent('muchstock-search', { detail: stock.symbol }));
+                                    }}
+                                />
+                            </div>
+                            <p className="text-xs text-slate-400 font-bold hidden sm:block">輸入代號快速分析特定標的</p>
+                        </div>
+                        <StockChart
+                            stock={selectedStock}
+                            period={activePeriod}
+                            onPatternsDetected={onPatternsChange}
+                            onIndicatorStatus={setIndicatorStatus}
+                        />
+                    </div>
                 )}
 
                 <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-6 min-h-[400px] flex flex-col">
@@ -270,8 +288,8 @@ export default function PatternAnalysisDashboard({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {CLASSIC_PATTERNS.filter(p => {
-                        if (activeFilter === 'bullish') return p.mockupDetected || activePatterns.some(ap => ap.name === p.name && ap.type === 'bullish');
-                        if (activeFilter === 'bearish') return !p.mockupDetected || activePatterns.some(ap => ap.name === p.name && ap.type === 'bearish');
+                        if (activeFilter === 'bullish') return activePatterns.some(ap => ap.name === p.name && ap.type === 'bullish');
+                        if (activeFilter === 'bearish') return activePatterns.some(ap => ap.name === p.name && ap.type === 'bearish');
                         return true;
                     }).map(pat => {
                         const isDetected = activePatterns.some(p => p.name === pat.name);

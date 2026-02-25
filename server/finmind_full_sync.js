@@ -76,7 +76,10 @@ async function fetchFinMind(dataset, data_id = null, start_date = START_DATE) {
             if (res.status === 402) {
                 console.warn(`⚠️ [FinMind] Token #${currentTokenIndex + 1} 額度耗盡 (402)`);
                 if (rotateToken('HTTP 402')) return fetchFinMind(dataset, data_id, start_date);
-                throw new Error(`所有 Token 額度皆已耗盡`);
+                console.warn(`⚠️ 所有 Token 額度皆已耗盡 (402)，等待 60s 後重試...`);
+                await sleep(60000);
+                exhaustedTokens.clear();
+                return fetchFinMind(dataset, data_id, start_date);
             }
             throw new Error(`HTTP ${res.status}`);
         }

@@ -68,7 +68,16 @@ function formatCell(key, value, row, isWatched, onToggleWatchlist) {
                 </div>
             )
         case 'name':
-            return <span className="font-bold text-slate-700 truncate block max-w-[120px]">{value}</span>
+            return (
+                <div className="flex flex-col gap-1">
+                    <span className="font-bold text-slate-700 truncate block max-w-[120px]">{value}</span>
+                    {row.industry && (
+                        <span className="text-[9px] font-bold tracking-widest px-1.5 py-0.5 rounded-sm w-fit bg-indigo-50 text-indigo-500 border border-indigo-100/50">
+                            {row.industry}
+                        </span>
+                    )}
+                </div>
+            )
         case 'close_price':
             return <span className="font-black text-slate-900 tabular-nums">{formatNumber(value, 2)}</span>
         case 'change_percent': {

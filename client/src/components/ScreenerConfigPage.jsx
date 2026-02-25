@@ -18,6 +18,7 @@ const CLASSIC_PATTERNS = [
     { id: 'morning_star', name: '晨星', type: 'bullish' },
     { id: 'evening_star', name: '夜星', type: 'bearish' },
     { id: 'bullish_engulfing', name: '吞噬型態', type: 'bullish' },
+    { id: 'bearish_engulfing', name: '空頭吞噬', type: 'bearish' },
     { id: 'piercing_line', name: '貫穿/烏雲', type: 'neutral' },
     { id: 'hammer', name: '鎚子線', type: 'bullish' },
     { id: 'inverted_hammer', name: '倒鎚子', type: 'bullish' },

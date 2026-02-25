@@ -12,6 +12,16 @@ export async function screenStocks(params = {}) {
     return res.json();
 }
 
+export async function searchStocks(queryStr, limit = 10) {
+    if (!queryStr) return [];
+    const searchParams = new URLSearchParams();
+    searchParams.append('q', queryStr);
+    searchParams.append('limit', limit);
+    const res = await fetch(`${API_BASE}/stocks/search?${searchParams.toString()}`);
+    if (!res.ok) throw new Error('搜尋請求失敗');
+    return res.json();
+}
+
 export async function getStats(params = {}) {
     const searchParams = new URLSearchParams();
     if (params.date) searchParams.append('date', params.date);

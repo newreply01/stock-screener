@@ -133,9 +133,17 @@ export default function StockDetail({ stock, onClose }) {
                                 {stock.name}
                                 <span className="text-slate-400 text-lg font-normal">{stock.symbol}</span>
                             </h2>
-                            <p className="text-slate-500 text-sm flex items-center gap-1">
-                                {stock.industry} • {stock.market?.toUpperCase()}
-                            </p>
+                            <div className="flex items-center gap-2 mt-1.5">
+                                {stock.industry && (
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-bold tracking-widest bg-indigo-50 text-indigo-500 border border-indigo-100/50">
+                                        {stock.industry}
+                                    </span>
+                                )}
+                                <span className={`px-2 py-0.5 rounded text-[11px] font-bold tracking-widest
+                                    ${stock.market === 'twse' ? 'bg-blue-50 text-blue-500 border border-blue-100/50' : 'bg-orange-50 text-orange-500 border border-orange-100/50'}`}>
+                                    {stock.market === 'twse' ? 'TWSE 上市' : 'TPEX 上櫃'}
+                                </span>
+                            </div>
                         </div>
                     </div>
                     <button

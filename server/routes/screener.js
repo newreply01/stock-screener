@@ -5,8 +5,36 @@ const { query } = require('../db');
 // GET /api/screen - 篩選股票 (支持分頁與篩選)
 router.get('/screen', async (req, res) => {
     try {
-        const { search = '', sort_by = 'volume', sort_dir = 'desc', page = 1, limit = 50 } = req.query;
+        const { search = '', industry = '', patterns = '', sort_by = 'volume', sort_dir = 'desc', page = 1, limit = 50 } = req.query;
         const offset = (parseInt(page) - 1) * parseInt(limit);
+
+        let whereClause = "WHERE p.trade_date = (SELECT MAX(trade_date) FROM daily_prices)";
+        const params = [];
+        let paramCount = 1;
+
+        if (search) {
+            whereClause += ` AND (s.symbol LIKE $${paramCount} OR s.name LIKE $${paramCount})`;
+            params.push(`%${search}%`);
+            paramCount++;
+        }
+
+        if (industry) {
+            whereClause += ` AND s.industry = $${paramCount}`;
+            params.push(industry);
+            paramCount++;
+        }
+
+        if (patterns) {
+            // patterns comes in as comma-separated: 'bullish_engulfing,morning_star'
+            const patternList = patterns.split(',').filter(Boolean);
+            if (patternList.length > 0) {
+                // To match ANY of the selected patterns, using JSONB containment or intersection
+                // i.patterns ?| array['p1', 'p2']
+                whereClause += ` AND i.patterns ?| $${paramCount}`;
+                params.push(patternList);
+                paramCount++;
+            }
+        }
 
         // 基本查詢語法
         const baseQuery = `
@@ -17,11 +45,13 @@ router.get('/screen', async (req, res) => {
                 FROM fundamentals
                 ORDER BY symbol, trade_date DESC
             ) f ON s.symbol = f.symbol
-            WHERE p.trade_date = (SELECT MAX(trade_date) FROM daily_prices)
-            ${search ? "AND (s.symbol LIKE $1 OR s.name LIKE $1)" : ""}
+            LEFT JOIN (
+                SELECT DISTINCT ON (symbol) symbol, patterns
+                FROM indicators
+                ORDER BY symbol, trade_date DESC
+            ) i ON s.symbol = i.symbol
+            ${whereClause}
         `;
-
-        const params = search ? [`%${search}%`] : [];
 
         // 獲取總數
         const countResult = await query(`SELECT COUNT(*) ${baseQuery}`, params);
@@ -54,6 +84,23 @@ router.get('/screen', async (req, res) => {
         });
     } catch (err) {
         console.error('Screener error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/stocks/industries - 取得所有產業清單
+router.get('/stocks/industries', async (req, res) => {
+    try {
+        const sql = `
+            SELECT DISTINCT industry 
+            FROM stocks 
+            WHERE industry IS NOT NULL AND industry != ''
+            ORDER BY industry ASC
+        `;
+        const result = await query(sql);
+        res.json(result.rows.map(row => row.industry));
+    } catch (err) {
+        console.error('Failed to fetch industries:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -198,11 +245,13 @@ router.get('/institutional-rank', async (req, res) => {
             SELECT 
                 i.symbol, 
                 s.name, 
+                s.industry,
+                s.market,
                 SUM(i.${field}) as net_buy
             FROM institutional i
             JOIN stocks s ON i.symbol = s.symbol
             WHERE i.trade_date = ANY($1)
-            GROUP BY i.symbol, s.name
+            GROUP BY i.symbol, s.name, s.industry, s.market
             HAVING SUM(i.${field}) > 0
             ORDER BY net_buy DESC
             LIMIT 20
@@ -248,6 +297,35 @@ router.get('/stock/:symbol/institutional', async (req, res) => {
         const result = await query(sql, [symbol, parseInt(limit)]);
         res.json(result.rows.reverse());
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/stocks/search - Autocomplete Search
+router.get('/stocks/search', async (req, res) => {
+    try {
+        const { q = '', limit = 10 } = req.query;
+        if (!q) return res.json([]);
+
+        const sql = `
+            SELECT symbol, name, industry, market
+            FROM stocks
+            WHERE symbol LIKE $1 OR name LIKE $1
+            ORDER BY 
+                CASE 
+                    WHEN symbol = $2 THEN 0
+                    WHEN name = $2 THEN 1
+                    WHEN symbol LIKE $3 THEN 2
+                    WHEN name LIKE $3 THEN 3
+                    ELSE 4
+                END,
+                symbol ASC
+            LIMIT $4
+        `;
+        const result = await query(sql, [`%${q}%`, q, `${q}%`, parseInt(limit)]);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Failed to search stocks:', err);
         res.status(500).json({ error: err.message });
     }
 });

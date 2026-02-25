@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BarChart3, ClipboardList, Building2, Calendar, Search, RotateCcw, LayoutGrid } from 'lucide-react';
 import TechnicalFilters from './TechnicalFilters'
 import FundamentalFilters from './FundamentalFilters'
@@ -12,8 +12,10 @@ const TABS = [
 
 export default function FilterPanel({ onFilter, onClear, filters }) {
     const [activeTab, setActiveTab] = useState('technical')
+    const [industries, setIndustries] = useState([])
     const [localFilters, setLocalFilters] = useState({
         market: 'all',
+        industry: '',
         price_min: '', price_max: '',
         change_min: '', change_max: '',
         volume_min: '', volume_max: '',
@@ -30,6 +32,15 @@ export default function FilterPanel({ onFilter, onClear, filters }) {
     const updateFilter = (key, value) => {
         setLocalFilters(prev => ({ ...prev, [key]: value }))
     }
+
+    useEffect(() => {
+        fetch('/api/stocks/industries')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) setIndustries(data);
+            })
+            .catch(err => console.error('Failed to load industries', err));
+    }, []);
 
     const handleSubmit = () => {
         const cleaned = {}
@@ -113,6 +124,22 @@ export default function FilterPanel({ onFilter, onClear, filters }) {
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5 uppercase">
+                            <Building2 className="w-3 h-3" /> 產業類別
+                        </label>
+                        <select
+                            className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary"
+                            value={localFilters.industry || ''}
+                            onChange={e => updateFilter('industry', e.target.value)}
+                        >
+                            <option value="">全部產業</option>
+                            {industries.map(ind => (
+                                <option key={ind} value={ind}>{ind}</option>
+                            ))}
+                        </select>
                     </div>
 
                     <div className="space-y-2">

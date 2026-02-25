@@ -39,23 +39,22 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
             <Users className="text-brand-primary w-6 h-6" />
             三大法人買超排行榜
           </h2>
-          <p className="text-gray-400 text-sm mt-1">追蹤市場主力資金流向，鎖定法人同步作多強勢股</p>
+          <p className="text-slate-500 text-sm mt-1">追蹤市場主力資金流向，鎖定法人同步作多強勢股</p>
         </div>
-        
-        <div className="flex bg-white/5 p-1 rounded-lg border border-white/10">
+
+        <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
           {ranges.map(r => (
             <button
               key={r.id}
               onClick={() => setTimeRange(r.id)}
-              className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
-                timeRange === r.id 
-                  ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' 
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
+              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${timeRange === r.id
+                  ? 'bg-brand-primary text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
+                }`}
             >
               {r.label}
             </button>
@@ -68,11 +67,10 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
           <button
             key={tab.id}
             onClick={() => setActiveType(tab.id)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-full border transition-all whitespace-nowrap ${
-              activeType === tab.id
-                ? 'bg-white text-brand-dark border-white font-bold'
-                : 'bg-white/5 text-gray-400 border-white/10 hover:border-white/20 hover:text-white'
-            }`}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-full border transition-all whitespace-nowrap font-bold ${activeType === tab.id
+                ? 'bg-slate-800 text-white border-slate-800 shadow-md'
+                : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-700 hover:bg-slate-50'
+              }`}
           >
             {tab.icon}
             {tab.label}
@@ -83,30 +81,36 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? (
           Array(6).fill(0).map((_, i) => (
-            <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-4 animate-pulse h-32"></div>
+            <div key={i} className="bg-white border border-slate-100 rounded-2xl p-5 animate-pulse h-32 shadow-sm"></div>
           ))
         ) : data.length > 0 ? (
           data.map((stock, idx) => (
-            <div 
+            <div
               key={stock.symbol}
-              className="group bg-brand-light border border-white/5 hover:border-brand-primary/30 rounded-xl p-5 transition-all hover:bg-brand-light/80 relative overflow-hidden"
+              className="group bg-white border border-slate-100 hover:border-brand-primary/30 rounded-2xl p-5 transition-all hover:shadow-lg hover:-translate-y-1 relative overflow-hidden"
             >
               {idx < 3 && (
                 <div className="absolute -top-1 -right-1 w-12 h-12 flex items-center justify-center bg-brand-primary/10 rounded-bl-3xl">
-                  <span className="text-brand-primary font-black italic text-lg opacity-40">#{idx + 1}</span>
+                  <span className="text-brand-primary font-black italic text-lg opacity-80">#{idx + 1}</span>
                 </div>
               )}
-              
+
               <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-lg font-bold text-white group-hover:text-brand-primary transition-colors">{stock.name}</h3>
-                  <div className="text-brand-primary font-mono text-sm">{stock.symbol}</div>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-black text-slate-800 group-hover:text-brand-primary transition-colors">{stock.name}</h3>
+                    <div className="text-brand-primary font-bold text-sm bg-brand-primary/10 px-1.5 py-0.5 rounded">{stock.symbol}</div>
+                  </div>
+                  {stock.industry && (
+                    <span className="text-[10px] font-bold tracking-widest px-1.5 py-0.5 rounded-sm w-fit bg-slate-100 text-slate-500">
+                      {stock.industry}
+                    </span>
+                  )}
                 </div>
-                <button 
+                <button
                   onClick={() => onToggleWatchlist(stock.symbol)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    watchedSymbols.has(stock.symbol) ? 'bg-brand-primary/20 text-brand-primary' : 'bg-white/5 text-gray-500 hover:text-white'
-                  }`}
+                  className={`p-2 rounded-xl transition-colors ${watchedSymbols.has(stock.symbol) ? 'bg-yellow-50 text-yellow-500' : 'bg-slate-50 text-slate-400 hover:text-yellow-500 hover:bg-yellow-50'
+                    }`}
                 >
                   <Star className={`w-4 h-4 ${watchedSymbols.has(stock.symbol) ? 'fill-current' : ''}`} />
                 </button>
@@ -114,21 +118,21 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
 
               <div className="flex items-end justify-between">
                 <div className="space-y-1">
-                  <div className="text-xs text-gray-500 uppercase tracking-wider">法人淨買超</div>
-                  <div className="text-xl font-black text-brand-success">
-                    +{stock.net_buy.toLocaleString()} <span className="text-[10px] font-medium ml-0.5">張</span>
+                  <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">法人淨買超</div>
+                  <div className="text-xl font-black text-brand-success tabular-nums">
+                    +{stock.net_buy.toLocaleString()} <span className="text-[10px] font-bold ml-0.5 text-slate-500">張</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 text-xs text-gray-400 group-hover:text-white">
+                <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400 group-hover:text-brand-primary transition-colors">
                   查看詳情 <ChevronRight className="w-3 h-3" />
                 </div>
               </div>
             </div>
           ))
         ) : (
-          <div className="col-span-full py-20 text-center bg-white/5 rounded-2xl border border-dashed border-white/10">
-            <Users className="w-12 h-12 text-gray-600 mx-auto mb-4 opacity-50" />
-            <p className="text-gray-500 font-medium">查無相關排名數據</p>
+          <div className="col-span-full py-20 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            <p className="text-slate-500 font-bold">查無相關排名數據</p>
           </div>
         )}
       </div>

@@ -67,7 +67,10 @@ async function fetchFinMind(dataset, data_id, start_date = START_DATE) {
                 if (rotateToken('HTTP 402 Payment Required')) {
                     return fetchFinMind(dataset, data_id, start_date);
                 }
-                throw new Error(`所有 ${TOKENS.length} 組 Token 額度皆已耗盡 (HTTP 402)，請等待額度重置或加入新 Token`);
+                console.warn(`⚠️ [FinMind] 所有 ${TOKENS.length} 組 Token 額度皆已耗盡 (HTTP 402)，等待 60s 後重試...`);
+                await sleep(60000);
+                exhaustedTokens.clear();
+                return fetchFinMind(dataset, data_id, start_date);
             }
             throw new Error(`HTTP ${res.status}`);
         }

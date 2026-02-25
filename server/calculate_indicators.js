@@ -1,5 +1,5 @@
 const { query, end } = require('./db');
-const { SMA, RSI, MACD } = require('technicalindicators');
+const { SMA, RSI, MACD, bullishengulfingpattern, bearishengulfingpattern, bullishhammerstick, hangingman, morningstar, eveningstar, threewhitesoldiers, threeblackcrows, piercingline } = require('technicalindicators');
 
 /**
  * 計算並更新所有股票的技術指標
@@ -68,13 +68,42 @@ async function calculateAndStoreIndicators() {
             const currentMA20 = getVal(ma20);
             const currentMA60 = getVal(ma60);
 
+            // 6. 計算 K線型態 (取最後三筆)
+            let currentPatterns = [];
+            if (closes.length >= 3) {
+                const len = closes.length;
+                const opens = prices.map(p => parseFloat(p.open_price));
+                const highs = prices.map(p => parseFloat(p.high_price));
+                const lows = prices.map(p => parseFloat(p.low_price));
+
+                const input = {
+                    open: opens.slice(len - 3, len),
+                    high: highs.slice(len - 3, len),
+                    low: lows.slice(len - 3, len),
+                    close: closes.slice(len - 3, len)
+                };
+
+                const patternsFound = [];
+                if (bullishengulfingpattern(input)) patternsFound.push('bullish_engulfing', '吞噬型態'); // Store both ID and name just in case
+                if (bearishengulfingpattern(input)) patternsFound.push('bearish_engulfing', '空頭吞噬');
+                if (bullishhammerstick(input)) patternsFound.push('hammer', '鎚子線');
+                if (hangingman(input)) patternsFound.push('hanging_man', '上吊線');
+                if (morningstar(input)) patternsFound.push('morning_star', '晨星');
+                if (eveningstar(input)) patternsFound.push('evening_star', '夜星');
+                if (threewhitesoldiers(input)) patternsFound.push('red_three_soldiers', '紅三兵');
+                if (threeblackcrows(input)) patternsFound.push('three_black_crows', '三隻烏鴉');
+                if (piercingline(input)) patternsFound.push('piercing_line', '貫穿/烏雲');
+
+                currentPatterns = patternsFound;
+            }
+
             if (currentRSI && currentMA60) {
                 await query(`
                     INSERT INTO indicators (
                         symbol, trade_date, rsi_14, 
                         macd_value, macd_signal, macd_hist, 
-                        ma_5, ma_10, ma_20, ma_60
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                        ma_5, ma_10, ma_20, ma_60, patterns
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                     ON CONFLICT (symbol, trade_date) DO UPDATE SET
                         rsi_14 = EXCLUDED.rsi_14,
                         macd_value = EXCLUDED.macd_value,
@@ -83,11 +112,12 @@ async function calculateAndStoreIndicators() {
                         ma_5 = EXCLUDED.ma_5,
                         ma_10 = EXCLUDED.ma_10,
                         ma_20 = EXCLUDED.ma_20,
-                        ma_60 = EXCLUDED.ma_60
+                        ma_60 = EXCLUDED.ma_60,
+                        patterns = EXCLUDED.patterns
                 `, [
                     symbol, latestDate, currentRSI,
                     currentMACD?.MACD, currentMACD?.signal, currentMACD?.histogram,
-                    currentMA5, currentMA10, currentMA20, currentMA60
+                    currentMA5, currentMA10, currentMA20, currentMA60, JSON.stringify(currentPatterns)
                 ]);
             }
         }

@@ -55,6 +55,7 @@ function App() {
     const handleSearch = (e) => {
       setSearchTerm(e.detail)
       setPage(1)
+      setMainStock(null)
       if (currentView !== 'dashboard') setCurrentView('dashboard')
     }
     const handleSwitchView = (e) => {
@@ -92,13 +93,13 @@ function App() {
   useEffect(() => { fetchStats(); fetchData() }, [fetchData, fetchStats])
 
   return (
-    <Layout>
+    <Layout currentView={currentView}>
       <MarketStats stats={stats} />
       <div className="container mx-auto px-4 py-8">
         {currentView === 'screener-config' ? (
           <ScreenerConfigPage
-            onFilter={(f) => { setFilters(f); setPage(1); setCurrentView('dashboard') }}
-            onClear={() => { setFilters({}); setPage(1); }}
+            onFilter={(f) => { setFilters(f); setPage(1); setMainStock(null); setCurrentView('dashboard') }}
+            onClear={() => { setFilters({}); setPage(1); setMainStock(null); }}
             filters={filters}
             onBack={() => setCurrentView('dashboard')}
           />
@@ -121,6 +122,7 @@ function App() {
             symbol={mainStock?.symbol}
             activePatterns={activePatterns}
             onPatternsChange={setActivePatterns}
+            onStockSelect={(s) => { setMainStock(s); setDetailStock(null); }}
           >
             <ResultTable
               results={results}

@@ -7,7 +7,10 @@ import {
     bullishhammerstick,
     hangingman,
     morningstar,
-    eveningstar
+    eveningstar,
+    threewhitesoldiers,
+    threeblackcrows,
+    piercingline,
 } from 'technicalindicators';
 import { getHistory } from '../utils/api';
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -120,12 +123,15 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
                         const isLatest = i === candleData.length - 1;
 
                         const patternsFound = [];
-                        if (bullishengulfingpattern(input)) patternsFound.push({ name: '多頭吞噬', type: 'bullish' });
+                        if (bullishengulfingpattern(input)) patternsFound.push({ name: '吞噬型態', type: 'bullish' });
                         if (bearishengulfingpattern(input)) patternsFound.push({ name: '空頭吞噬', type: 'bearish' });
-                        if (bullishhammerstick(input)) patternsFound.push({ name: '鐵鎚', type: 'bullish' });
+                        if (bullishhammerstick(input)) patternsFound.push({ name: '鎚子線', type: 'bullish' });
                         if (hangingman(input)) patternsFound.push({ name: '上吊線', type: 'bearish' });
                         if (morningstar(input)) patternsFound.push({ name: '晨星', type: 'bullish' });
-                        if (eveningstar(input)) patternsFound.push({ name: '暮星', type: 'bearish' });
+                        if (eveningstar(input)) patternsFound.push({ name: '夜星', type: 'bearish' });
+                        if (threewhitesoldiers(input)) patternsFound.push({ name: '紅三兵', type: 'bullish' });
+                        if (threeblackcrows(input)) patternsFound.push({ name: '三隻烏鴉', type: 'bearish' });
+                        if (piercingline(input)) patternsFound.push({ name: '貫穿/烏雲', type: 'neutral' });
 
                         patternsFound.forEach(p => {
                             if (p.type === 'bullish') {

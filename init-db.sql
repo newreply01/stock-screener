@@ -127,6 +127,7 @@ CREATE TABLE IF NOT EXISTS indicators (
   ma_10 NUMERIC(10,2),
   ma_20 NUMERIC(10,2),
   ma_60 NUMERIC(10,2),
+  patterns JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMP DEFAULT NOW(),
   UNIQUE(symbol, trade_date)
 );
