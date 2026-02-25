@@ -3,6 +3,8 @@ import Layout from './components/Layout'
 import MarketStats from './components/MarketStats'
 import ScreenerConfigPage from './components/ScreenerConfigPage'
 import PatternAnalysisDashboard from './components/PatternAnalysisDashboard'
+import InstitutionalRankView from './components/InstitutionalRankView'
+import MarketSentimentView from './components/MarketSentimentView'
 import ResultTable from './components/ResultTable'
 import NewsBoard from './components/NewsBoard'
 import StockDetail from './components/StockDetail'
@@ -10,10 +12,7 @@ import WatchlistDashboard from './components/WatchlistDashboard'
 import ComparisonChart from './components/ComparisonChart'
 import { screenStocks, getStats, getWatchlists, addStockToWatchlist, removeStockFromWatchlist } from './utils/api'
 
-console.log("App.jsx: Full restoration starting");
-
 function App() {
-  console.log("App.jsx: Component function started");
   const [results, setResults] = useState({ data: [], total: 0, page: 1, totalPages: 0, latestDate: null })
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -24,64 +23,47 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('')
   const [mainStock, setMainStock] = useState(null)
   const [detailStock, setDetailStock] = useState(null)
-  const [currentView, setCurrentView] = useState('dashboard') // 'dashboard', 'screener-config', 'news', 'watchlist'
+  const [currentView, setCurrentView] = useState('dashboard')
   const [activeCompareSymbols, setActiveCompareSymbols] = useState([])
-
   const [watchlists, setWatchlists] = useState([])
+  const [activePatterns, setActivePatterns] = useState([])
 
   const fetchUserWatchlists = async () => {
     try {
       const res = await getWatchlists();
-      if (res.success && res.data.length > 0) {
-        setWatchlists(res.data)
-      }
-    } catch (e) {
-      console.error(e)
-    }
+      if (res.success && res.data.length > 0) setWatchlists(res.data)
+    } catch (e) { console.error('Watchlist fetch error:', e) }
   }
 
-  useEffect(() => {
-    fetchUserWatchlists()
-  }, [currentView]) // refresh when view changes, to get latest
+  useEffect(() => { fetchUserWatchlists() }, [currentView])
 
   const toggleWatchlist = async (symbol) => {
     if (watchlists.length === 0) return;
     const defaultList = watchlists[0];
     const isWatched = defaultList.items?.some(i => i.symbol === symbol)
     try {
-      if (isWatched) {
-        await removeStockFromWatchlist(defaultList.id, symbol)
-      } else {
-        await addStockToWatchlist(defaultList.id, symbol)
-      }
+      if (isWatched) await removeStockFromWatchlist(defaultList.id, symbol)
+      else await addStockToWatchlist(defaultList.id, symbol)
       fetchUserWatchlists()
-    } catch (e) {
-      console.error(e)
-    }
+    } catch (e) { console.error('Toggle watchlist error:', e) }
   }
 
-  // Get set of watched symbols
   const watchedSymbols = new Set()
   watchlists.forEach(w => w.items?.forEach(i => watchedSymbols.add(i.symbol)))
-
-  console.log("App.jsx: Current view:", currentView);
 
   useEffect(() => {
     const handleSearch = (e) => {
       setSearchTerm(e.detail)
       setPage(1)
-      if (currentView !== 'dashboard') {
-        setCurrentView('dashboard')
-      }
+      if (currentView !== 'dashboard') setCurrentView('dashboard')
     }
-
     const handleSwitchView = (e) => {
+      console.log('App: Switching view to', e.detail);
       setCurrentView(e.detail)
       window.scrollTo(0, 0)
     }
     window.addEventListener('muchstock-view', handleSwitchView)
     window.addEventListener('muchstock-search', handleSearch)
-
     return () => {
       window.removeEventListener('muchstock-search', handleSearch)
       window.removeEventListener('muchstock-view', handleSwitchView)
@@ -89,124 +71,77 @@ function App() {
   }, [currentView])
 
   const fetchData = useCallback(async () => {
-    console.log("App.jsx: fetchData called");
     setLoading(true)
     try {
-      const data = await screenStocks({
-        ...filters,
-        search: searchTerm,
-        sort_by: sortBy,
-        sort_dir: sortDir,
-        page,
-        limit: 50
-      })
-      console.log("App.jsx: fetchData success, items:", data?.data?.length);
+      const data = await screenStocks({ ...filters, search: searchTerm, sort_by: sortBy, sort_dir: sortDir, page, limit: 50 })
       setResults(data || { data: [], total: 0, page: 1, totalPages: 0, latestDate: null })
-    } catch (err) {
-      console.error('篩選失敗:', err)
-    } finally {
-      setLoading(false)
-    }
+    } catch (err) { console.error('Screening error:', err) } finally { setLoading(false) }
   }, [filters, sortBy, sortDir, page, searchTerm])
 
   useEffect(() => {
-    if (results?.data?.length > 0 && !mainStock) {
-      setMainStock(results.data[0])
-    }
+    if (results?.data?.length > 0 && !mainStock) setMainStock(results.data[0])
   }, [results, mainStock])
 
   const fetchStats = useCallback(async () => {
-    console.log("App.jsx: fetchStats called");
     try {
       const data = await getStats(filters)
-      console.log("App.jsx: fetchStats success");
       setStats(data)
-    } catch (err) {
-      console.error('統計失敗:', err)
-    }
+    } catch (err) { console.error('Stats error:', err) }
   }, [filters])
 
-  useEffect(() => {
-    fetchStats()
-    fetchData()
-  }, [fetchData, fetchStats])
-
-  const handleFilter = (newFilters) => {
-    setFilters(newFilters)
-    setPage(1)
-    setCurrentView('dashboard')
-  }
-
-  const handleSort = (column) => {
-    if (sortBy === column) {
-      setSortDir(prev => prev === 'desc' ? 'asc' : 'desc')
-    } else {
-      setSortBy(column)
-      setSortDir('desc')
-    }
-    setPage(1)
-  }
-
-  const handleClear = () => {
-    setFilters({})
-    setSortBy('volume')
-    setSortDir('desc')
-    setPage(1)
-  }
-
-  const [activePatterns, setActivePatterns] = useState([])
-
-  console.log("App.jsx: Returning full JSX tree");
+  useEffect(() => { fetchStats(); fetchData() }, [fetchData, fetchStats])
 
   return (
     <Layout>
       <MarketStats stats={stats} />
-
       <div className="container mx-auto px-4 py-8">
         {currentView === 'screener-config' ? (
           <ScreenerConfigPage
-            onFilter={handleFilter}
-            onClear={handleClear}
+            onFilter={(f) => { setFilters(f); setPage(1); setCurrentView('dashboard') }}
+            onClear={() => { setFilters({}); setPage(1); }}
             filters={filters}
             onBack={() => setCurrentView('dashboard')}
           />
         ) : currentView === 'watchlist' ? (
-          <WatchlistDashboard onStockClick={(stock) => {
-            setMainStock(stock)
-            setDetailStock(stock)
-          }}
+          <WatchlistDashboard
+            onStockClick={(s) => { setMainStock(s); setDetailStock(s) }}
             watchedSymbols={watchedSymbols}
-            onToggleWatchlist={toggleWatchlist} />
+            onToggleWatchlist={toggleWatchlist}
+          />
+        ) : currentView === 'institutional' ? (
+          <InstitutionalRankView
+            watchedSymbols={watchedSymbols}
+            onToggleWatchlist={toggleWatchlist}
+          />
+        ) : currentView === 'sentiment' ? (
+          <MarketSentimentView />
         ) : currentView === 'dashboard' ? (
           <PatternAnalysisDashboard
             selectedStock={mainStock}
+            symbol={mainStock?.symbol}
             activePatterns={activePatterns}
             onPatternsChange={setActivePatterns}
           >
             <ResultTable
-              results={results || { data: [] }}
+              results={results}
               loading={loading}
               sortBy={sortBy}
               sortDir={sortDir}
-              onSort={handleSort}
+              onSort={(c) => {
+                if (sortBy === c) setSortDir(p => p === 'desc' ? 'asc' : 'desc');
+                else { setSortBy(c); setSortDir('desc'); }
+                setPage(1);
+              }}
               page={page}
               onPageChange={setPage}
-              onStockClick={(stock) => {
-                setMainStock(stock)
-                setDetailStock(stock)
-              }}
+              onStockClick={(s) => { setMainStock(s); setDetailStock(s) }}
               watchedSymbols={watchedSymbols}
               onToggleWatchlist={toggleWatchlist}
-              onCompare={(symbols) => setActiveCompareSymbols(symbols)}
+              onCompare={setActiveCompareSymbols}
             />
           </PatternAnalysisDashboard>
-        ) : (
-          <div className="h-[800px] animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <NewsBoard />
-          </div>
-        )}
+        ) : <NewsBoard />}
       </div>
-
       {detailStock && (
         <StockDetail
           stock={detailStock}
@@ -215,7 +150,6 @@ function App() {
           onToggleWatchlist={() => toggleWatchlist(detailStock.symbol)}
         />
       )}
-
       {activeCompareSymbols.length > 0 && (
         <ComparisonChart
           symbols={activeCompareSymbols}
@@ -225,6 +159,4 @@ function App() {
     </Layout>
   )
 }
-
 export default App
-

@@ -846,4 +846,4 @@ if (require.main === module) {
         });
 }
 
-module.exports = { syncAll };
+module.exports = { syncAll, fetchFinMind, syncInstitutional };

@@ -1,0 +1,7 @@
+🔍 偵測資料庫環境變數:
+  - DATABASE_URL: postgresql://postgres:****@localhost:5432/stock_screener
+📊 Sync Progress Report:
+- Total stocks in DB: 75807
+- Stocks with Revenue data: 782
+- Stocks with EPS data: 779
+- Stocks with Dividend data: 681

@@ -12,7 +12,7 @@ import {
 import { getHistory } from '../utils/api';
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
-export default function StockChart({ stock, onPatternsDetected }) {
+export default function StockChart({ stock, period = '日K', onPatternsDetected, onIndicatorStatus }) {
     const mainChartRef = useRef();
     const rsiChartRef = useRef();
     const macdChartRef = useRef();
@@ -36,13 +36,56 @@ export default function StockChart({ stock, onPatternsDetected }) {
         const renderCharts = async () => {
             setLoading(true);
             try {
-                const rawData = await getHistory(stock.symbol);
+                let rawData = await getHistory(stock.symbol, 1000); // 獲取更多數據以支持週期轉換
                 if (!isMounted || !rawData.length) {
                     setLoading(false);
                     return;
                 }
 
-                const candleData = rawData.map(d => ({
+                // --- Data Aggregation ---
+                const aggregateData = (data, p) => {
+                    if (p === '日K') return data;
+                    const result = [];
+                    let current = null;
+
+                    data.forEach((d, idx) => {
+                        const date = new Date(d.time);
+                        let key;
+                        if (p === '週K') {
+                            // 使用本地時間計算週一
+                            const day = date.getDay();
+                            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+                            const monday = new Date(date);
+                            monday.setDate(diff);
+                            key = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+                        } else {
+                            key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
+                        }
+
+                        if (!current || current.time !== key) {
+                            if (current) result.push(current);
+                            current = {
+                                time: key,
+                                open: d.open,
+                                high: d.high,
+                                low: d.low,
+                                close: d.close,
+                                volume: Number(d.volume)
+                            };
+                        } else {
+                            current.high = Math.max(current.high, d.high);
+                            current.low = Math.min(current.low, d.low);
+                            current.close = d.close;
+                            current.volume += Number(d.volume);
+                        }
+                    });
+                    if (current) result.push(current);
+                    return result;
+                };
+
+                const processedData = aggregateData(rawData, period);
+
+                const candleData = processedData.map(d => ({
                     time: d.time,
                     open: parseFloat(d.open),
                     high: parseFloat(d.high),
@@ -50,7 +93,7 @@ export default function StockChart({ stock, onPatternsDetected }) {
                     close: parseFloat(d.close),
                 }));
 
-                const volumeData = rawData.map(d => ({
+                const volumeData = processedData.map(d => ({
                     time: d.time,
                     value: Number(d.volume),
                     color: parseFloat(d.open) > parseFloat(d.close) ? 'rgba(239, 68, 68, 0.4)' : 'rgba(34, 197, 94, 0.4)'
@@ -138,6 +181,16 @@ export default function StockChart({ stock, onPatternsDetected }) {
                             color: macdResult[i].histogram >= 0 ? 'rgba(239, 68, 68, 0.5)' : 'rgba(34, 197, 94, 0.5)'
                         });
                     }
+                }
+
+                const lastIdx = candleData.length - 1;
+                if (onIndicatorStatus && lastIdx >= 0) {
+                    onIndicatorStatus({
+                        rsi: rsiData.length ? rsiData[rsiData.length - 1].value : null,
+                        macd: macdData.macd.length ? macdData.macd[macdData.macd.length - 1].value : null,
+                        ma20: ma20Data.length ? ma20Data[ma20Data.length - 1].value : null,
+                        close: candleData[lastIdx].close
+                    });
                 }
 
                 // Cleanup existing
@@ -238,7 +291,7 @@ export default function StockChart({ stock, onPatternsDetected }) {
             if (rsiChartInstance.current) rsiChartInstance.current.remove();
             if (macdChartInstance.current) macdChartInstance.current.remove();
         };
-    }, [stock]);
+    }, [stock, period]);
 
     if (!stock) return (
         <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 min-h-[500px]">

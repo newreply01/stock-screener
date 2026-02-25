@@ -1,6 +1,10 @@
 import { Search, User, Menu, Bell, Globe } from 'lucide-react';
 
 export default function Header() {
+    const dispatchView = (view) => {
+        window.dispatchEvent(new CustomEvent('muchstock-view', { detail: view }));
+    };
+
     return (
         <header className="bg-brand-dark text-white sticky top-0 z-50">
             {/* Top Bar for Global Info */}
@@ -11,7 +15,7 @@ export default function Header() {
                         <span>市場狀態: <span className="text-brand-success">交易中</span></span>
                     </div>
                     <div className="flex gap-4">
-                        <button onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('muchstock-view', { detail: 'watchlist' })) }} className="hover:text-white transition-colors">投資組合</button>
+                        <button onClick={() => dispatchView('watchlist')} className="hover:text-white transition-colors">投資組合</button>
                         <a href="#" className="hover:text-white transition-colors">個人化設定</a>
                     </div>
                 </div>
@@ -21,7 +25,7 @@ export default function Header() {
             <div className="container mx-auto px-4 h-16 flex items-center justify-between">
                 <div className="flex items-center gap-8">
                     <button
-                        onClick={() => window.dispatchEvent(new CustomEvent('muchstock-view', { detail: 'news' }))}
+                        onClick={() => dispatchView('dashboard')}
                         className="flex items-center gap-1.5 group"
                     >
                         <div className="bg-brand-primary p-1.5 rounded-sm group-hover:bg-red-500 transition-colors">
@@ -32,21 +36,31 @@ export default function Header() {
 
                     <nav className="hidden lg:flex items-center gap-8 text-[14px] font-semibold">
                         <button
-                            onClick={() => window.dispatchEvent(new CustomEvent('muchstock-view', { detail: 'dashboard' }))}
+                            onClick={() => dispatchView('dashboard')}
                             className="text-gray-300 hover:text-white h-16 flex items-center transition-colors px-1 border-b-2 border-transparent hover:border-white/20"
                         >
                             台股篩選
                         </button>
                         <button
-                            onClick={() => window.dispatchEvent(new CustomEvent('muchstock-view', { detail: 'screener-config' }))}
+                            onClick={() => dispatchView('institutional')}
+                            className="text-gray-300 hover:text-white h-16 flex items-center transition-colors px-1 border-b-2 border-transparent hover:border-white/20"
+                        >
+                            三大法人
+                        </button>
+                        <button
+                            onClick={() => dispatchView('sentiment')}
+                            className="text-gray-300 hover:text-white h-16 flex items-center transition-colors px-1 border-b-2 border-transparent hover:border-white/20"
+                        >
+                            市場情緒
+                        </button>
+                        <button
+                            onClick={() => dispatchView('screener-config')}
                             className="text-brand-primary font-bold hover:text-red-400 h-16 flex items-center transition-colors px-1 border-b-2 border-transparent hover:border-brand-primary"
                         >
                             進階篩選設定
                         </button>
-                        <a href="https://www.cnyes.com/twstock" target="_blank" className="text-gray-300 hover:text-white h-16 flex items-center transition-colors">台股行情</a>
-                        <a href="https://www.cnyes.com/global" target="_blank" className="text-gray-300 hover:text-white h-16 flex items-center transition-colors">國際市場</a>
                         <button
-                            onClick={() => window.dispatchEvent(new CustomEvent('muchstock-view', { detail: 'news' }))}
+                            onClick={() => dispatchView('news')}
                             className="text-gray-300 hover:text-white h-16 flex items-center transition-colors px-1 border-b-2 border-transparent hover:border-white/20"
                         >
                             財經新聞

@@ -2,13 +2,11 @@ const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 export async function screenStocks(params = {}) {
     const searchParams = new URLSearchParams();
-
     Object.entries(params).forEach(([key, value]) => {
         if (value !== '' && value !== null && value !== undefined) {
             searchParams.append(key, value);
         }
     });
-
     const res = await fetch(`${API_BASE}/screen?${searchParams.toString()}`);
     if (!res.ok) throw new Error('篩選請求失敗');
     return res.json();
@@ -16,13 +14,27 @@ export async function screenStocks(params = {}) {
 
 export async function getStats(params = {}) {
     const searchParams = new URLSearchParams();
-    if (params.date) {
-        searchParams.append('date', params.date);
-    }
+    if (params.date) searchParams.append('date', params.date);
     const res = await fetch(`${API_BASE}/stats?${searchParams.toString()}`);
     if (!res.ok) throw new Error('統計請求失敗');
     return res.json();
 }
+
+export async function getMarketStats() {
+    const res = await fetch(`${API_BASE}/market-stats`);
+    if (!res.ok) throw new Error('獲取市場統計失敗');
+    return res.json();
+}
+
+export async function getInstitutionalRank(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.type) searchParams.append('type', params.type);
+    if (params.range) searchParams.append('range', params.range);
+    const res = await fetch(`${API_BASE}/institutional-rank?${searchParams.toString()}`);
+    if (!res.ok) throw new Error('獲取法人排行失敗');
+    return res.json();
+}
+
 export async function getNews(category = 'all', limit = 10) {
     const res = await fetch(`${API_BASE}/news?category=${category}&limit=${limit}`);
     if (!res.ok) throw new Error('獲取新聞失敗');
@@ -89,7 +101,6 @@ export async function removeStockFromWatchlist(watchlistId, symbol) {
     return res.json();
 }
 
-// 篩選條件儲存 API
 export async function getSavedFilters() {
     const res = await fetch(`${API_BASE}/filters`);
     if (!res.ok) throw new Error('獲取篩選器失敗');

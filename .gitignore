@@ -3,3 +3,5 @@ node_modules/
 .env.bak
 *.log
 testOutput*.txt
+*.sql
+*.log

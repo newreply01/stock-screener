@@ -6,6 +6,7 @@ const TWSE_MI_INDEX = 'https://www.twse.com.tw/exchangeReport/MI_INDEX?response=
 const TPEX_DAILY_URL = 'https://www.tpex.org.tw/web/stock/aftertrading/daily_close_quotes/stk_quote_result.php?l=zh-tw&o=json';
 const TWSE_PE_URL = 'https://www.twse.com.tw/rwd/zh/afterTrading/BWIBBU_d?response=json';
 const TWSE_INST_URL = 'https://www.twse.com.tw/rwd/zh/fund/T86?response=json&selectType=ALL';
+const TPEX_INST_URL = 'https://www.tpex.org.tw/web/stock/aftertrading/equity_mutual_fund_trader/gen_trader_result.php?l=zh-tw&o=json';
 
 // 工具函式
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -215,6 +216,61 @@ async function fetchInstitutional(dateObj) {
     }
 }
 
+// ===== 抓取三大法人 (TPEx) 歷史 =====
+async function fetchTPExInstitutional(dateObj) {
+    const rocDate = toRocDate(dateObj);
+    const dateHyphen = toDateHyphen(dateObj);
+    console.log(`[TPEx-Inst] 抓取 ${rocDate}...`);
+    try {
+        const url = `${TPEX_INST_URL}&d=${rocDate}`;
+        const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36' } });
+        const text = await res.text();
+        let json;
+        try {
+            json = JSON.parse(text);
+        } catch (e) {
+            console.error(`[TPEx-Inst] ${rocDate} JSON 解析失敗:`, e.message);
+            console.log(`[TPEx-Inst] 回傳內容前 200 字: ${text.substring(0, 200)}`);
+            return;
+        }
+
+        if (!json.aaData || json.aaData.length === 0) {
+            console.log(`[TPEx-Inst] ${rocDate} 無資料`);
+            return;
+        }
+
+        let count = 0;
+        for (const row of json.aaData) {
+            const symbol = row[0];
+            if (!/^\d{4,6}$/.test(symbol)) continue;
+
+            await ensureStock(symbol);
+
+            const foreignBuy = parseNumber(row[8]);
+            const foreignSell = parseNumber(row[9]);
+            const foreignNet = parseNumber(row[10]);
+            const trustBuy = parseNumber(row[11]);
+            const trustSell = parseNumber(row[12]);
+            const trustNet = parseNumber(row[13]);
+            const dealerNet = parseNumber(row[16]);
+            const dealerBuy = parseNumber(row[14]);
+            const dealerSell = parseNumber(row[15]);
+            const totalNet = parseNumber(row[19]);
+
+            await query(
+                `INSERT INTO institutional (symbol, trade_date, foreign_buy, foreign_sell, foreign_net, trust_buy, trust_sell, trust_net, dealer_buy, dealer_sell, dealer_net, total_net)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                 ON CONFLICT (symbol, trade_date) DO NOTHING`,
+                [symbol, dateHyphen, foreignBuy, foreignSell, foreignNet, trustBuy, trustSell, trustNet, dealerBuy, dealerSell, dealerNet, totalNet]
+            );
+            count++;
+        }
+        console.log(`[TPEx-Inst] ${rocDate} 更新 ${count} 筆`);
+    } catch (e) {
+        console.error(`[TPEx-Inst] ${rocDate} 失敗:`, e.message);
+    }
+}
+
 // ===== 通用抓取區間迴圈 =====
 async function fetchRange(startDate, endDate) {
     console.log(`📅 執行區間抓取: ${toDateHyphen(startDate)} -> ${toDateHyphen(endDate)}`);
@@ -240,6 +296,8 @@ async function fetchRange(startDate, endDate) {
         await fetchFundamentals(current);
         await sleep(1000);
         await fetchInstitutional(current);
+        await sleep(1000);
+        await fetchTPExInstitutional(current);
 
         console.log(`⏳ 休眠 3 秒...`);
         await sleep(3000);
@@ -251,6 +309,8 @@ async function fetchRange(startDate, endDate) {
 // ===== 主流程：自動補齊 =====
 async function catchUp() {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    console.log(`[CatchUp] Today is ${toDateHyphen(today)}`);
     const threeYearsAgo = new Date();
     threeYearsAgo.setFullYear(today.getFullYear() - 3);
 
@@ -291,13 +351,27 @@ async function catchUp() {
     const normDbMax = new Date(dbMax); normDbMax.setHours(0, 0, 0, 0);
     const normToday = new Date(today); normToday.setHours(0, 0, 0, 0);
 
-    if (normDbMax < normToday) {
+    if (normDbMax < today) {
         const startCatchUp = new Date(dbMax);
         startCatchUp.setDate(startCatchUp.getDate() + 1);
         console.log(`📈 發現新資料缺漏 (DB止於 ${toDateHyphen(dbMax)})，開始補齊 (${toDateHyphen(startCatchUp)} -> ${toDateHyphen(today)})...`);
         await fetchRange(startCatchUp, today);
     } else {
-        console.log('✅ 資料庫已包含今日數據，無需往後更新。');
+        console.log(`✅ 價格資料庫已包含今日數據 (${toDateHyphen(normDbMax)})，檢查籌碼資料...`);
+        // 額外檢查籌碼資料是否落後
+        try {
+            const instRes = await query('SELECT MAX(trade_date) as max_date FROM institutional');
+            const instMax = instRes.rows[0].max_date ? new Date(instRes.rows[0].max_date) : null;
+            console.log(`[CatchUp] Inst Max Date: ${instMax ? toDateHyphen(instMax) : 'NULL'}`);
+            if (!instMax || instMax < normDbMax) {
+                const startInst = instMax ? new Date(instMax) : new Date(threeYearsAgo);
+                if (instMax) startInst.setDate(startInst.getDate() + 1);
+                console.log(`📊 發現籌碼資料落後，開始回補 (${toDateHyphen(startInst)} -> ${toDateHyphen(normDbMax)})...`);
+                await fetchRange(startInst, normDbMax);
+            }
+        } catch (e) {
+            console.error('檢查籌碼日期失敗:', e.message);
+        }
     }
 
     console.log('🎉 所有資料檢查與補齊完成！');
@@ -311,4 +385,4 @@ if (require.main === module) {
         .catch(err => { console.error(err); process.exit(1); });
 }
 
-module.exports = { catchUp };
+module.exports = { catchUp, fetchRange };

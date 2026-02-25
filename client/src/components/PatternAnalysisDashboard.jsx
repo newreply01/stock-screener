@@ -3,6 +3,10 @@ import StockChart from './StockChart';
 import ChipAnalysisChart from './ChipAnalysisChart';
 import AIAnalysisReport from './AIAnalysisReport';
 import { getInstitutionalData, getAIReport } from '../utils/api';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { TrendingUp, TrendingDown, Activity, FileText, Download, CheckCircle2, Circle, Search, Users, Bot, RefreshCw } from 'lucide-react';
 
 const CATEGORIES = [
@@ -32,9 +36,10 @@ export default function PatternAnalysisDashboard({
     activePatterns = [],
     onPatternsChange
 }) {
-    const [activeCategory, setActiveCategory] = useState('K線進階');
+    const [activeCategory, setActiveCategory] = useState('總覽');
     const [activePeriod, setActivePeriod] = useState('日K');
-    const [activeSignal, setActiveSignal] = useState('none');
+    const [activeFilter, setActiveFilter] = useState('all'); // all, bullish, bearish
+    const [indicatorStatus, setIndicatorStatus] = useState({ rsi: null, macd: null, ma20: null, close: null });
 
     const [institutionalData, setInstitutionalData] = useState([]);
     const [loadingChip, setLoadingChip] = useState(false);
@@ -65,6 +70,30 @@ export default function PatternAnalysisDashboard({
             .finally(() => setLoadingAI(false));
     };
 
+    const handleExportExcel = () => {
+        if (!selectedStock) return;
+        const data = [
+            { '股票代號': selectedStock.symbol, '股票名稱': selectedStock.name, '產業': selectedStock.industry, '當天收盤': indicatorStatus.close, 'RSI': indicatorStatus.rsi?.toFixed(2), 'EMA方向': indicatorStatus.close > indicatorStatus.ma20 ? '多頭' : '空頭' },
+            { '型態名稱': '偵測型態', '狀態': activePatterns.map(p => p.name).join(', ') }
+        ];
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Analysis");
+        XLSX.writeFile(wb, `${selectedStock.symbol}_analysis.xlsx`);
+    };
+
+    const handleExportPDF = async () => {
+        const element = document.body; // Export entire page or specific ref
+        const canvas = await html2canvas(element);
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`${selectedStock?.symbol || 'dashboard'}_report.pdf`);
+    };
+
     // Real pattern counting for the selected stock
     const bullishCount = activePatterns.filter(p => p.type === 'bullish').length;
     const bearishCount = activePatterns.filter(p => p.type === 'bearish').length;
@@ -77,7 +106,10 @@ export default function PatternAnalysisDashboard({
                     {CATEGORIES.map(cat => (
                         <button
                             key={cat}
-                            onClick={() => setActiveCategory(cat)}
+                            onClick={() => {
+                                console.log('Dashboard: Category clicked:', cat);
+                                setActiveCategory(cat);
+                            }}
                             className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-semibold transition-colors mx-1 ${activeCategory === cat
                                 ? 'bg-brand-primary text-white shadow-md'
                                 : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
@@ -93,7 +125,10 @@ export default function PatternAnalysisDashboard({
                         {PERIODS.map(p => (
                             <button
                                 key={p}
-                                onClick={() => setActivePeriod(p)}
+                                onClick={() => {
+                                    console.log('Dashboard: Period clicked:', p);
+                                    setActivePeriod(p);
+                                }}
                                 className={`px-4 py-1.5 rounded-md text-sm font-bold transition-colors ${activePeriod === p
                                     ? 'bg-gray-800 text-white'
                                     : 'text-gray-500 hover:bg-gray-100'
@@ -105,13 +140,25 @@ export default function PatternAnalysisDashboard({
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg text-sm font-semibold hover:border-gray-400 hover:shadow-sm transition-all focus:outline-none">
+                        <button
+                            onClick={() => window.dispatchEvent(new CustomEvent('muchstock-view', { detail: 'institutional' }))}
+                            className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg text-sm font-semibold hover:border-gray-400 hover:shadow-sm transition-all focus:outline-none"
+                        >
                             <Activity className="w-4 h-4 text-brand-primary" /> 多股比較
                         </button>
-                        <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg text-sm font-semibold hover:border-gray-400 hover:shadow-sm transition-all focus:outline-none">
+                        <button
+                            onClick={handleExportPDF}
+                            className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg text-sm font-semibold hover:border-gray-400 hover:shadow-sm transition-all focus:outline-none"
+                        >
                             <FileText className="w-4 h-4 text-red-500" /> 匯出 PDF
                         </button>
-                        <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg text-sm font-semibold hover:border-gray-400 hover:shadow-sm transition-all focus:outline-none">
+                        <button
+                            onClick={(e) => {
+                                console.log('Dashboard: Export Excel clicked');
+                                handleExportExcel();
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg text-sm font-semibold hover:border-gray-400 hover:shadow-sm transition-all focus:outline-none"
+                        >
                             <Download className="w-4 h-4 text-green-600" /> 匯出 Excel
                         </button>
                     </div>
@@ -127,7 +174,11 @@ export default function PatternAnalysisDashboard({
                 ].map(card => (
                     <div
                         key={card.id}
-                        className={`flex items-center justify-between p-5 rounded-2xl border transition-all bg-white border-slate-200 shadow-sm`}
+                        onClick={() => {
+                            console.log('Dashboard: Filter card clicked:', card.id);
+                            setActiveFilter(prev => prev === card.id ? 'all' : card.id);
+                        }}
+                        className={`flex items-center justify-between p-5 rounded-2xl border transition-all cursor-pointer ${activeFilter === card.id ? card.activeBg : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'}`}
                     >
                         <div className="flex items-center gap-4">
                             <div className={`p-3 rounded-xl bg-slate-50 flex items-center justify-center`}>
@@ -139,7 +190,12 @@ export default function PatternAnalysisDashboard({
                             </div>
                         </div>
                         <div className={`px-4 py-1.5 rounded-lg text-sm font-black transition-all ${card.countBg} shadow-sm`}>
-                            {card.count}
+                            {card.id === 'status' ? (
+                                <div className="flex items-center gap-2 text-[10px]">
+                                    <span className={indicatorStatus.rsi > 70 ? 'text-red-500' : indicatorStatus.rsi < 30 ? 'text-green-500' : ''}>RSI:{indicatorStatus.rsi?.toFixed(0) || '--'}</span>
+                                    <span className={indicatorStatus.close > indicatorStatus.ma20 ? 'text-red-500' : 'text-green-500'}>MA:{indicatorStatus.close > indicatorStatus.ma20 ? '多' : '空'}</span>
+                                </div>
+                            ) : card.count}
                         </div>
                     </div>
                 ))}
@@ -187,7 +243,9 @@ export default function PatternAnalysisDashboard({
                 ) : (
                     <StockChart
                         stock={selectedStock}
+                        period={activePeriod}
                         onPatternsDetected={onPatternsChange}
+                        onIndicatorStatus={setIndicatorStatus}
                     />
                 )}
 
@@ -211,7 +269,11 @@ export default function PatternAnalysisDashboard({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {CLASSIC_PATTERNS.map(pat => {
+                    {CLASSIC_PATTERNS.filter(p => {
+                        if (activeFilter === 'bullish') return p.mockupDetected || activePatterns.some(ap => ap.name === p.name && ap.type === 'bullish');
+                        if (activeFilter === 'bearish') return !p.mockupDetected || activePatterns.some(ap => ap.name === p.name && ap.type === 'bearish');
+                        return true;
+                    }).map(pat => {
                         const isDetected = activePatterns.some(p => p.name === pat.name);
                         return (
                             <div key={pat.id} className={`bg-white border rounded-2xl p-5 transition-all relative overflow-hidden group shadow-sm ${isDetected ? 'border-brand-primary ring-1 ring-brand-primary/20' : 'border-slate-200 hover:border-slate-300'}`}>
