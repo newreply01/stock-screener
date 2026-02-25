@@ -1,6 +1,6 @@
 import { TrendingUp, TrendingDown, Clock, Activity } from "lucide-react";
 
-export default function MarketStats({ stats }) {
+export default function MarketStats({ stats, fallbackDate }) {
     if (!stats) {
         return (
             <div className="bg-brand-primary/5 border-b border-brand-primary/10 py-1.5">
@@ -24,7 +24,7 @@ export default function MarketStats({ stats }) {
     const downCount = Number(stats.down_count || 0);
     const total = upCount + downCount;
     const upRatio = total > 0 ? (upCount / total) * 100 : 0;
-    const date = stats.latestdate || stats.latestDate || "-";
+    const date = stats.latestDate || stats.latestdate || stats.latest_date || fallbackDate || "-";
 
     return (
         <div className="bg-brand-primary/5 border-b border-brand-primary/10 py-1.5">

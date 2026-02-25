@@ -105,7 +105,7 @@ function App() {
 
   return (
     <Layout currentView={currentView}>
-      <MarketStats stats={stats} />
+      <MarketStats stats={stats} fallbackDate={results?.latestDate} />
       <div className="container mx-auto px-4 py-8">
         {currentView === 'screener-config' ? (
           <ScreenerConfigPage
