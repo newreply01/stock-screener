@@ -232,7 +232,7 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
                     candleSeries.setMarkers(markers);
                 }
 
-                const maSeries = mainChart.addSeries(LineSeries, { color: '#3b82f6', lineWidth: 1, title: 'MA20', visible: showMA20 });
+                const maSeries = mainChart.addSeries(LineSeries, { color: '#3b82f6', lineWidth: 1, title: 'MA20' });
                 maSeries.setData(ma20Data);
                 maSeriesRef.current = maSeries;
 
@@ -305,7 +305,14 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
             if (rsiChartInstance.current) rsiChartInstance.current.remove();
             if (macdChartInstance.current) macdChartInstance.current.remove();
         };
-    }, [stock, period, showMA20, showRSI, showMACD]);
+    }, [stock, period]);
+
+    // Separate effect for MA20 visibility toggle (no chart re-creation)
+    useEffect(() => {
+        if (maSeriesRef.current) {
+            maSeriesRef.current.applyOptions({ visible: showMA20 });
+        }
+    }, [showMA20]);
 
     if (!stock) return (
         <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 min-h-[500px]">
@@ -375,23 +382,19 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {showRSI && (
-                            <div className="relative border border-slate-100 rounded-xl overflow-hidden bg-slate-50/20">
-                                <div className="absolute top-2 left-2 z-10 pointer-events-none">
-                                    <span className="text-[9px] font-black text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100 uppercase tracking-tighter">Relative Strength (RSI)</span>
-                                </div>
-                                <div ref={rsiChartRef} className="w-full" />
+                        <div className="relative border border-slate-100 rounded-xl overflow-hidden bg-slate-50/20" style={{ display: showRSI ? 'block' : 'none' }}>
+                            <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                                <span className="text-[9px] font-black text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100 uppercase tracking-tighter">Relative Strength (RSI)</span>
                             </div>
-                        )}
+                            <div ref={rsiChartRef} className="w-full" />
+                        </div>
 
-                        {showMACD && (
-                            <div className="relative border border-slate-100 rounded-xl overflow-hidden bg-slate-50/20">
-                                <div className="absolute top-2 left-2 z-10 pointer-events-none">
-                                    <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 uppercase tracking-tighter">Convergence Divergence (MACD)</span>
-                                </div>
-                                <div ref={macdChartRef} className="w-full" />
+                        <div className="relative border border-slate-100 rounded-xl overflow-hidden bg-slate-50/20" style={{ display: showMACD ? 'block' : 'none' }}>
+                            <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                                <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 uppercase tracking-tighter">Convergence Divergence (MACD)</span>
                             </div>
-                        )}
+                            <div ref={macdChartRef} className="w-full" />
+                        </div>
                     </div>
                 </div>
             </div>
