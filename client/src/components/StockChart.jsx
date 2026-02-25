@@ -111,9 +111,10 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
                 const highs = candleData.map(d => d.high);
                 const lows = candleData.map(d => d.low);
 
-                // --- Pattern Detection (Historical Markers & Latest) ---
+                // --- Pattern Detection (Historical Markers & Recent Active) ---
                 const markers = [];
-                const latestPatterns = [];
+                const recentPatterns = []; // patterns detected in last 5 trading days
+                const RECENT_WINDOW = 5; // number of recent candles to check for active patterns
 
                 if (candleData.length >= 3) {
                     for (let i = 2; i < candleData.length; i++) {
@@ -124,7 +125,7 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
                             close: closes.slice(i - 2, i + 1)
                         };
                         const time = candleData[i].time;
-                        const isLatest = i === candleData.length - 1;
+                        const isRecent = i >= candleData.length - RECENT_WINDOW;
 
                         const patternsFound = [];
                         if (bullishengulfingpattern(input)) patternsFound.push({ name: '吞噬型態', type: 'bullish' });
@@ -143,15 +144,16 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
                             } else {
                                 markers.push({ time, position: 'aboveBar', color: '#22c55e', shape: 'arrowDown', text: p.name });
                             }
-                            if (isLatest) {
-                                latestPatterns.push(p);
+                            // Track patterns in the recent window (deduplicated by name)
+                            if (isRecent && !recentPatterns.some(rp => rp.name === p.name)) {
+                                recentPatterns.push({ ...p, date: time });
                             }
                         });
                     }
                 }
-                setDetectedPatterns(latestPatterns);
+                setDetectedPatterns(recentPatterns);
                 if (onPatternsDetected) {
-                    onPatternsDetected(latestPatterns);
+                    onPatternsDetected(recentPatterns);
                 }
 
                 // --- Indicators Calculation ---
@@ -370,7 +372,7 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
                     <div className="flex items-center gap-3 bg-brand-primary/5 border border-brand-primary/10 p-3 rounded-xl animate-in fade-in slide-in-from-top-2 duration-300">
                         <CheckCircle2 className="w-5 h-5 text-brand-primary" />
                         <div className="flex flex-wrap gap-2">
-                            <span className="text-xs font-bold text-slate-600 tracking-tight">K線型態偵測(最新):</span>
+                            <span className="text-xs font-bold text-slate-600 tracking-tight">K線型態偵測(近5日):</span>
                             {detectedPatterns.map((p, idx) => (
                                 <span key={idx} className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${p.type === 'bullish' ? 'bg-red-50 text-red-500 border-red-100' : 'bg-green-50 text-green-600 border-green-100'}`}>
                                     {p.name}
