@@ -4,8 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import LoginModal from './LoginModal';
 
 export default function Header({ currentView = 'dashboard' }) {
-    const { user, logout } = useAuth();
-    const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+    const { user, logout, showLoginModal, setShowLoginModal } = useAuth();
 
     const dispatchView = (view) => {
         window.dispatchEvent(new CustomEvent('muchstock-view', { detail: view }));
@@ -120,7 +119,16 @@ export default function Header({ currentView = 'dashboard' }) {
                                     </div>
                                     <div className="p-1">
                                         <button
-                                            onClick={logout}
+                                            onClick={() => dispatchView('profile')}
+                                            className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg transition-colors"
+                                        >
+                                            <User className="w-4 h-4" /> 個人設定
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                logout();
+                                                dispatchView('dashboard');
+                                            }}
                                             className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                         >
                                             <LogOut className="w-4 h-4" /> 登出
@@ -129,7 +137,7 @@ export default function Header({ currentView = 'dashboard' }) {
                                 </div>
                             </div>
                         ) : (
-                            <button onClick={() => setIsLoginModalOpen(true)} className="flex items-center gap-2 pl-2 group">
+                            <button onClick={() => setShowLoginModal(true)} className="flex items-center gap-2 pl-2 group">
                                 <div className="w-8 h-8 rounded-full bg-brand-primary/20 border border-brand-primary/30 flex items-center justify-center group-hover:bg-brand-primary/30 transition-colors">
                                     <User className="w-4 h-4 text-brand-primary" />
                                 </div>
@@ -144,7 +152,7 @@ export default function Header({ currentView = 'dashboard' }) {
                 </div>
             </div>
 
-            <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
+            <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
         </header>
     );
 }

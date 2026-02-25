@@ -136,21 +136,74 @@ router.post('/google', async (req, res) => {
     }
 });
 
-// GET /api/auth/me — 取得目前使用者
+// GET /api/auth/me —// 取得目前使用者資訊
 router.get('/me', requireAuth, async (req, res) => {
     try {
-        const result = await query(
-            'SELECT id, email, name, avatar_url, provider, created_at FROM users WHERE id = $1',
-            [req.user.id]
-        );
-
-        if (result.rows.length === 0) {
+        const { rows } = await query('SELECT id, email, name, avatar_url, provider, created_at FROM users WHERE id = $1', [req.user.id]);
+        if (rows.length === 0) {
             return res.status(404).json({ success: false, error: '使用者不存在' });
         }
-
-        res.json({ success: true, user: result.rows[0] });
+        res.json({ success: true, user: rows[0] });
     } catch (err) {
-        console.error('取得使用者失敗:', err);
+        console.error('Fetch me error:', err);
+        res.status(500).json({ success: false, error: '伺服器錯誤' });
+    }
+});
+
+// 更新使用者資訊 (名稱)
+router.put('/me', requireAuth, async (req, res) => {
+    const { name } = req.body;
+    if (!name || name.trim() === '') {
+        return res.status(400).json({ success: false, error: '名稱不能為空' });
+    }
+    try {
+        const { rows } = await query(
+            'UPDATE users SET name = $1, updated_at = NOW() WHERE id = $2 RETURNING id, email, name, avatar_url, provider',
+            [name.trim(), req.user.id]
+        );
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, error: '使用者不存在' });
+        }
+        res.json({ success: true, user: rows[0] });
+    } catch (err) {
+        console.error('Update me error:', err);
+        res.status(500).json({ success: false, error: '伺服器錯誤' });
+    }
+});
+
+// 更新使用者密碼
+router.put('/password', requireAuth, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword || newPassword.length < 6) {
+        return res.status(400).json({ success: false, error: '請提供有效的密碼' });
+    }
+    try {
+        const { rows } = await query(
+            'SELECT password_hash, provider FROM users WHERE id = $1',
+            [req.user.id]
+        );
+        if (rows.length === 0) return res.status(404).json({ success: false, error: '使用者不存在' });
+
+        const user = rows[0];
+        if (user.provider !== 'local') {
+            return res.status(400).json({ success: false, error: '第三方登入的帳號無法修改密碼' });
+        }
+
+        const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+        if (!isMatch) {
+            return res.status(401).json({ success: false, error: '目前密碼不正確' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hash = await bcrypt.hash(newPassword, salt);
+
+        await query(
+            'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+            [hash, req.user.id]
+        );
+        res.json({ success: true, message: '密碼已更新' });
+    } catch (err) {
+        console.error('Update password error:', err);
         res.status(500).json({ success: false, error: '伺服器錯誤' });
     }
 });

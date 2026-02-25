@@ -4,6 +4,7 @@ import { getSavedFilters, saveFilter, deleteFilter } from '../utils/api';
 import TechnicalFilters from './TechnicalFilters'
 import FundamentalFilters from './FundamentalFilters'
 import InstitutionalFilters from './InstitutionalFilters'
+import { useAuth } from '../context/AuthContext';
 
 const TABS = [
     { id: 'patterns', label: 'K線型態', icon: CheckSquare },
@@ -31,6 +32,7 @@ const CLASSIC_PATTERNS = [
 ];
 
 export default function ScreenerConfigPage({ onFilter, onClear, filters, onBack }) {
+    const { requireLogin } = useAuth();
     const [activeTab, setActiveTab] = useState('patterns')
     const [localFilters, setLocalFilters] = useState({
         market: 'all',
@@ -72,6 +74,7 @@ export default function ScreenerConfigPage({ onFilter, onClear, filters, onBack 
     }
 
     const handleSaveStrategy = async () => {
+        if (!requireLogin()) return;
         if (!newFilterName.trim()) {
             alert('請輸入策略名稱')
             return
@@ -173,7 +176,9 @@ export default function ScreenerConfigPage({ onFilter, onClear, filters, onBack 
                         重置條件
                     </button>
                     <button
-                        onClick={() => setIsSaving(!isSaving)}
+                        onClick={() => {
+                            if (requireLogin()) setIsSaving(!isSaving);
+                        }}
                         className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-bold transition-all
                             ${isSaving ? 'bg-amber-50 border-amber-500 text-amber-600' : 'border-gray-300 text-gray-600 hover:bg-gray-100'}
                         `}

@@ -3,6 +3,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
+import { AuthProvider } from './context/AuthContext'
 
 console.log("main.jsx: About to create root");
 const rootElement = document.getElementById('root');
@@ -16,7 +17,9 @@ if (!rootElement) {
     console.log("main.jsx: Root created, about to render");
     root.render(
       <StrictMode>
-        <App />
+        <AuthProvider>
+          <App />
+        </AuthProvider>
       </StrictMode>,
     );
     console.log("main.jsx: Render call completed");

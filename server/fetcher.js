@@ -5,6 +5,7 @@ const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fet
 const TWSE_MI_INDEX = 'https://www.twse.com.tw/exchangeReport/MI_INDEX?response=json&type=ALLBUT0999';
 const TPEX_DAILY_URL = 'https://www.tpex.org.tw/web/stock/aftertrading/daily_close_quotes/stk_quote_result.php?l=zh-tw&o=json';
 const TWSE_PE_URL = 'https://www.twse.com.tw/rwd/zh/afterTrading/BWIBBU_d?response=json';
+const TPEX_PE_URL = 'https://www.tpex.org.tw/web/stock/aftertrading/peratio_analysis/pera_result.php?l=zh-tw&o=json';
 const TWSE_INST_URL = 'https://www.twse.com.tw/rwd/zh/fund/T86?response=json&selectType=ALL';
 const TPEX_INST_URL = 'https://www.tpex.org.tw/web/stock/3insti/daily_trade/3itrade_hedge_result.php?l=zh-tw&o=json&se=EW&t=D';
 
@@ -148,6 +149,10 @@ async function fetchFundamentals(dateObj) {
 
         if (json.stat !== 'OK' || !json.data) return;
 
+        const dyIdx = json.fields ? json.fields.indexOf("殖利率(%)") : 2;
+        const peIdx = json.fields ? json.fields.indexOf("本益比") : 4;
+        const pbIdx = json.fields ? json.fields.indexOf("股價淨值比") : 5;
+
         let count = 0;
         for (const row of json.data) {
             const symbol = row[0];
@@ -155,14 +160,14 @@ async function fetchFundamentals(dateObj) {
 
             await ensureStock(symbol);
 
-            const dividendYield = parseNumber(row[2]);
-            const peRatio = parseNumber(row[4]);
-            const pbRatio = parseNumber(row[5]);
+            const dividendYield = dyIdx !== -1 ? parseNumber(row[dyIdx]) : null;
+            const peRatio = peIdx !== -1 ? parseNumber(row[peIdx]) : null;
+            const pbRatio = pbIdx !== -1 ? parseNumber(row[pbIdx]) : null;
 
             await query(
                 `INSERT INTO fundamentals (symbol, trade_date, pe_ratio, dividend_yield, pb_ratio)
                  VALUES ($1, $2, $3, $4, $5)
-                 ON CONFLICT (symbol, trade_date) DO NOTHING`,
+                 ON CONFLICT (symbol, trade_date) DO UPDATE SET pe_ratio = EXCLUDED.pe_ratio, dividend_yield = EXCLUDED.dividend_yield, pb_ratio = EXCLUDED.pb_ratio`,
                 [symbol, dateHyphen, peRatio, dividendYield, pbRatio]
             );
             count++;
@@ -170,6 +175,48 @@ async function fetchFundamentals(dateObj) {
         console.log(`[Fund] ${dateStr} 更新 ${count} 筆`);
     } catch (e) {
         console.error(`[Fund] ${dateStr} 失敗:`, e.message);
+    }
+}
+
+// ===== 抓取基本面 (TPEx) 歷史 =====
+async function fetchTPExFundamentals(dateObj) {
+    const rocDate = toRocDate(dateObj);
+    const dateHyphen = toDateHyphen(dateObj);
+    console.log(`[TPEx-Fund] 抓取 ${rocDate}...`);
+    try {
+        const res = await fetch(`${TPEX_PE_URL}&d=${rocDate}`, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36' } });
+        const json = await res.json();
+
+        if (!json.tables || json.tables.length === 0) return;
+        const table = json.tables[0];
+        if (!table.data || table.data.length === 0) return;
+
+        const dyIdx = table.fields ? table.fields.indexOf("殖利率(%)") : 5;
+        const peIdx = table.fields ? table.fields.indexOf("本益比") : 2;
+        const pbIdx = table.fields ? table.fields.indexOf("股價淨值比") : 6;
+
+        let count = 0;
+        for (const row of table.data) {
+            const symbol = row[0];
+            if (!/^\\d{4,6}$/.test(symbol)) continue;
+
+            await ensureStock(symbol);
+
+            const dividendYield = dyIdx !== -1 ? parseNumber(row[dyIdx]) : null;
+            const peRatio = peIdx !== -1 ? parseNumber(row[peIdx]) : null;
+            const pbRatio = pbIdx !== -1 ? parseNumber(row[pbIdx]) : null;
+
+            await query(
+                `INSERT INTO fundamentals (symbol, trade_date, pe_ratio, dividend_yield, pb_ratio)
+                 VALUES ($1, $2, $3, $4, $5)
+                 ON CONFLICT (symbol, trade_date) DO UPDATE SET pe_ratio = EXCLUDED.pe_ratio, dividend_yield = EXCLUDED.dividend_yield, pb_ratio = EXCLUDED.pb_ratio`,
+                [symbol, dateHyphen, peRatio, dividendYield, pbRatio]
+            );
+            count++;
+        }
+        console.log(`[TPEx-Fund] ${rocDate} 更新 ${count} 筆`);
+    } catch (e) {
+        console.error(`[TPEx-Fund] ${rocDate} 失敗:`, e.message);
     }
 }
 
@@ -310,6 +357,8 @@ async function fetchRange(startDate, endDate) {
         await fetchTPEx(current);
         await sleep(1000);
         await fetchFundamentals(current);
+        await sleep(1000);
+        await fetchTPExFundamentals(current);
         await sleep(1000);
         await fetchInstitutional(current);
         await sleep(1000);

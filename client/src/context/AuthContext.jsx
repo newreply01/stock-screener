@@ -8,6 +8,14 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(() => getSavedUser());
     const [loading, setLoading] = useState(true);
+    const [showLoginModal, setShowLoginModal] = useState(false);
+
+    // 檢查是否已登入，未登入則彈出登入視窗，回傳 true/false
+    const requireLogin = useCallback(() => {
+        if (user) return true;
+        setShowLoginModal(true);
+        return false;
+    }, [user]);
 
     // 啟動時以 token 驗證身份
     useEffect(() => {
@@ -82,7 +90,7 @@ export function AuthProvider({ children }) {
     }, []);
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, googleLogin, logout }}>
+        <AuthContext.Provider value={{ user, loading, login, register, googleLogin, logout, showLoginModal, setShowLoginModal, requireLogin }}>
             {children}
         </AuthContext.Provider>
     );
