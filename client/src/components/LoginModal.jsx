@@ -142,7 +142,6 @@ export default function LoginModal({ isOpen, onClose }) {
                                     onChange={(e) => setName(e.target.value)}
                                     className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none text-sm font-medium transition-all"
                                 />
-                                />
                             </div>
                         )}
 
