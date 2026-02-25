@@ -116,9 +116,22 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
                 const recentPatterns = []; // patterns detected in last 5 trading days
                 const RECENT_WINDOW = 5; // number of recent candles to check for active patterns
 
-                if (candleData.length >= 3) {
-                    for (let i = 2; i < candleData.length; i++) {
-                        const input = {
+                // Helper: safely check a pattern (some functions require different data lengths)
+                const safeCheck = (fn, input) => {
+                    try { return fn(input); } catch (e) { return false; }
+                };
+
+                if (candleData.length >= 5) {
+                    for (let i = 4; i < candleData.length; i++) {
+                        // Use 5-candle window for patterns that need more data
+                        const input5 = {
+                            open: opens.slice(i - 4, i + 1),
+                            high: highs.slice(i - 4, i + 1),
+                            low: lows.slice(i - 4, i + 1),
+                            close: closes.slice(i - 4, i + 1)
+                        };
+                        // Also prepare 3-candle window for simpler patterns
+                        const input3 = {
                             open: opens.slice(i - 2, i + 1),
                             high: highs.slice(i - 2, i + 1),
                             low: lows.slice(i - 2, i + 1),
@@ -128,15 +141,15 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
                         const isRecent = i >= candleData.length - RECENT_WINDOW;
 
                         const patternsFound = [];
-                        if (bullishengulfingpattern(input)) patternsFound.push({ name: '吞噬型態', type: 'bullish' });
-                        if (bearishengulfingpattern(input)) patternsFound.push({ name: '空頭吞噬', type: 'bearish' });
-                        if (bullishhammerstick(input)) patternsFound.push({ name: '鎚子線', type: 'bullish' });
-                        if (hangingman(input)) patternsFound.push({ name: '上吊線', type: 'bearish' });
-                        if (morningstar(input)) patternsFound.push({ name: '晨星', type: 'bullish' });
-                        if (eveningstar(input)) patternsFound.push({ name: '夜星', type: 'bearish' });
-                        if (threewhitesoldiers(input)) patternsFound.push({ name: '紅三兵', type: 'bullish' });
-                        if (threeblackcrows(input)) patternsFound.push({ name: '三隻烏鴉', type: 'bearish' });
-                        if (piercingline(input)) patternsFound.push({ name: '貫穿/烏雲', type: 'neutral' });
+                        if (safeCheck(bullishengulfingpattern, input5)) patternsFound.push({ name: '吞噬型態', type: 'bullish' });
+                        if (safeCheck(bearishengulfingpattern, input5)) patternsFound.push({ name: '空頭吞噬', type: 'bearish' });
+                        if (safeCheck(bullishhammerstick, input5)) patternsFound.push({ name: '鎚子線', type: 'bullish' });
+                        if (safeCheck(hangingman, input5)) patternsFound.push({ name: '上吊線', type: 'bearish' });
+                        if (safeCheck(morningstar, input5)) patternsFound.push({ name: '晨星', type: 'bullish' });
+                        if (safeCheck(eveningstar, input5)) patternsFound.push({ name: '夜星', type: 'bearish' });
+                        if (safeCheck(threewhitesoldiers, input5)) patternsFound.push({ name: '紅三兵', type: 'bullish' });
+                        if (safeCheck(threeblackcrows, input5)) patternsFound.push({ name: '三隻烏鴉', type: 'bearish' });
+                        if (safeCheck(piercingline, input5)) patternsFound.push({ name: '貫穿/烏雲', type: 'neutral' });
 
                         patternsFound.forEach(p => {
                             if (p.type === 'bullish') {

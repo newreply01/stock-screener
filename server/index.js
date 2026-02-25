@@ -6,6 +6,7 @@ const { startScheduler } = require('./scheduler');
 const watchlistRoutes = require('./routes/watchlist');
 const screenerRoutes = require('./routes/screener');
 const filterRoutes = require('./routes/filters');
+const authRoutes = require('./routes/auth');
 
 require('dotenv').config();
 
@@ -16,6 +17,7 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/filters', filterRoutes);
 app.use('/api', screenerRoutes);
@@ -32,7 +34,7 @@ app.get('*', (req, res) => {
 async function start() {
     let retries = 0;
     const maxRetries = 10;
-    
+
     while (retries < maxRetries) {
         try {
             // 啟動時確保 DB 初始化

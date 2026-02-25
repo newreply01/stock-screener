@@ -68,31 +68,32 @@ async function calculateAndStoreIndicators() {
             const currentMA20 = getVal(ma20);
             const currentMA60 = getVal(ma60);
 
-            // 6. 計算 K線型態 (取最後三筆)
+            // 6. 計算 K線型態 (取最後五筆, piercingline 需要 5 根 K 棒)
+            const safeCheck = (fn, inp) => { try { return fn(inp); } catch (e) { return false; } };
             let currentPatterns = [];
-            if (closes.length >= 3) {
+            if (closes.length >= 5) {
                 const len = closes.length;
                 const opens = prices.map(p => parseFloat(p.open_price));
                 const highs = prices.map(p => parseFloat(p.high_price));
                 const lows = prices.map(p => parseFloat(p.low_price));
 
                 const input = {
-                    open: opens.slice(len - 3, len),
-                    high: highs.slice(len - 3, len),
-                    low: lows.slice(len - 3, len),
-                    close: closes.slice(len - 3, len)
+                    open: opens.slice(len - 5, len),
+                    high: highs.slice(len - 5, len),
+                    low: lows.slice(len - 5, len),
+                    close: closes.slice(len - 5, len)
                 };
 
                 const patternsFound = [];
-                if (bullishengulfingpattern(input)) patternsFound.push('bullish_engulfing', '吞噬型態'); // Store both ID and name just in case
-                if (bearishengulfingpattern(input)) patternsFound.push('bearish_engulfing', '空頭吞噬');
-                if (bullishhammerstick(input)) patternsFound.push('hammer', '鎚子線');
-                if (hangingman(input)) patternsFound.push('hanging_man', '上吊線');
-                if (morningstar(input)) patternsFound.push('morning_star', '晨星');
-                if (eveningstar(input)) patternsFound.push('evening_star', '夜星');
-                if (threewhitesoldiers(input)) patternsFound.push('red_three_soldiers', '紅三兵');
-                if (threeblackcrows(input)) patternsFound.push('three_black_crows', '三隻烏鴉');
-                if (piercingline(input)) patternsFound.push('piercing_line', '貫穿/烏雲');
+                if (safeCheck(bullishengulfingpattern, input)) patternsFound.push('bullish_engulfing');
+                if (safeCheck(bearishengulfingpattern, input)) patternsFound.push('bearish_engulfing');
+                if (safeCheck(bullishhammerstick, input)) patternsFound.push('hammer');
+                if (safeCheck(hangingman, input)) patternsFound.push('hanging_man');
+                if (safeCheck(morningstar, input)) patternsFound.push('morning_star');
+                if (safeCheck(eveningstar, input)) patternsFound.push('evening_star');
+                if (safeCheck(threewhitesoldiers, input)) patternsFound.push('red_three_soldiers');
+                if (safeCheck(threeblackcrows, input)) patternsFound.push('three_black_crows');
+                if (safeCheck(piercingline, input)) patternsFound.push('piercing_line');
 
                 currentPatterns = patternsFound;
             }

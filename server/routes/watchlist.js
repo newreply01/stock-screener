@@ -1,15 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
+const { requireAuth } = require('../middleware/auth');
 
-// GET /api/watchlists
-// 獲取所有自選股清單及其中的股票
-router.get('/', async (req, res) => {
+// GET /api/watchlists — 取得使用者的自選股清單
+router.get('/', requireAuth, async (req, res) => {
     try {
-        const listsRes = await query('SELECT * FROM watchlists ORDER BY created_at ASC');
+        const listsRes = await query(
+            'SELECT * FROM watchlists WHERE user_id = $1 ORDER BY created_at ASC',
+            [req.user.id]
+        );
         const watchlists = listsRes.rows;
 
-        // 取得每個清單的股票，包含基本資料與最新報價
         for (let wl of watchlists) {
             const itemsRes = await query(`
                 SELECT 
@@ -38,9 +40,8 @@ router.get('/', async (req, res) => {
     }
 });
 
-// POST /api/watchlists/:id/symbols
-// 新增股票到自選股清單
-router.post('/:id/symbols', async (req, res) => {
+// POST /api/watchlists/:id/symbols — 新增股票
+router.post('/:id/symbols', requireAuth, async (req, res) => {
     const watchlistId = req.params.id;
     const { symbol } = req.body;
 
@@ -49,13 +50,18 @@ router.post('/:id/symbols', async (req, res) => {
     }
 
     try {
+        // 驗證清單屬於使用者
+        const wl = await query('SELECT id FROM watchlists WHERE id = $1 AND user_id = $2', [watchlistId, req.user.id]);
+        if (wl.rows.length === 0) {
+            return res.status(403).json({ success: false, error: '無權操作此清單' });
+        }
+
         await query(
             'INSERT INTO watchlist_items (watchlist_id, symbol) VALUES ($1, $2) ON CONFLICT DO NOTHING',
             [watchlistId, symbol]
         );
         res.json({ success: true, message: '已加入自選' });
     } catch (err) {
-        // 如果 symbol 不存在 stocks 表，會有 foreign key constraint violation
         if (err.code === '23503') {
             return res.status(400).json({ success: false, error: '無效的股票代號' });
         }
@@ -64,13 +70,17 @@ router.post('/:id/symbols', async (req, res) => {
     }
 });
 
-// DELETE /api/watchlists/:id/symbols/:symbol
-// 從自選股清單移除股票
-router.delete('/:id/symbols/:symbol', async (req, res) => {
+// DELETE /api/watchlists/:id/symbols/:symbol — 移除股票
+router.delete('/:id/symbols/:symbol', requireAuth, async (req, res) => {
     const watchlistId = req.params.id;
     const symbol = req.params.symbol;
 
     try {
+        const wl = await query('SELECT id FROM watchlists WHERE id = $1 AND user_id = $2', [watchlistId, req.user.id]);
+        if (wl.rows.length === 0) {
+            return res.status(403).json({ success: false, error: '無權操作此清單' });
+        }
+
         await query(
             'DELETE FROM watchlist_items WHERE watchlist_id = $1 AND symbol = $2',
             [watchlistId, symbol]
@@ -82,9 +92,8 @@ router.delete('/:id/symbols/:symbol', async (req, res) => {
     }
 });
 
-// GET /api/watchlists/:id/status/:symbol
-// 檢查某檔股票是否在清單中
-router.get('/:id/status/:symbol', async (req, res) => {
+// GET /api/watchlists/:id/status/:symbol — 檢查股票是否在清單中
+router.get('/:id/status/:symbol', requireAuth, async (req, res) => {
     const watchlistId = req.params.id;
     const symbol = req.params.symbol;
 
