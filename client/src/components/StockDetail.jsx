@@ -38,6 +38,8 @@ import TrendView from './TrendView'
 import TradingSignalsView from './TradingSignalsView'
 import WaveView from './WaveView'
 import AlertsView from './AlertsView'
+import MainForceView from './MainForceView'
+import FinancialStatementsView from './FinancialStatementsView'
 
 const SIDEBAR_MENU = [
     { id: 'overview', label: '總覽' },
@@ -49,16 +51,43 @@ const SIDEBAR_MENU = [
     { id: 'macd', label: 'MACD圖表' },
     { id: 'rsi', label: 'RSI分析' },
     { id: 'dmi', label: 'DMI/ADX' },
-    { type: 'header', label: '進階技術' },
-    { id: 'pattern', label: 'K線型態' },
-    { id: 'adv_pattern', label: 'K線進階' },
-    { id: 'signals', label: '買賣訊號' },
-    { id: 'wave', label: '波浪理論' },
-    { id: 'alerts', label: '智能警示' },
-    { type: 'header', label: '籌碼與基本面' },
-    { id: 'chips', label: '籌碼面' },
-    { id: 'valuation', label: '估值分析' },
-    { id: 'revenue', label: '營收追蹤' },
+    { type: 'header', label: '深潛分析' },
+    {
+        id: 'main_force',
+        label: '主力進出',
+        children: [
+            { id: 'institutional', label: '三大法人' },
+            { id: 'force_detail', label: '主力明細' },
+            { id: 'margin_trade', label: '融資融券' },
+            { id: 'broker_trace', label: '分點進跡' }
+        ]
+    },
+    {
+        id: 'financials',
+        label: '財報股利',
+        children: [
+            {
+                id: 'profitability',
+                label: '獲利能力',
+                children: [
+                    { id: 'margin_trend', label: '毛利趨勢' },
+                    { id: 'eps_trend', label: 'EPS走勢' },
+                    { id: 'roe_roa', label: 'ROE/ROA' }
+                ]
+            },
+            { id: 'revenue_growth', label: '營收成長' },
+            {
+                id: 'reports',
+                label: '財務報表',
+                children: [
+                    { id: 'balance_sheet', label: '資產負債' },
+                    { id: 'income_statement', label: '損益表' },
+                    { id: 'cash_flow', label: '現金流量' }
+                ]
+            },
+            { id: 'dividend', label: '股利政策' }
+        ]
+    },
     { id: 'news', label: '新聞公告' },
     { id: 'ai_report', label: 'AI分析報告' }
 ];
@@ -69,6 +98,8 @@ export default function StockDetail({ stock, onClose }) {
     const [loading, setLoading] = useState(true)
     const [loadingChips, setLoadingChips] = useState(false)
     const [activeTab, setActiveTab] = useState('overview')
+    const [activeSubTab, setActiveSubTab] = useState(null)
+    const [activeSubSubTab, setActiveSubSubTab] = useState(null)
 
     useEffect(() => {
         const fetchFinancials = async () => {
@@ -156,7 +187,7 @@ export default function StockDetail({ stock, onClose }) {
 
                 {/* Content */}
                 <div className="flex flex-col flex-1 overflow-hidden">
-                    {/* Horizontal Tabs - Enable explicit nowrap and auto overflow */}
+                    {/* Horizontal Tabs - Level 0 */}
                     <div className="flex flex-row flex-nowrap overflow-x-auto border-b border-slate-100 bg-slate-50/50 flex-shrink-0 px-4 py-2 custom-scrollbar">
                         {SIDEBAR_MENU.map((item, idx) => {
                             if (item.type === 'header') {
@@ -170,7 +201,21 @@ export default function StockDetail({ stock, onClose }) {
                             return (
                                 <button
                                     key={item.id}
-                                    onClick={() => setActiveTab(item.id)}
+                                    onClick={() => {
+                                        setActiveTab(item.id);
+                                        // Reset subtabs when switching main tab
+                                        if (item.children) {
+                                            setActiveSubTab(item.children[0].id);
+                                            if (item.children[0].children) {
+                                                setActiveSubSubTab(item.children[0].children[0].id);
+                                            } else {
+                                                setActiveSubSubTab(null);
+                                            }
+                                        } else {
+                                            setActiveSubTab(null);
+                                            setActiveSubSubTab(null);
+                                        }
+                                    }}
                                     className={`shrink-0 whitespace-nowrap flex items-center justify-center px-4 py-2 text-sm transition-all rounded-full mx-1 ${isActive
                                         ? 'bg-brand-primary text-white font-black shadow-md'
                                         : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 font-bold'
@@ -181,6 +226,62 @@ export default function StockDetail({ stock, onClose }) {
                             )
                         })}
                     </div>
+
+                    {/* Level 1 Tabs (SubTabs) */}
+                    {SIDEBAR_MENU.find(m => m.id === activeTab)?.children && (
+                        <div className="flex flex-row flex-nowrap overflow-x-auto border-b border-slate-100 bg-white flex-shrink-0 px-6 py-2.5 gap-2 custom-scrollbar">
+                            {SIDEBAR_MENU.find(m => m.id === activeTab).children.map(subItem => {
+                                const isSubActive = activeSubTab === subItem.id;
+                                return (
+                                    <button
+                                        key={subItem.id}
+                                        onClick={() => {
+                                            setActiveSubTab(subItem.id);
+                                            if (subItem.children) {
+                                                setActiveSubSubTab(subItem.children[0].id);
+                                            } else {
+                                                setActiveSubSubTab(null);
+                                            }
+                                        }}
+                                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${isSubActive
+                                            ? 'bg-indigo-50 text-indigo-600 border border-indigo-200 ring-2 ring-indigo-500/10'
+                                            : 'text-slate-500 hover:bg-slate-50 border border-transparent'
+                                            }`}
+                                    >
+                                        {subItem.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* Level 2 Tabs (SubSubTabs) */}
+                    {(() => {
+                        const activeMain = SIDEBAR_MENU.find(m => m.id === activeTab);
+                        const activeSub = activeMain?.children?.find(s => s.id === activeSubTab);
+                        if (activeSub?.children) {
+                            return (
+                                <div className="flex flex-row flex-nowrap overflow-x-auto border-b border-slate-100 bg-slate-50/20 flex-shrink-0 px-8 py-2 gap-4 custom-scrollbar">
+                                    {activeSub.children.map(subSubItem => {
+                                        const isSubSubActive = activeSubSubTab === subSubItem.id;
+                                        return (
+                                            <button
+                                                key={subSubItem.id}
+                                                onClick={() => setActiveSubSubTab(subSubItem.id)}
+                                                className={`text-[11px] font-bold tracking-tight transition-colors ${isSubSubActive
+                                                    ? 'text-brand-primary underline underline-offset-4 decoration-2'
+                                                    : 'text-slate-400 hover:text-slate-600'
+                                                    }`}
+                                            >
+                                                {subSubItem.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        }
+                        return null;
+                    })()}
 
                     {/* Main Scrollable Area */}
                     <div className="flex-1 overflow-y-auto p-6 bg-white relative">
@@ -306,14 +407,21 @@ export default function StockDetail({ stock, onClose }) {
                                     所有資訊僅供參考，不構成投資建議。
                                 </div>
                             </div>
-                        ) : activeTab === 'revenue' ? (
-                            <RevenueView financials={financials} loading={loading} />
-                        ) : activeTab === 'valuation' ? (
-                            <ValuationView
+                        ) : activeTab === 'main_force' ? (
+                            <MainForceView
+                                symbol={stock.symbol}
+                                subTab={activeSubTab}
+                                institutionalData={institutionalData}
+                                loadingChips={loadingChips}
+                            />
+                        ) : activeTab === 'financials' ? (
+                            <FinancialStatementsView 
+                                stock={stock}
+                                subTab={activeSubTab}
+                                subSubTab={activeSubSubTab}
                                 financials={financials}
                                 loading={loading}
-                                currentPe={stock.pe_ratio}
-                                currentPb={stock.pb_ratio}
+                                epsData={epsData}
                             />
                         ) : activeTab === 'macd' ? (
                             <MACDView symbol={stock.symbol} />
@@ -323,20 +431,6 @@ export default function StockDetail({ stock, onClose }) {
                             <RSIView symbol={stock.symbol} />
                         ) : activeTab === 'dmi' ? (
                             <DMIView symbol={stock.symbol} />
-                        ) : activeTab === 'chips' ? (
-                            <div className="h-full flex flex-col p-6 bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[500px]">
-                                <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
-                                    <Users className="text-brand-primary w-6 h-6" />
-                                    三大法人買賣超趨勢
-                                </h3>
-                                <div className="flex-1 min-h-[400px]">
-                                    {loadingChips ? (
-                                        <div className="h-full flex items-center justify-center text-slate-400">載入籌碼數據中...</div>
-                                    ) : (
-                                        <ChipAnalysisChart data={institutionalData} />
-                                    )}
-                                </div>
-                            </div>
                         ) : activeTab === 'news' ? (
                             <div className="h-full min-h-[600px] flex flex-col">
                                 <NewsBoard />
