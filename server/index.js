@@ -60,19 +60,19 @@ async function start() {
         // 啟動排程
         startScheduler();
 
-        // 啟動時檢查是否需要補齊資料 (Background)
-        setImmediate(() => {
-            console.log('🔄 啟動自動補齊檢查...');
-            catchUp().catch(err => console.error('補齊失敗:', err));
+        // 啟動時檢查是否需要補齊資料 (Background) - 暫時停用以排查效能問題
+        // setImmediate(() => {
+        //     console.log('🔄 啟動自動補齊檢查...');
+        //     catchUp().catch(err => console.error('補齊失敗:', err));
 
-            console.log('📰 啟動初始新聞抓取...');
-            const { syncAllNews } = require('./news_fetcher');
-            syncAllNews().catch(err => console.error('新聞抓取失敗:', err));
+        //     console.log('📰 啟動初始新聞抓取...');
+        //     const { syncAllNews } = require('./news_fetcher');
+        //     syncAllNews().catch(err => console.error('新聞抓取失敗:', err));
 
-            console.log('📊 啟動基本面資料補齊 (FinMind)...');
-            const { syncAllStocksFinancials } = require('./finmind_fetcher');
-            syncAllStocksFinancials().catch(err => console.error('基本面同步失敗:', err));
-        });
+        //     console.log('📊 啟動基本面資料補齊 (FinMind)...');
+        //     const { syncAllStocksFinancials } = require('./finmind_fetcher');
+        //     syncAllStocksFinancials().catch(err => console.error('基本面同步失敗:', err));
+        // });
 
         app.listen(PORT, () => {
             console.log(`\n🚀 台股篩選器已啟動`);

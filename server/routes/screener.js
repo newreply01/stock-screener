@@ -8,9 +8,18 @@ router.get('/screen', async (req, res) => {
         const { search = '', industry = '', patterns = '', sort_by = 'volume', sort_dir = 'desc', page = 1, limit = 50 } = req.query;
         const offset = (parseInt(page) - 1) * parseInt(limit);
 
-        let whereClause = "WHERE p.trade_date = (SELECT MAX(trade_date) FROM daily_prices)";
-        const params = [];
-        let paramCount = 1;
+        // 1. 先獲取資料庫最新日期，避免在主查詢中對每一行重複執行子查詢
+        const dateResult = await query('SELECT MAX(trade_date) FROM daily_prices');
+        const latestDateRaw = dateResult.rows[0].max;
+
+        if (!latestDateRaw) {
+            return res.json({ data: [], total: 0, page: parseInt(page), totalPages: 0, latestDate: null });
+        }
+
+        // 將日期作為第一個參數
+        let whereClause = "WHERE p.trade_date = $1";
+        const params = [latestDateRaw];
+        let paramCount = 2;
 
         if (search) {
             whereClause += ` AND (s.symbol LIKE $${paramCount} OR s.name LIKE $${paramCount})`;
@@ -25,36 +34,39 @@ router.get('/screen', async (req, res) => {
         }
 
         if (patterns) {
-            // patterns comes in as comma-separated: 'bullish_engulfing,morning_star'
             const patternList = patterns.split(',').filter(Boolean);
             if (patternList.length > 0) {
-                // To match ANY of the selected patterns, using JSONB containment or intersection
-                // i.patterns ?| array['p1', 'p2']
                 whereClause += ` AND i.patterns ?| $${paramCount}`;
                 params.push(patternList);
                 paramCount++;
             }
         }
 
-        // 基本查詢語法
+        // 基本查詢語法 - 使用 LATERAL JOIN 優化獲取各標的最新關聯數據
         const baseQuery = `
             FROM stocks s
             JOIN daily_prices p ON s.symbol = p.symbol
-            LEFT JOIN (
-                SELECT DISTINCT ON (symbol) symbol, pe_ratio, pb_ratio, dividend_yield
-                FROM fundamentals
-                ORDER BY symbol, trade_date DESC
-            ) f ON s.symbol = f.symbol
-            LEFT JOIN (
-                SELECT DISTINCT ON (symbol) symbol, patterns
-                FROM indicators
-                ORDER BY symbol, trade_date DESC
-            ) i ON s.symbol = i.symbol
-            LEFT JOIN (
-                SELECT DISTINCT ON (symbol) symbol, foreign_net, trust_net, dealer_net, total_net
-                FROM institutional
-                ORDER BY symbol, trade_date DESC
-            ) inst ON s.symbol = inst.symbol
+            LEFT JOIN LATERAL (
+                SELECT pe_ratio, pb_ratio, dividend_yield
+                FROM fundamentals f
+                WHERE f.symbol = s.symbol AND f.trade_date <= $1
+                ORDER BY f.trade_date DESC
+                LIMIT 1
+            ) f ON true
+            LEFT JOIN LATERAL (
+                SELECT patterns
+                FROM indicators i_sub
+                WHERE i_sub.symbol = s.symbol AND i_sub.trade_date <= $1
+                ORDER BY i_sub.trade_date DESC
+                LIMIT 1
+            ) i ON true
+            LEFT JOIN LATERAL (
+                SELECT foreign_net, trust_net, dealer_net, total_net
+                FROM institutional inst
+                WHERE inst.symbol = s.symbol AND inst.trade_date <= $1
+                ORDER BY inst.trade_date DESC
+                LIMIT 1
+            ) inst ON true
             ${whereClause}
         `;
 
@@ -71,14 +83,12 @@ router.get('/screen', async (req, res) => {
                 inst.foreign_net, inst.trust_net, inst.dealer_net, inst.total_net
             ${baseQuery}
             ORDER BY ${sort_by === 'volume' ? 'p.volume' : sort_by} ${sort_dir === 'asc' ? 'ASC' : 'DESC'}
-            LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+            LIMIT $${paramCount} OFFSET $${paramCount + 1}
         `;
 
         const dataResult = await query(dataSql, [...params, parseInt(limit), offset]);
 
-        // 取得資料庫最新日期
-        const dateRes = await query('SELECT MAX(trade_date) FROM daily_prices');
-        const latestDate = dateRes.rows[0].max ? new Date(dateRes.rows[0].max).toISOString().split('T')[0] : '2026-02-24';
+        const latestDateStr = new Date(latestDateRaw).toISOString().split('T')[0];
 
         // 返回前端預期的格式
         res.json({
@@ -86,7 +96,7 @@ router.get('/screen', async (req, res) => {
             total: total,
             page: parseInt(page),
             totalPages: Math.ceil(total / parseInt(limit)),
-            latestDate: latestDate
+            latestDate: latestDateStr
         });
     } catch (err) {
         console.error('Screener error:', err);
