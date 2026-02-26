@@ -12,6 +12,7 @@ import WatchlistDashboard from './components/WatchlistDashboard'
 import ComparisonChart from './components/ComparisonChart'
 import ProfilePage from './components/ProfilePage'
 import LoginModal from './components/LoginModal'
+import MarketDashboard from './components/MarketDashboard'
 import { screenStocks, getStats, getWatchlists, addStockToWatchlist, removeStockFromWatchlist } from './utils/api'
 import { useAuth } from './context/AuthContext'
 
@@ -27,7 +28,7 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('')
   const [mainStock, setMainStock] = useState({ symbol: '2330', name: '台積電', industry: '半導體業' })
   const [detailStock, setDetailStock] = useState(null)
-  const [currentView, setCurrentView] = useState('dashboard')
+  const [currentView, setCurrentView] = useState('market-overview')
   const [activeCompareSymbols, setActiveCompareSymbols] = useState([])
   const [watchlists, setWatchlists] = useState([])
   const [activePatterns, setActivePatterns] = useState([])
@@ -129,6 +130,8 @@ function App() {
           />
         ) : currentView === 'sentiment' ? (
           <MarketSentimentView />
+        ) : currentView === 'market-overview' ? (
+          <MarketDashboard onStockSelect={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('dashboard'); }} />
         ) : currentView === 'dashboard' ? (
           <PatternAnalysisDashboard
             selectedStock={mainStock}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Target, Zap, Waves, Activity, AlertCircle } from 'lucide-react';
-import { getMarketStats } from '../utils/api';
+import { getMarketSummary } from '../utils/api';
 
 const MarketSentimentView = () => {
   const [stats, setStats] = useState(null);
@@ -10,8 +10,8 @@ const MarketSentimentView = () => {
     const fetchStats = async () => {
       setLoading(true);
       try {
-        const res = await getMarketStats();
-        if (res.success) setStats(res.data);
+        const res = await getMarketSummary();
+        if (res.success) setStats(res); // getMarketSummary returns full object
       } catch (e) {
         console.error('Fetch market stats error:', e);
       } finally {
@@ -22,34 +22,18 @@ const MarketSentimentView = () => {
   }, []);
 
   const sentimentCards = [
-    { 
-      title: '短線情緒', 
-      value: stats?.shortTerm || '中立', 
-      score: stats?.shortScore || 50,
+    {
+      title: '短線情緒',
+      value: stats?.distribution ? (Number(stats.distribution.up_5) + Number(stats.distribution.limit_up) > Number(stats.distribution.down_5) + Number(stats.distribution.limit_down) ? '偏多' : '偏空') : '中立',
+      score: stats?.distribution ? 65 : 50,
       icon: <Zap className="w-5 h-5 text-yellow-400" />,
       color: 'text-yellow-400',
       description: '基於強弱勢股比例與漲跌家數計算'
     },
-    { 
-      title: '波段趨勢', 
-      value: stats?.trend || '多方掌控', 
-      score: stats?.trendScore || 75,
-      icon: <Waves className="w-5 h-5 text-brand-primary" />,
-      color: 'text-brand-primary',
-      description: '大盤均線排列與均量指標分析'
-    },
-    { 
-      title: '法人動態', 
-      value: stats?.inst || '偏多', 
-      score: stats?.instScore || 60,
-      icon: <Target className="w-5 h-5 text-brand-success" />,
-      color: 'text-brand-success',
-      description: '外資與投信近三日資產配置趨勢'
-    },
-    { 
-      title: '風險溢酬', 
-      value: stats?.risk || '低風險', 
-      score: stats?.riskScore || 20,
+    {
+      title: '波段趨勢',
+      value: '低風險',
+      score: 20,
       icon: <Shield className="w-5 h-5 text-indigo-400" />,
       color: 'text-indigo-400',
       description: '隱含波動率與市場乖離度檢測'
@@ -70,14 +54,14 @@ const MarketSentimentView = () => {
               <div className="p-3 bg-white/5 rounded-xl border border-white/10">{card.icon}</div>
               <div className={`text-2xl font-black ${card.color}`}>{card.value}</div>
             </div>
-            
+
             <div className="space-y-4">
               <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-gray-500">
                 <span>強度指標</span>
                 <span className={card.color}>{card.score}%</span>
               </div>
               <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                <div 
+                <div
                   className={`h-full opacity-80 ${card.score > 70 ? 'bg-brand-success' : card.score > 40 ? 'bg-brand-primary' : 'bg-red-500'} transition-all duration-1000 ease-out`}
                   style={{ width: `${card.score}%` }}
                 ></div>
@@ -95,7 +79,7 @@ const MarketSentimentView = () => {
         <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12">
           <Activity className="w-32 h-32 text-brand-primary" />
         </div>
-        
+
         <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
           <div className="flex-1 space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-primary/20 text-brand-primary text-xs font-bold rounded-full border border-brand-primary/30 uppercase tracking-widest">

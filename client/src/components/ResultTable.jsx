@@ -7,6 +7,7 @@ import html2canvas from 'html2canvas';
 const COLUMNS = [
     { key: 'symbol', label: '代號', sortable: true },
     { key: 'name', label: '名稱', sortable: false },
+    { key: 'candlestick', label: 'K-棒', sortable: false },
     { key: 'close_price', label: '收盤', sortable: true },
     { key: 'change_percent', label: '漲跌%', sortable: true },
     { key: 'volume', label: '成交量', sortable: true },
@@ -67,6 +68,43 @@ function formatCell(key, value, row, isWatched, onToggleWatchlist) {
                     </span>
                 </div>
             )
+        case 'candlestick': {
+            const open = parseFloat(row.open_price);
+            const high = parseFloat(row.high_price);
+            const low = parseFloat(row.low_price);
+            const close = parseFloat(row.close_price);
+
+            if (isNaN(open) || isNaN(high) || isNaN(low) || isNaN(close)) return '-';
+
+            const isUp = close >= open;
+            const color = isUp ? '#ef4444' : '#22c55e'; // Red for up, Green for down
+
+            // Scaled heights for a 16x24 SVG
+            const range = high - low;
+            if (range === 0) return <div className="w-4 h-6 border-b border-slate-300"></div>; // Flat line
+
+            const h = 24;
+            const yHigh = 0;
+            const yLow = h;
+            const yOpen = h - ((open - low) / range) * h;
+            const yClose = h - ((close - low) / range) * h;
+
+            const bodyTop = Math.min(yOpen, yClose);
+            const bodyHeight = Math.max(Math.abs(yOpen - yClose), 1);
+
+            return (
+                <div className="flex justify-center">
+                    <svg width="12" height="24" viewBox="0 0 12 24" className="overflow-visible">
+                        {/* Upper Wick */}
+                        <line x1="6" y1="0" x2="6" y2={bodyTop} stroke={color} strokeWidth="1" />
+                        {/* Body */}
+                        <rect x="2" y={bodyTop} width="8" height={bodyHeight} fill={color} />
+                        {/* Lower Wick */}
+                        <line x1="6" y1={bodyTop + bodyHeight} x2="6" y2="24" stroke={color} strokeWidth="1" />
+                    </svg>
+                </div>
+            );
+        }
         case 'name':
             return (
                 <div className="flex flex-col gap-1">

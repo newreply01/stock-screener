@@ -29,7 +29,7 @@ export default function Header({ currentView = 'dashboard' }) {
             <div className="container mx-auto px-4 h-16 flex items-center justify-between">
                 <div className="flex items-center gap-8">
                     <button
-                        onClick={() => dispatchView('dashboard')}
+                        onClick={() => dispatchView('market-overview')}
                         className="flex items-center gap-1.5 group"
                     >
                         <div className="bg-brand-primary p-1.5 rounded-sm group-hover:bg-red-500 transition-colors">
@@ -39,6 +39,12 @@ export default function Header({ currentView = 'dashboard' }) {
                     </button>
 
                     <nav className="hidden lg:flex items-center gap-8 text-[14px] font-semibold">
+                        <button
+                            onClick={() => dispatchView('market-overview')}
+                            className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'market-overview' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
+                        >
+                            大盤概況
+                        </button>
                         <button
                             onClick={() => dispatchView('dashboard')}
                             className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'dashboard' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}

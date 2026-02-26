@@ -50,6 +50,11 @@ router.get('/screen', async (req, res) => {
                 FROM indicators
                 ORDER BY symbol, trade_date DESC
             ) i ON s.symbol = i.symbol
+            LEFT JOIN (
+                SELECT DISTINCT ON (symbol) symbol, foreign_net, trust_net, dealer_net, total_net
+                FROM institutional
+                ORDER BY symbol, trade_date DESC
+            ) inst ON s.symbol = inst.symbol
             ${whereClause}
         `;
 
@@ -61,8 +66,9 @@ router.get('/screen', async (req, res) => {
         const dataSql = `
             SELECT 
                 s.symbol, s.name, s.industry, s.market,
-                p.close_price, p.change_percent, p.volume,
-                f.pe_ratio, f.pb_ratio, f.dividend_yield
+                p.open_price, p.high_price, p.low_price, p.close_price, p.change_percent, p.volume,
+                f.pe_ratio, f.pb_ratio, f.dividend_yield,
+                inst.foreign_net, inst.trust_net, inst.dealer_net, inst.total_net
             ${baseQuery}
             ORDER BY ${sort_by === 'volume' ? 'p.volume' : sort_by} ${sort_dir === 'asc' ? 'ASC' : 'DESC'}
             LIMIT $${params.length + 1} OFFSET $${params.length + 2}
@@ -101,6 +107,84 @@ router.get('/stocks/industries', async (req, res) => {
         res.json(result.rows.map(row => row.industry));
     } catch (err) {
         console.error('Failed to fetch industries:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/market-summary - 獲取大盤分佈、產業排行與熱門股
+router.get('/market-summary', async (req, res) => {
+    try {
+        const { market = 'all' } = req.query;
+
+        // 1. 取得最新交易日
+        const dateRes = await query('SELECT MAX(trade_date) FROM daily_prices');
+        const latestDate = dateRes.rows[0].max;
+        if (!latestDate) {
+            return res.json({ success: false, message: '無資料' });
+        }
+
+        let whereClause = "WHERE p.trade_date = $1";
+        const params = [latestDate];
+
+        if (market !== 'all') {
+            whereClause += " AND s.market = $2";
+            params.push(market);
+        }
+
+        // 2. 漲跌分佈統計 (Histogram data)
+        const distributionSql = `
+            SELECT 
+                COUNT(*) filter (where change_percent >= 9.5) as limit_up,
+                COUNT(*) filter (where change_percent >= 5 AND change_percent < 9.5) as up_5,
+                COUNT(*) filter (where change_percent >= 2 AND change_percent < 5) as up_2_5,
+                COUNT(*) filter (where change_percent > 0 AND change_percent < 2) as up_0_2,
+                COUNT(*) filter (where change_percent = 0) as flat,
+                COUNT(*) filter (where change_percent > -2 AND change_percent < 0) as down_0_2,
+                COUNT(*) filter (where change_percent > -5 AND change_percent <= -2) as down_2_5,
+                COUNT(*) filter (where change_percent > -9.5 AND change_percent <= -5) as down_5,
+                COUNT(*) filter (where change_percent <= -9.5) as limit_down
+            FROM daily_prices p
+            JOIN stocks s ON p.symbol = s.symbol
+            ${whereClause}
+        `;
+        const distResult = await query(distributionSql, params);
+
+        // 3. 產業績效排行 (Industry Performance)
+        const industrySql = `
+            SELECT 
+                s.industry,
+                AVG(p.change_percent) as avg_change,
+                COUNT(*) as stock_count
+            FROM daily_prices p
+            JOIN stocks s ON p.symbol = s.symbol
+            ${whereClause} AND s.industry IS NOT NULL AND s.industry != ''
+            GROUP BY s.industry
+            ORDER BY avg_change DESC
+            LIMIT 20
+        `;
+        const industryResult = await query(industrySql, params);
+
+        // 4. 即時熱門股 (Top Volume)
+        const hotStocksSql = `
+            SELECT 
+                s.symbol, s.name, p.close_price, p.change_percent, p.volume
+            FROM daily_prices p
+            JOIN stocks s ON p.symbol = s.symbol
+            ${whereClause}
+            ORDER BY p.volume DESC
+            LIMIT 10
+        `;
+        const hotResult = await query(hotStocksSql, params);
+
+        res.json({
+            success: true,
+            latestDate: latestDate,
+            distribution: distResult.rows[0],
+            industries: industryResult.rows,
+            hotStocks: hotResult.rows
+        });
+    } catch (err) {
+        console.error('Market summary error:', err);
         res.status(500).json({ error: err.message });
     }
 });

@@ -31,9 +31,11 @@ export async function getStats(params = {}) {
     return res.json();
 }
 
-export async function getMarketStats() {
-    const res = await fetch(`${API_BASE}/market-stats`);
-    if (!res.ok) throw new Error('獲取市場統計失敗');
+export async function getMarketSummary(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.market) searchParams.append('market', params.market);
+    const res = await fetch(`${API_BASE}/market-summary?${searchParams.toString()}`);
+    if (!res.ok) throw new Error('獲取市場概況失敗');
     return res.json();
 }
 

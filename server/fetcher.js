@@ -198,7 +198,7 @@ async function fetchTPExFundamentals(dateObj) {
         let count = 0;
         for (const row of table.data) {
             const symbol = row[0];
-            if (!/^\\d{4,6}$/.test(symbol)) continue;
+            if (!/^\d{4,6}$/.test(symbol)) continue;
 
             await ensureStock(symbol);
 
