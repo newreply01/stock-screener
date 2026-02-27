@@ -1,58 +1,49 @@
-# 📈 台股篩選器 Stock Screener
+# 台股篩選器 (Stock Screener)
 
-類似 [WantGoo Screener](https://www.wantgoo.com/screener) 的台股篩選器，支援技術面、基本面、籌碼面多維度條件篩選。
+這是一個基於 Node.js 與 React 的台股篩選器系統，整合了 FinMind Data 與 TWSE 資料來源。
 
-## 技術棧
+## 1. 專案架構
 
-| 部分 | 技術 |
-|------|------|
-| 前端 | React + Vite |
-| 後端 | Node.js + Express |
-| 資料庫 | PostgreSQL 16 |
-| 容器化 | Docker + Docker Compose |
-| 部署 | Zeabur |
+-   **Backend (Express)**: 位於 \server/\ 目錄。
+    -   負責 API 服務、資料庫交互。
+    -   包含 \scheduler.js\ 排程系統，自動抓取 FinMind 與新聞資料。
+-   **Frontend (React + Vite)**: 位於 \client/\ 目錄。
+    -   提供圖表與選股介面。
+    -   透過 Vite Proxy 轉發 API 請求至後端。
+-   **Database (PostgreSQL)**: 儲存股票基本面、K 線、三大法人等資料。
 
-## 功能
+## 2. 通訊埠 (Ports) 配置
 
-- **技術面篩選**：股價、漲跌幅、成交量
-- **基本面篩選**：本益比、殖利率、股價淨值比
-- **籌碼面篩選**：外資/投信/自營商買賣超
-- **市場篩選**：上市 / 上櫃
-- **結果表格**：排序、分頁
-- **定時排程**：每日 15:30 自動抓取最新資料
+-   **Backend**: 預設監聽在 \10000\ 埠。
+-   **Frontend**: 預設監聽在 \20000\ 埠。
 
-## 快速啟動（Docker）
+## 3. 啟動方式
 
-```bash
-# 啟動所有服務
-docker-compose up -d
+本專案在 WSL 環境中運行，建議使用 \	mux\ 進行管理。
 
-# 首次抓取資料
-docker exec stock-screener-server node server/fetcher.js
+### 啟動後端
+\\ash
+cd /home/xg/stock-screener
+tmux new-session -d -s stock-backend 'node server/index.js'
+\
+### 啟動前端 (開發模式)
+\\ash
+cd /home/xg/stock-screener/client
+tmux new-session -d -s stock-frontend 'npm run dev -- --host 0.0.0.0 --port 20000'
+\
+### 手動觸發資料同步
+\\ash
+node server/start_finmind_sync.js
+\
+## 4. 連結方式 (URLs)
 
-# 開啟瀏覽器
-# http://localhost
-```
+服務啟動後，請從 Windows 瀏覽器訪問：
+-   **Web 介面**: [http://localhost:20000](http://localhost:20000)
+-   **API 端點**: [http://localhost:10000/api](http://localhost:10000/api)
 
-## 開發模式
+## 5. 注意事項
 
-```bash
-# 啟動 PostgreSQL
-docker-compose up -d postgres
-
-# 安裝依賴
-npm install
-cd client && npm install && cd ..
-
-# 首次抓取資料
-npm run fetch-data
-
-# 啟動前後端
-npm run dev
-```
-
-## 資料來源
-
-- [台灣證券交易所 (TWSE)](https://www.twse.com.tw) — 上市行情、基本面、三大法人
-- [證券櫃檯買賣中心 (TPEx)](https://www.tpex.org.tw) — 上櫃行情
+-   **環境變數**: 請確保 \.env\ 檔案包含有效的 \FINMIND_TOKENS\。
+-   **頻率限制**: FinMind API 每小時有 **600 筆** 請求限制。
+-   **WSL 網路**: 埠號會自動從 WSL 轉發至 Windows localhost。
 
