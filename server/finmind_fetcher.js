@@ -1,18 +1,23 @@
+// FinMind API Configuration and Token Management
+// Note: FinMind has a rate limit of 600 calls per hour per token.
+// Tokens can be configured in the .env file as FINMIND_TOKENS=token1,token2
+
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const { pool } = require('./db');
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 const BASE_URL = 'https://api.finmindtrade.com/api/v4/data';
-const START_DATE = '2021-01-01'; // 3+ years of data
-
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-// --- Token Rotation Manager ---
 const TOKENS = (process.env.FINMIND_TOKENS || process.env.FINMIND_TOKEN || '')
     .split(',')
     .map(t => t.trim())
     .filter(t => t.length > 0);
 
 let currentTokenIndex = 0;
+function getCurrentToken() {
+    if (TOKENS.length === 0) return null;
+    return TOKENS[currentTokenIndex];
+}
 const exhaustedTokens = new Set(); // 記錄已耗盡額度的 token
 
 function getCurrentToken() {
