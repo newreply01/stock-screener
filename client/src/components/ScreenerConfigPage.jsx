@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { BarChart3, ClipboardList, Building2, Calendar, Search, RotateCcw, LayoutGrid, CheckSquare, ArrowLeft, Save, Trash2, Star } from 'lucide-react';
 import { getSavedFilters, saveFilter, deleteFilter } from '../utils/api';
 import TechnicalFilters from './TechnicalFilters'
 import FundamentalFilters from './FundamentalFilters'
 import InstitutionalFilters from './InstitutionalFilters'
+import ResultTable from './ResultTable'
 import { useAuth } from '../context/AuthContext';
 
 const TABS = [
@@ -31,7 +32,22 @@ const CLASSIC_PATTERNS = [
     { id: 'elliott_wave_c', name: '波浪-C波殺多', type: 'bearish' },
 ];
 
-export default function ScreenerConfigPage({ onFilter, onClear, filters, onBack }) {
+export default function ScreenerConfigPage({
+    onFilter,
+    onClear,
+    filters,
+    onBack,
+    results,
+    loading,
+    sortBy,
+    sortDir,
+    onSort,
+    page,
+    onPageChange,
+    onStockClick,
+    watchedSymbols,
+    onToggleWatchlist
+}) {
     const { requireLogin } = useAuth();
     const [activeTab, setActiveTab] = useState('patterns')
     const [localFilters, setLocalFilters] = useState({
@@ -60,9 +76,34 @@ export default function ScreenerConfigPage({ onFilter, onClear, filters, onBack 
     const [isSaving, setIsSaving] = useState(false)
     const [newFilterName, setNewFilterName] = useState('')
 
+    const lastFiltersRef = useRef('');
+
     useEffect(() => {
         fetchSavedFilters()
     }, [])
+
+    // 優化：只在 localFilters 有「實質」變化時才觸發 onFilter
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            const cleaned = {}
+            Object.entries(localFilters).forEach(([k, v]) => {
+                if (v !== '' && v !== null && v !== undefined && v !== 'all') {
+                    if (Array.isArray(v) && v.length === 0) return;
+                    cleaned[k] = v
+                }
+            })
+
+            const currentString = JSON.stringify(cleaned);
+            // 只有當新生成的過濾條件與上一次不同時，才通知父組件
+            if (currentString !== lastFiltersRef.current) {
+                lastFiltersRef.current = currentString;
+                console.log('ScreenerConfig: Submitting changes', cleaned);
+                onFilter(cleaned)
+            }
+        }, 800);
+
+        return () => clearTimeout(handler);
+    }, [localFilters, onFilter]);
 
     const fetchSavedFilters = async () => {
         try {
@@ -146,7 +187,7 @@ export default function ScreenerConfigPage({ onFilter, onClear, filters, onBack 
     }
 
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden min-h-[800px] flex flex-col max-w-5xl mx-auto w-full">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden min-h-[800px] flex flex-col w-full">
             {/* Header */}
             <div className="bg-gray-50 border-b border-gray-200 px-6 py-5 flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -356,10 +397,40 @@ export default function ScreenerConfigPage({ onFilter, onClear, filters, onBack 
                                 </div>
                             </div>
                         )}
-                        {activeTab === 'technical' && <div className="max-w-3xl animate-in fade-in duration-300"><TechnicalFilters filters={localFilters} onChange={updateFilter} /></div>}
-                        {activeTab === 'fundamental' && <div className="max-w-3xl animate-in fade-in duration-300"><FundamentalFilters filters={localFilters} onChange={updateFilter} /></div>}
-                        {activeTab === 'institutional' && <div className="max-w-3xl animate-in fade-in duration-300"><InstitutionalFilters filters={localFilters} onChange={updateFilter} /></div>}
+                        {activeTab === 'technical' && <div className="animate-in fade-in duration-300"><TechnicalFilters filters={localFilters} onChange={updateFilter} /></div>}
+                        {activeTab === 'fundamental' && <div className="animate-in fade-in duration-300"><FundamentalFilters filters={localFilters} onChange={updateFilter} /></div>}
+                        {activeTab === 'institutional' && <div className="animate-in fade-in duration-300"><InstitutionalFilters filters={localFilters} onChange={updateFilter} /></div>}
                     </div>
+                </div>
+            </div>
+
+            <div className="border-t border-gray-200 bg-gray-50/50 p-6 md:p-8">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-brand-primary text-white rounded-lg flex items-center justify-center font-black italic">R</div>
+                        <h2 className="text-xl font-black text-gray-900 tracking-tight">篩選結果</h2>
+                        {results?.latestDate && (
+                            <span className="ml-2 text-sm font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
+                                資料日期：{results.latestDate}
+                            </span>
+                        )}
+                    </div>
+                    <div className="h-px flex-1 bg-gray-200 ml-6 hidden md:block"></div>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <ResultTable
+                        results={results}
+                        loading={loading}
+                        sortBy={sortBy}
+                        sortDir={sortDir}
+                        onSort={onSort}
+                        page={page}
+                        onPageChange={onPageChange}
+                        onStockClick={onStockClick}
+                        watchedSymbols={watchedSymbols}
+                        onToggleWatchlist={onToggleWatchlist}
+                    />
                 </div>
             </div>
         </div>

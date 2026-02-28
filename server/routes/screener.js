@@ -5,42 +5,117 @@ const { query } = require('../db');
 // GET /api/screen - 篩選股票 (支持分頁與篩選)
 router.get('/screen', async (req, res) => {
     try {
-        const { search = '', industry = '', patterns = '', sort_by = 'volume', sort_dir = 'desc', page = 1, limit = 50 } = req.query;
+        const {
+            search = '',
+            industry = '',
+            patterns = '',
+            sort_by = 'volume',
+            sort_dir = 'desc',
+            page = 1,
+            limit = 50,
+            price_min, price_max,
+            change_min, change_max,
+            volume_min, volume_max,
+            pe_min, pe_max,
+            pb_min, pb_max,
+            yield_min, yield_max,
+            rsi_min, rsi_max,
+            macd_hist_min, macd_hist_max,
+            ma20_min, ma20_max,
+            foreign_net_min, foreign_net_max,
+            trust_net_min, trust_net_max,
+            dealer_net_min, dealer_net_max,
+            total_net_min, total_net_max,
+            date,
+            market
+        } = req.query;
         const offset = (parseInt(page) - 1) * parseInt(limit);
 
-        // 1. 先獲取資料庫最新日期，避免在主查詢中對每一行重複執行子查詢
-        const dateResult = await query('SELECT MAX(trade_date) FROM daily_prices');
-        const latestDateRaw = dateResult.rows[0].max;
+        // 1. 先獲取資料庫最新日期 (全局最新)
+        const latestInfoResult = await query('SELECT MAX(trade_date) as max_date FROM daily_prices');
+        let latestDateRaw = latestInfoResult.rows[0].max_date;
 
         if (!latestDateRaw) {
-            return res.json({ data: [], total: 0, page: parseInt(page), totalPages: 0, latestDate: null });
+            return res.json({ success: true, data: [], total: 0, page: parseInt(page), totalPages: 0, latestDate: null });
         }
 
-        // 將日期作為第一個參數
-        let whereClause = "WHERE p.trade_date = $1";
-        const params = [latestDateRaw];
+        // 如果使用者有指定日期，則以指定日期為基準
+        if (date) {
+            const requestedDate = new Date(date);
+            if (!isNaN(requestedDate)) {
+                latestDateRaw = requestedDate;
+            }
+        }
+
+        // 2. 找出小於等於指定日期的「實際」最新交易日，這才是篩選基準
+        const actualDateResult = await query(
+            'SELECT MAX(trade_date) as actual_date FROM daily_prices WHERE trade_date <= $1',
+            [latestDateRaw]
+        );
+        const actualDate = actualDateResult.rows[0].actual_date || latestDateRaw;
+
+        const params = [actualDate];
         let paramCount = 2;
+        let whereClause = `WHERE p.trade_date = $1`;
 
         if (search) {
-            whereClause += ` AND (s.symbol LIKE $${paramCount} OR s.name LIKE $${paramCount})`;
+            whereClause += ` AND (s.symbol ILIKE $${paramCount} OR s.name ILIKE $${paramCount})`;
             params.push(`%${search}%`);
             paramCount++;
         }
 
-        if (industry) {
+        if (industry && industry !== 'all') {
             whereClause += ` AND s.industry = $${paramCount}`;
             params.push(industry);
             paramCount++;
         }
 
+        if (market && market !== 'all') {
+            whereClause += ` AND s.market = $${paramCount}`;
+            params.push(market);
+            paramCount++;
+        }
+
+        // 數字區間過濾函式
+        const addRangeFilter = (col, min, max) => {
+            if (min !== undefined && min !== '' && min !== null) {
+                whereClause += ` AND ${col} >= $${paramCount}`;
+                params.push(parseFloat(min));
+                paramCount++;
+            }
+            if (max !== undefined && max !== '' && max !== null) {
+                whereClause += ` AND ${col} <= $${paramCount}`;
+                params.push(parseFloat(max));
+                paramCount++;
+            }
+        };
+
+        // 應用各項過濾
+        addRangeFilter('p.close_price', price_min, price_max);
+        addRangeFilter('p.change_percent', change_min, change_max);
+        addRangeFilter('p.volume', volume_min, volume_max);
+        addRangeFilter('f.pe_ratio', pe_min, pe_max);
+        addRangeFilter('f.pb_ratio', pb_min, pb_max);
+        addRangeFilter('f.dividend_yield', yield_min, yield_max);
+        addRangeFilter('i.rsi_14', rsi_min, rsi_max);
+        addRangeFilter('i.macd_hist', macd_hist_min, macd_hist_max);
+        addRangeFilter('i.ma_20', ma20_min, ma20_max);
+        addRangeFilter('inst.foreign_net', foreign_net_min, foreign_net_max);
+        addRangeFilter('inst.trust_net', trust_net_min, trust_net_max);
+        addRangeFilter('inst.dealer_net', dealer_net_min, dealer_net_max);
+        addRangeFilter('inst.total_net', total_net_min, total_net_max);
+
+        // K線型態過濾
         if (patterns) {
             const patternList = patterns.split(',').filter(Boolean);
             if (patternList.length > 0) {
-                whereClause += ` AND i.patterns ?| $${paramCount}`;
+                whereClause += ` AND (i.patterns ?| $${paramCount})`;
                 params.push(patternList);
                 paramCount++;
             }
         }
+
+        console.log('Final SQL Params:', params);
 
         // 基本查詢語法 - 使用 LATERAL JOIN 優化獲取各標的最新關聯數據
         const baseQuery = `
@@ -48,25 +123,25 @@ router.get('/screen', async (req, res) => {
             JOIN daily_prices p ON s.symbol = p.symbol
             LEFT JOIN LATERAL (
                 SELECT pe_ratio, pb_ratio, dividend_yield
-                FROM fundamentals f
-                WHERE f.symbol = s.symbol AND f.trade_date <= $1
-                ORDER BY f.trade_date DESC
+                FROM fundamentals f_sub
+                WHERE f_sub.symbol = s.symbol AND f_sub.trade_date <= $1
+                ORDER BY f_sub.trade_date DESC
                 LIMIT 1
             ) f ON true
             LEFT JOIN LATERAL (
-                SELECT patterns
+                SELECT foreign_net, trust_net, dealer_net, total_net
+                FROM institutional inst_sub
+                WHERE inst_sub.symbol = s.symbol AND inst_sub.trade_date <= $1
+                ORDER BY inst_sub.trade_date DESC
+                LIMIT 1
+            ) inst ON true
+            LEFT JOIN LATERAL (
+                SELECT patterns, rsi_14, macd_hist, ma_20
                 FROM indicators i_sub
                 WHERE i_sub.symbol = s.symbol AND i_sub.trade_date <= $1
                 ORDER BY i_sub.trade_date DESC
                 LIMIT 1
             ) i ON true
-            LEFT JOIN LATERAL (
-                SELECT foreign_net, trust_net, dealer_net, total_net
-                FROM institutional inst
-                WHERE inst.symbol = s.symbol AND inst.trade_date <= $1
-                ORDER BY inst.trade_date DESC
-                LIMIT 1
-            ) inst ON true
             ${whereClause}
         `;
 
@@ -75,32 +150,36 @@ router.get('/screen', async (req, res) => {
         const total = parseInt(countResult.rows[0].count);
 
         // 獲取數據
-        const dataSql = `
+        const dataSQL = `
             SELECT 
                 s.symbol, s.name, s.industry, s.market,
                 p.open_price, p.high_price, p.low_price, p.close_price, p.change_percent, p.volume,
                 f.pe_ratio, f.pb_ratio, f.dividend_yield,
-                inst.foreign_net, inst.trust_net, inst.dealer_net, inst.total_net
+                inst.foreign_net, inst.trust_net, inst.dealer_net, inst.total_net,
+                i.rsi_14, i.macd_hist, i.ma_20 as ma_20, i.patterns,
+                p.trade_date as result_date
             ${baseQuery}
-            ORDER BY ${sort_by === 'volume' ? 'p.volume' : sort_by} ${sort_dir === 'asc' ? 'ASC' : 'DESC'}
+            ORDER BY ${sort_by === 'symbol' ? 's.symbol' : sort_by === 'name' ? 's.name' : 'p.' + sort_by} ${sort_dir}
             LIMIT $${paramCount} OFFSET $${paramCount + 1}
         `;
+        params.push(parseInt(limit), offset);
 
-        const dataResult = await query(dataSql, [...params, parseInt(limit), offset]);
-
-        const latestDateStr = new Date(latestDateRaw).toISOString().split('T')[0];
+        const dataResult = await query(dataSQL, params);
 
         // 返回前端預期的格式
+        const displayDateStr = new Date(actualDate).toISOString().split('T')[0];
+
         res.json({
+            success: true,
             data: dataResult.rows,
             total: total,
             page: parseInt(page),
             totalPages: Math.ceil(total / parseInt(limit)),
-            latestDate: latestDateStr
+            latestDate: displayDateStr
         });
     } catch (err) {
         console.error('Screener error:', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 
