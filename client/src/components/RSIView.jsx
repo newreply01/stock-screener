@@ -4,35 +4,33 @@ import { getHistory } from '../utils/api';
 import { RSI } from 'technicalindicators';
 import { Activity } from 'lucide-react';
 
-export default function RSIView({ symbol }) {
+export default function RSIView({ symbol, period = '日K' }) {
     const chartContainerRef = useRef();
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         let chart = null;
+        let isMounted = true;
 
         const initChart = async () => {
             setLoading(true);
             try {
-                // Fetch recent 300 days for better calculation margin
-                const historyData = await getHistory(symbol, 300);
+                const historyData = await getHistory(symbol, 300, period);
 
-                if (!historyData || historyData.length === 0 || !chartContainerRef.current) {
+                if (!isMounted || !historyData || historyData.length === 0 || !chartContainerRef.current) {
                     setLoading(false);
                     return;
                 }
 
-                // Prepare Data for Calculation
+                // ... Preparation logic ...
                 const closePrices = historyData.map(d => parseFloat(d.close));
 
-                // Calculate RSI (14)
                 const rsiInput = {
                     values: closePrices,
                     period: 14
                 };
 
                 const rsiResult = RSI.calculate(rsiInput);
-
                 const offset = historyData.length - rsiResult.length;
 
                 const candlestickData = [];
@@ -55,6 +53,8 @@ export default function RSIView({ symbol }) {
                     }
                 });
 
+                if (!isMounted) return;
+
                 // Create Chart
                 chart = createChart(chartContainerRef.current, {
                     layout: {
@@ -64,6 +64,10 @@ export default function RSIView({ symbol }) {
                     grid: {
                         vertLines: { color: '#f1f5f9' },
                         horzLines: { color: '#f1f5f9' },
+                    },
+                    leftPriceScale: {
+                        visible: true,
+                        borderColor: '#e2e8f0',
                     },
                     rightPriceScale: {
                         scaleMargins: {
@@ -79,7 +83,6 @@ export default function RSIView({ symbol }) {
                     }
                 });
 
-                // 1. Candlestick Series (Main Price)
                 const candleSeries = chart.addSeries(CandlestickSeries, {
                     upColor: '#ef4444',
                     downColor: '#22c55e',
@@ -89,10 +92,9 @@ export default function RSIView({ symbol }) {
                 });
                 candleSeries.setData(candlestickData);
 
-                // Add a separate price scale for RSI on the left
-                chart.priceScale('rsi').applyOptions({
+                chart.priceScale('left').applyOptions({
                     scaleMargins: {
-                        top: 0.7, // start at bottom 30%
+                        top: 0.7,
                         bottom: 0,
                     },
                     autoScale: false,
@@ -100,27 +102,25 @@ export default function RSIView({ symbol }) {
                     maxValue: 100,
                 });
 
-                // 2. RSI Line
                 const rsiSeries = chart.addSeries(LineSeries, {
-                    color: '#8b5cf6', // Purple
+                    color: '#8b5cf6',
                     lineWidth: 2,
-                    priceScaleId: 'rsi',
+                    priceScaleId: 'left',
                 });
                 rsiSeries.setData(rsiLineData);
 
-                // Create Top/Bottom lines
                 rsiSeries.createPriceLine({
                     price: 70,
                     color: '#ef4444',
                     lineWidth: 1,
-                    lineStyle: 2, // dashed
+                    lineStyle: 2,
                     title: '超買(70)',
                 });
                 rsiSeries.createPriceLine({
                     price: 30,
                     color: '#22c55e',
                     lineWidth: 1,
-                    lineStyle: 2, // dashed
+                    lineStyle: 2,
                     title: '超賣(30)',
                 });
 
@@ -129,13 +129,12 @@ export default function RSIView({ symbol }) {
             } catch (err) {
                 console.error("Failed to load RSI data:", err);
             } finally {
-                setLoading(false);
+                if (isMounted) setLoading(false);
             }
         };
 
         initChart();
 
-        // Handle Resize
         const handleResize = () => {
             if (chartContainerRef.current && chart) {
                 chart.applyOptions({ width: chartContainerRef.current.clientWidth });
@@ -144,12 +143,13 @@ export default function RSIView({ symbol }) {
         window.addEventListener('resize', handleResize);
 
         return () => {
+            isMounted = false;
             window.removeEventListener('resize', handleResize);
             if (chart) {
                 chart.remove();
             }
         };
-    }, [symbol]);
+    }, [symbol, period]);
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 h-full flex flex-col min-h-[500px]">

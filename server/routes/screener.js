@@ -334,7 +334,28 @@ router.get('/news', async (req, res) => {
 router.get('/history/:symbol', async (req, res) => {
     try {
         const { symbol } = req.params;
-        const { limit = 200 } = req.query;
+        const { limit = 200, period = '日K' } = req.query;
+
+        if (period === '週K' || period === '月K') {
+            const dateTrunc = period === '週K' ? 'week' : 'month';
+            const sql = `
+                SELECT 
+                    TO_CHAR(DATE_TRUNC($3, trade_date), 'YYYY-MM-DD') as time,
+                    (ARRAY_AGG(open_price ORDER BY trade_date ASC))[1] as open,
+                    MAX(high_price) as high,
+                    MIN(low_price) as low,
+                    (ARRAY_AGG(close_price ORDER BY trade_date DESC))[1] as close,
+                    SUM(volume) as volume
+                FROM daily_prices
+                WHERE symbol = $1 AND open_price IS NOT NULL
+                GROUP BY DATE_TRUNC($3, trade_date)
+                ORDER BY DATE_TRUNC($3, trade_date) DESC
+                LIMIT $2
+            `;
+            const result = await query(sql, [symbol, parseInt(limit), dateTrunc]);
+            return res.json(result.rows.reverse());
+        }
+
         const sql = `
             SELECT 
                 TO_CHAR(trade_date, 'YYYY-MM-DD') as time,
@@ -389,11 +410,31 @@ router.get('/stock/:symbol/news', async (req, res) => {
 router.get('/stock/:symbol/financials', async (req, res) => {
     try {
         const { symbol } = req.params;
-        const f = await query('SELECT * FROM fundamentals WHERE symbol = $1', [symbol]);
-        const r = await query('SELECT * FROM monthly_revenue WHERE symbol = $1 ORDER BY date DESC LIMIT 12', [symbol]);
-        const e = await query('SELECT * FROM financial_statements WHERE symbol = $1 AND type = $2 ORDER BY date DESC LIMIT 4', [symbol, 'EPS']);
-        res.json({ info: f.rows[0], revenue: r.rows, eps: e.rows });
+
+        // Parallel queries for better performance
+        const [fundamentals, monthlyRevenue, eps, dividends, balanceSheet, incomeStatement, cashFlow] = await Promise.all([
+            query('SELECT * FROM fundamentals WHERE symbol = $1', [symbol]),
+            query('SELECT * FROM monthly_revenue WHERE symbol = $1 ORDER BY revenue_year DESC, revenue_month DESC LIMIT 12', [symbol]),
+            query('SELECT * FROM financial_statements WHERE symbol = $1 AND type = $2 ORDER BY date DESC LIMIT 8', [symbol, 'EPS']),
+            query('SELECT * FROM fm_dividend WHERE stock_id = $1 ORDER BY date DESC LIMIT 20', [symbol]),
+            query('SELECT * FROM fm_financial_statements WHERE stock_id = $1 AND type = $2 ORDER BY date DESC LIMIT 4', [symbol, 'Balance Sheet']),
+            query('SELECT * FROM fm_financial_statements WHERE stock_id = $1 AND type = $2 ORDER BY date DESC LIMIT 4', [symbol, 'Income Statement']),
+            query('SELECT * FROM fm_financial_statements WHERE stock_id = $1 AND type = $2 ORDER BY date DESC LIMIT 4', [symbol, 'Cash Flows'])
+        ]);
+
+        res.json({
+            info: fundamentals.rows[0] || null,
+            revenue: monthlyRevenue.rows || [],
+            eps: eps.rows || [],
+            dividends: dividends.rows || [],
+            statements: {
+                balanceSheet: balanceSheet.rows || [],
+                incomeStatement: incomeStatement.rows || [],
+                cashFlow: cashFlow.rows || []
+            }
+        });
     } catch (err) {
+        console.error('Error fetching financials:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -436,7 +477,7 @@ router.get('/institutional-rank', async (req, res) => {
                 s.name, 
                 s.industry,
                 s.market,
-                SUM(i.${field}) as net_buy
+                SUM(i.${field}::numeric / 1000.0) as net_buy
             FROM institutional i
             JOIN stocks s ON i.symbol = s.symbol
             WHERE i.trade_date = ANY($1)
@@ -501,7 +542,12 @@ router.get('/stock/:symbol/institutional', async (req, res) => {
         const { symbol } = req.params;
         const { limit = 60 } = req.query;
         const sql = `
-            SELECT TO_CHAR(trade_date, 'YYYY-MM-DD') as date, total_net, foreign_net, trust_net, dealer_net
+            SELECT 
+                TO_CHAR(trade_date, 'YYYY-MM-DD') as date, 
+                (total_net / 1000.0) as total_net, 
+                (foreign_net / 1000.0) as foreign_net, 
+                (trust_net / 1000.0) as trust_net, 
+                (dealer_net / 1000.0) as dealer_net
             FROM institutional WHERE symbol = $1 ORDER BY trade_date DESC LIMIT $2
         `;
         const result = await query(sql, [symbol, parseInt(limit)]);
@@ -518,18 +564,45 @@ router.get('/stocks/search', async (req, res) => {
         if (!q) return res.json([]);
 
         const sql = `
-            SELECT symbol, name, industry, market
-            FROM stocks
-            WHERE symbol LIKE $1 OR name LIKE $1
+            SELECT 
+                s.symbol, s.name, s.industry, s.market,
+                p.close_price, p.change_percent,
+                f.pe_ratio, f.pb_ratio, f.dividend_yield,
+                inst.foreign_net / 1000.0 as foreign_net,
+                inst.trust_net / 1000.0 as trust_net,
+                inst.dealer_net / 1000.0 as dealer_net
+            FROM stocks s
+            LEFT JOIN LATERAL (
+                SELECT close_price, change_percent
+                FROM daily_prices dp
+                WHERE dp.symbol = s.symbol
+                ORDER BY trade_date DESC
+                LIMIT 1
+            ) p ON true
+            LEFT JOIN LATERAL (
+                SELECT pe_ratio, pb_ratio, dividend_yield
+                FROM fundamentals
+                WHERE symbol = s.symbol
+                ORDER BY trade_date DESC
+                LIMIT 1
+            ) f ON true
+            LEFT JOIN LATERAL (
+                SELECT foreign_net, trust_net, dealer_net
+                FROM institutional
+                WHERE symbol = s.symbol
+                ORDER BY trade_date DESC
+                LIMIT 1
+            ) inst ON true
+            WHERE s.symbol LIKE $1 OR s.name LIKE $1
             ORDER BY 
                 CASE 
-                    WHEN symbol = $2 THEN 0
-                    WHEN name = $2 THEN 1
-                    WHEN symbol LIKE $3 THEN 2
-                    WHEN name LIKE $3 THEN 3
+                    WHEN s.symbol = $2 THEN 0
+                    WHEN s.name = $2 THEN 1
+                    WHEN s.symbol LIKE $3 THEN 2
+                    WHEN s.name LIKE $3 THEN 3
                     ELSE 4
                 END,
-                symbol ASC
+                s.symbol ASC
             LIMIT $4
         `;
         const result = await query(sql, [`%${q}%`, q, `${q}%`, parseInt(limit)]);
@@ -560,6 +633,125 @@ router.get('/debug/sync-status', async (req, res) => {
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/stock/:symbol/broker-trading - 主力分點進出 (最新一日)
+router.get('/stock/:symbol/broker-trading', async (req, res) => {
+    try {
+        const { symbol } = req.params;
+
+        // 1. 取得該股最新有分點資料的日期
+        const dateRes = await query('SELECT MAX(date) FROM fm_broker_trading WHERE stock_id = $1', [symbol]);
+        const latestDate = dateRes.rows[0].max;
+
+        if (!latestDate) {
+            return res.json({ success: true, data: [], date: null });
+        }
+
+        // 2. 彙總該日買超與賣超前 15 名
+        const sql = `
+            SELECT 
+                broker as name,
+                buy as buy_vol,
+                sell as sell_vol,
+                (buy - sell) as net_vol
+            FROM fm_broker_trading
+            WHERE stock_id = $1 AND date = $2
+            ORDER BY ABS(buy - sell) DESC
+            LIMIT 30
+        `;
+        const result = await query(sql, [symbol, latestDate]);
+
+        // 將結果分為買方與賣方
+        const brokers = result.rows;
+
+        // 如果是週K或月K，我們通常返回該期間內「彙總」的買賣超，或者該期間最後一天的明細
+        // 這裡暫時維持返回最新一天的明細，但未來可以根據需求進行期間彙總
+        const buyers = brokers.filter(b => b.net_vol > 0).sort((a, b) => b.net_vol - a.net_vol).slice(0, 15);
+        const sellers = brokers.filter(b => b.net_vol < 0).sort((a, b) => a.net_vol - b.net_vol).slice(0, 15);
+
+        res.json({
+            success: true,
+            date: latestDate,
+            period: req.query.period || '日K',
+            buyers,
+            sellers
+        });
+    } catch (err) {
+        console.error('Failed to fetch broker trading:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET /api/stock/:symbol/margin-trading - 融資融券趨勢
+router.get('/stock/:symbol/margin-trading', async (req, res) => {
+    try {
+        const { symbol } = req.params;
+        const { limit = 60 } = req.query;
+
+        const sql = `
+            SELECT 
+                TO_CHAR(date, 'YYYY-MM-DD') as date,
+                margin_purchase_today_balance as margin_balance,
+                short_sale_today_balance as short_balance,
+                margin_purchase_buy,
+                margin_purchase_sell,
+                short_sale_buy,
+                short_sale_sell
+            FROM fm_margin_trading
+            WHERE stock_id = $1
+            ORDER BY date DESC
+            LIMIT $2
+        `;
+        const result = await query(sql, [symbol, parseInt(limit)]);
+        res.json({ success: true, data: result.rows.reverse() });
+    } catch (err) {
+        console.error('Failed to fetch margin trading:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET /api/stock/:symbol/broker-trace - 主力進跡 (趨勢)
+router.get('/stock/:symbol/broker-trace', async (req, res) => {
+    try {
+        const { symbol } = req.params;
+        const { limit = 60, period = '日K' } = req.query;
+
+        let dateTrunc = 'day';
+        if (period === '週K') dateTrunc = 'week';
+        if (period === '月K') dateTrunc = 'month';
+
+        const sql = `
+            WITH daily_brokers AS (
+                SELECT 
+                    date,
+                    (buy - sell) as net_vol,
+                    ROW_NUMBER() OVER (PARTITION BY date ORDER BY ABS(buy - sell) DESC) as rank
+                FROM fm_broker_trading
+                WHERE stock_id = $1
+            ),
+            daily_main_net AS (
+                SELECT 
+                    date,
+                    SUM(net_vol) as main_net_vol
+                FROM daily_brokers
+                WHERE rank <= 15
+                GROUP BY date
+            )
+            SELECT 
+                TO_CHAR(DATE_TRUNC($3, date), 'YYYY-MM-DD') as date,
+                SUM(main_net_vol) as main_net_vol
+            FROM daily_main_net
+            GROUP BY DATE_TRUNC($3, date)
+            ORDER BY DATE_TRUNC($3, date) DESC
+            LIMIT $2
+        `;
+        const result = await query(sql, [symbol, parseInt(limit), dateTrunc]);
+        res.json({ success: true, data: result.rows.reverse(), period });
+    } catch (err) {
+        console.error('Failed to fetch broker trace:', err);
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 

@@ -418,11 +418,11 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
                                             <DollarSign className="w-3 h-3 text-brand-primary" /> 當前股價
                                         </div>
                                         <div className="text-2xl font-black text-slate-800">
-                                            {parseFloat(stock.close_price).toFixed(2)}
+                                            {!isNaN(parseFloat(stock.close_price)) ? parseFloat(stock.close_price).toFixed(2) : '--'}
                                         </div>
                                         <div className={`text-xs mt-1 font-bold flex items-center gap-1 ${parseFloat(stock.change_percent) >= 0 ? 'text-red-500' : 'text-green-600'}`}>
                                             {parseFloat(stock.change_percent) >= 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-                                            {Math.abs(parseFloat(stock.change_percent)).toFixed(2)}%
+                                            {!isNaN(parseFloat(stock.change_percent)) ? Math.abs(parseFloat(stock.change_percent)).toFixed(2) : '--'}%
                                         </div>
                                     </div>
 
@@ -431,7 +431,10 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
                                             <BarChart3 className="w-3 h-3 text-brand-primary" /> 本益比 (PE)
                                         </div>
                                         <div className="text-2xl font-black text-slate-800">
-                                            {parseFloat(stock.pe_ratio).toFixed(2)}
+                                            {(() => {
+                                                const pe = parseFloat(stock?.pe_ratio) || parseFloat(financials?.info?.pe_ratio);
+                                                return pe && !isNaN(pe) ? pe.toFixed(2) : '--';
+                                            })()}
                                         </div>
                                         <div className="text-slate-400 text-[10px] mt-1 italic font-medium">
                                             行業平均: --
@@ -443,7 +446,10 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
                                             <PieChart className="w-3 h-3 text-brand-primary" /> 殖利率
                                         </div>
                                         <div className="text-2xl font-black text-red-500">
-                                            {(parseFloat(stock.dividend_yield) * 100).toFixed(2)}%
+                                            {(() => {
+                                                const yieldVal = parseFloat(stock?.dividend_yield) || parseFloat(financials?.info?.dividend_yield);
+                                                return !isNaN(yieldVal) ? (yieldVal * 100).toFixed(2) + '%' : '--';
+                                            })()}
                                         </div>
                                         <div className="text-slate-400 text-[10px] mt-1 italic font-medium">
                                             高於市場平均
@@ -455,7 +461,10 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
                                             <Calendar className="w-3 h-3 text-brand-primary" /> 淨值比 (PB)
                                         </div>
                                         <div className="text-2xl font-black text-slate-800">
-                                            {parseFloat(stock.pb_ratio).toFixed(2)}
+                                            {(() => {
+                                                const pb = parseFloat(stock?.pb_ratio) || parseFloat(financials?.info?.pb_ratio);
+                                                return pb && !isNaN(pb) ? pb.toFixed(2) : '--';
+                                            })()}
                                         </div>
                                         <div className="text-slate-400 text-[10px] mt-1 italic font-medium">
                                             資產效率良好
@@ -537,6 +546,7 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
                                 subTab={activeSubTab}
                                 institutionalData={institutionalData}
                                 loadingChips={loadingChips}
+                                period={activePeriod}
                             />
                         ) : activeTab === 'financials' ? (
                             <FinancialStatementsView
@@ -548,13 +558,13 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
                                 epsData={epsData}
                             />
                         ) : activeTab === 'macd' ? (
-                            <MACDView symbol={stock.symbol} />
+                            <MACDView symbol={stock.symbol} period={activePeriod} />
                         ) : activeTab === 'kd' ? (
-                            <KDView symbol={stock.symbol} />
+                            <KDView symbol={stock.symbol} period={activePeriod} />
                         ) : activeTab === 'rsi' ? (
-                            <RSIView symbol={stock.symbol} />
+                            <RSIView symbol={stock.symbol} period={activePeriod} />
                         ) : activeTab === 'dmi' ? (
-                            <DMIView symbol={stock.symbol} />
+                            <DMIView symbol={stock.symbol} period={activePeriod} />
                         ) : activeTab === 'news' ? (
                             <div className="h-full min-h-[600px] flex flex-col">
                                 <NewsBoard />

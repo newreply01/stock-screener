@@ -4,30 +4,29 @@ import { getHistory } from '../utils/api';
 import { ADX } from 'technicalindicators';
 import { Activity } from 'lucide-react';
 
-export default function DMIView({ symbol }) {
+export default function DMIView({ symbol, period = '日K' }) {
     const chartContainerRef = useRef();
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         let chart = null;
+        let isMounted = true;
 
         const initChart = async () => {
             setLoading(true);
             try {
-                // Fetch recent 300 days for better calculation margin
-                const historyData = await getHistory(symbol, 300);
+                const historyData = await getHistory(symbol, 300, period);
 
-                if (!historyData || historyData.length === 0 || !chartContainerRef.current) {
+                if (!isMounted || !historyData || historyData.length === 0 || !chartContainerRef.current) {
                     setLoading(false);
                     return;
                 }
 
-                // Prepare Data for Calculation
+                // ... Preparation logic ...
                 const highPrices = historyData.map(d => parseFloat(d.high));
                 const lowPrices = historyData.map(d => parseFloat(d.low));
                 const closePrices = historyData.map(d => parseFloat(d.close));
 
-                // Calculate ADX (14)
                 const adxInput = {
                     high: highPrices,
                     low: lowPrices,
@@ -36,7 +35,6 @@ export default function DMIView({ symbol }) {
                 };
 
                 const adxResult = ADX.calculate(adxInput);
-
                 const offset = historyData.length - adxResult.length;
 
                 const candlestickData = [];
@@ -63,6 +61,8 @@ export default function DMIView({ symbol }) {
                     }
                 });
 
+                if (!isMounted) return;
+
                 // Create Chart
                 chart = createChart(chartContainerRef.current, {
                     layout: {
@@ -72,6 +72,10 @@ export default function DMIView({ symbol }) {
                     grid: {
                         vertLines: { color: '#f1f5f9' },
                         horzLines: { color: '#f1f5f9' },
+                    },
+                    leftPriceScale: {
+                        visible: true,
+                        borderColor: '#e2e8f0',
                     },
                     rightPriceScale: {
                         scaleMargins: {
@@ -87,7 +91,6 @@ export default function DMIView({ symbol }) {
                     }
                 });
 
-                // 1. Candlestick Series (Main Price)
                 const candleSeries = chart.addSeries(CandlestickSeries, {
                     upColor: '#ef4444',
                     downColor: '#22c55e',
@@ -97,36 +100,32 @@ export default function DMIView({ symbol }) {
                 });
                 candleSeries.setData(candlestickData);
 
-                // Add a separate price scale for DMI on the left
-                chart.priceScale('dmi').applyOptions({
+                chart.priceScale('left').applyOptions({
                     scaleMargins: {
-                        top: 0.7, // start at bottom 30%
+                        top: 0.7,
                         bottom: 0,
                     },
                     autoScale: true,
                 });
 
-                // 2. ADX Line
                 const adxSeries = chart.addSeries(LineSeries, {
-                    color: '#64748b', // Slate
+                    color: '#64748b',
                     lineWidth: 2,
-                    priceScaleId: 'dmi',
+                    priceScaleId: 'left',
                 });
                 adxSeries.setData(adxLineData);
 
-                // 3. +DI Line
                 const pdiSeries = chart.addSeries(LineSeries, {
-                    color: '#ef4444', // Red
+                    color: '#ef4444',
                     lineWidth: 1.5,
-                    priceScaleId: 'dmi',
+                    priceScaleId: 'left',
                 });
                 pdiSeries.setData(pdiLineData);
 
-                // 4. -DI Line
                 const mdiSeries = chart.addSeries(LineSeries, {
-                    color: '#22c55e', // Green
+                    color: '#22c55e',
                     lineWidth: 1.5,
-                    priceScaleId: 'dmi',
+                    priceScaleId: 'left',
                 });
                 mdiSeries.setData(mdiLineData);
 
@@ -135,13 +134,12 @@ export default function DMIView({ symbol }) {
             } catch (err) {
                 console.error("Failed to load DMI data:", err);
             } finally {
-                setLoading(false);
+                if (isMounted) setLoading(false);
             }
         };
 
         initChart();
 
-        // Handle Resize
         const handleResize = () => {
             if (chartContainerRef.current && chart) {
                 chart.applyOptions({ width: chartContainerRef.current.clientWidth });
@@ -150,12 +148,13 @@ export default function DMIView({ symbol }) {
         window.addEventListener('resize', handleResize);
 
         return () => {
+            isMounted = false;
             window.removeEventListener('resize', handleResize);
             if (chart) {
                 chart.remove();
             }
         };
-    }, [symbol]);
+    }, [symbol, period]);
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 h-full flex flex-col min-h-[500px]">

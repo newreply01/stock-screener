@@ -13,11 +13,15 @@ import { Target, TrendingUp, AlertTriangle } from 'lucide-react';
 
 export default function ValuationView({ financials, loading, currentPe, currentPb }) {
 
+    // Financials from server: { info, revenue, eps, dividends, statements }
+    const info = financials?.info || {};
+
     // EPS Data is quarterly, we will plot EPS trend
     const epsData = useMemo(() => {
-        if (!financials?.eps || financials.eps.length === 0) return [];
+        const sourceData = financials?.eps || [];
+        if (sourceData.length === 0) return [];
         // Data is DESC by date from API, need ASC for chart
-        return [...financials.eps].reverse().map(item => ({
+        return [...sourceData].reverse().map(item => ({
             name: item.date ? new Date(item.date).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit' }) : 'N/A',
             eps: parseFloat(item.eps)
         }));
@@ -32,7 +36,7 @@ export default function ValuationView({ financials, loading, currentPe, currentP
         );
     }
 
-    if (!epsData || epsData.length === 0) {
+    if (epsData.length === 0) {
         return (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 min-h-[400px]">
                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 border border-slate-100 shadow-sm">
@@ -45,9 +49,9 @@ export default function ValuationView({ financials, loading, currentPe, currentP
 
     const latestEps = epsData[epsData.length - 1];
 
-    // Safety check for PE parsing
-    const peValue = parseFloat(currentPe);
-    const pbValue = parseFloat(currentPb);
+    // Safety check for PE parsing - use prop or fallback to info from financials
+    const peValue = parseFloat(currentPe) || parseFloat(info.pe_ratio);
+    const pbValue = parseFloat(currentPb) || parseFloat(info.pb_ratio);
     const hasValidPe = !isNaN(peValue) && peValue > 0;
 
     // Evaluate valuation status roughly
@@ -58,7 +62,7 @@ export default function ValuationView({ financials, loading, currentPe, currentP
 
     if (hasValidPe) {
         if (peValue < 12) {
-            valuationStatus = '低股價淨值比 / 偏低估';
+            valuationStatus = '低本益比 / 偏低估';
             statusColor = 'text-green-600';
             statusBg = 'bg-green-50';
             statusBorder = 'border-green-200';

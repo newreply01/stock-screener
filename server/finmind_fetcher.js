@@ -13,17 +13,14 @@ const TOKENS = (process.env.FINMIND_TOKENS || process.env.FINMIND_TOKEN || '')
     .map(t => t.trim())
     .filter(t => t.length > 0);
 
+const START_DATE = '2020-01-01'; // Default start date if not provided
+
 let currentTokenIndex = 0;
 function getCurrentToken() {
     if (TOKENS.length === 0) return null;
     return TOKENS[currentTokenIndex];
 }
 const exhaustedTokens = new Set(); // 記錄已耗盡額度的 token
-
-function getCurrentToken() {
-    if (TOKENS.length === 0) return null;
-    return TOKENS[currentTokenIndex];
-}
 
 function rotateToken(reason = '') {
     if (TOKENS.length <= 1) return false;
@@ -45,7 +42,8 @@ function getTokenStatus() {
     const available = TOKENS.length - exhaustedTokens.size;
     return `🔑 [Token] 共 ${TOKENS.length} 組，可用 ${available} 組，目前使用 Token #${currentTokenIndex + 1}`;
 }
-// --- End Token Rotation Manager ---
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function fetchFinMind(dataset, data_id, start_date = START_DATE) {
     let url = `${BASE_URL}?dataset=${dataset}&data_id=${data_id}&start_date=${start_date}`;
@@ -61,10 +59,9 @@ async function fetchFinMind(dataset, data_id, start_date = START_DATE) {
                 if (rotateToken('HTTP 429 Rate Limited')) {
                     return fetchFinMind(dataset, data_id, start_date);
                 }
-                // 所有 token 都被限速，等待 60 秒後重試
                 console.warn(`⚠️ [FinMind] 所有 Token 都被限速，等待 60s...`);
                 await sleep(60000);
-                exhaustedTokens.clear(); // 重置，讓所有 token 可以再試
+                exhaustedTokens.clear();
                 return fetchFinMind(dataset, data_id, start_date);
             }
             if (res.status === 402) {
@@ -81,15 +78,64 @@ async function fetchFinMind(dataset, data_id, start_date = START_DATE) {
         }
         const json = await res.json();
         const data = json.data || [];
-        if (data.length > 0) {
-            console.log(`🔍 [FinMind] ${dataset} sample for ${data_id}:`, data[0]);
-        } else {
-            console.log(`⚠️ [FinMind] No data for ${dataset} / ${data_id}`);
-        }
         return data;
     } catch (err) {
         console.error(`❌ [FinMind] Error fetching ${dataset} for ${data_id}:`, err.message);
         return [];
+    }
+}
+
+async function syncBrokerTrading(symbol, date) {
+    const client = await pool.connect();
+    try {
+        const start_date = date || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        console.log(`🔄 [FinMind] Syncing broker trading for ${symbol} starting from ${start_date}...`);
+        const data = await fetchFinMind('TaiwanStockBrokerTrading', symbol, start_date);
+        for (const item of data) {
+            await client.query(`
+                INSERT INTO fm_broker_trading (stock_id, date, broker, buy, sell)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (stock_id, date, broker) DO UPDATE SET
+                    buy = EXCLUDED.buy,
+                    sell = EXCLUDED.sell
+            `, [item.stock_id, item.date, item.broker, item.buy, item.sell]);
+        }
+        console.log(`✅ [FinMind] Synced broker trading for ${symbol}: ${data.length} records.`);
+    } catch (err) {
+        console.error(`❌ [FinMind] Failed to sync broker trading for ${symbol}:`, err.message);
+    } finally {
+        client.release();
+    }
+}
+
+async function syncMarginTrading(symbol) {
+    const client = await pool.connect();
+    try {
+        const start_date = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        console.log(`🔄 [FinMind] Syncing margin trading for ${symbol} starting from ${start_date}...`);
+        const data = await fetchFinMind('TaiwanStockMarginPurchaseShortSale', symbol, start_date);
+        for (const item of data) {
+            await client.query(`
+                INSERT INTO fm_margin_trading (
+                    stock_id, date, 
+                    margin_purchase_buy, margin_purchase_sell, margin_purchase_cash_redemption, margin_purchase_limit, margin_purchase_today_balance, margin_purchase_yesterday_balance,
+                    short_sale_buy, short_sale_sell, short_sale_cash_redemption, short_sale_limit, short_sale_today_balance, short_sale_yesterday_balance
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                ON CONFLICT (stock_id, date) DO UPDATE SET
+                    margin_purchase_today_balance = EXCLUDED.margin_purchase_today_balance,
+                    short_sale_today_balance = EXCLUDED.short_sale_today_balance
+            `, [
+                item.stock_id, item.date,
+                item.MarginPurchaseBuy, item.MarginPurchaseSell, item.MarginPurchaseCashRedemption, item.MarginPurchaseLimit, item.MarginPurchaseTodayBalance, item.MarginPurchaseYesterdayBalance,
+                item.ShortSaleBuy, item.ShortSaleSell, item.ShortSaleCashRedemption, item.ShortSaleLimit, item.ShortSaleTodayBalance, item.ShortSaleYesterdayBalance
+            ]);
+        }
+        console.log(`✅ [FinMind] Synced margin trading for ${symbol}: ${data.length} records.`);
+    } catch (err) {
+        console.error(`❌ [FinMind] Failed to sync margin trading for ${symbol}:`, err.message);
+    } finally {
+        client.release();
     }
 }
 
@@ -98,7 +144,6 @@ async function syncStockFinancials(symbol) {
     try {
         console.log(`🔄 [FinMind] Syncing financials for ${symbol}...`);
 
-        // 1. Monthly Revenue
         const revenues = await fetchFinMind('TaiwanStockMonthRevenue', symbol);
         for (const item of revenues) {
             await client.query(`
@@ -109,7 +154,6 @@ async function syncStockFinancials(symbol) {
             `, [symbol, item.revenue_year, item.revenue_month, item.revenue]);
         }
 
-        // 2. Financial Statements (EPS)
         const statements = await fetchFinMind('TaiwanStockFinancialStatements', symbol);
         for (const item of statements) {
             if (item.type === 'EPS' || item.type === 'EarningsPerShare') {
@@ -122,13 +166,11 @@ async function syncStockFinancials(symbol) {
             }
         }
 
-        // 3. Dividend
         try {
             const dividends = await fetchFinMind('TaiwanStockDividend', symbol);
             for (const item of dividends) {
                 const year = parseInt(item.year || item.Year || 0);
-                if (year === 0) continue; // Skip if year is invalid
-
+                if (year === 0) continue;
                 const total = (parseFloat(item.CashEarningsDistribution || 0) + parseFloat(item.StockEarningsDistribution || 0));
                 await client.query(`
                     INSERT INTO dividend_policy (symbol, year, cash_dividend, stock_dividend, total_dividend)
@@ -140,9 +182,30 @@ async function syncStockFinancials(symbol) {
                         total_dividend = EXCLUDED.total_dividend
                 `, [symbol, year, parseFloat(item.CashEarningsDistribution || 0), parseFloat(item.StockEarningsDistribution || 0), total]);
             }
+        } catch (err) { }
+
+        // Sync PER/PBR/Yield
+        try {
+            const perData = await fetchFinMind('TaiwanStockPER', symbol);
+            if (perData && perData.length > 0) {
+                const latest = perData[perData.length - 1];
+                await client.query(`
+                    INSERT INTO fundamentals (symbol, trade_date, pe_ratio, dividend_yield)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (symbol) 
+                    DO UPDATE SET 
+                        trade_date = EXCLUDED.trade_date,
+                        pe_ratio = EXCLUDED.pe_ratio,
+                        dividend_yield = EXCLUDED.dividend_yield
+                `, [symbol, latest.date, parseFloat(latest.PE) || 0, parseFloat(latest.DividendYield) || 0]);
+                console.log(`✅ [FinMind] Updated fundamentals for ${symbol}`);
+            }
         } catch (err) {
-            console.error(`⚠️ [FinMind] Failed to sync Dividends for ${symbol}:`, err.message);
+            console.error(`❌ [FinMind] Failed to sync PER for ${symbol}:`, err.message);
         }
+
+        await syncBrokerTrading(symbol);
+        await syncMarginTrading(symbol);
 
         console.log(`✅ [FinMind] Synced ${symbol} successfully.`);
     } catch (err) {
@@ -154,24 +217,16 @@ async function syncStockFinancials(symbol) {
 
 async function syncAllStocksFinancials() {
     console.log(getTokenStatus());
-
-    // 優先抓取 4 位數代號的普通股 (排除指數、權證等)
     const res = await pool.query(`
         SELECT symbol FROM stocks 
         WHERE symbol ~ '^[0-9]{4}$'
         ORDER BY symbol ASC
     `);
     const stocks = res.rows;
-    console.log(`🚀 [FinMind] Starting prioritized batch sync for ${stocks.length} stocks...`);
-
     for (let i = 0; i < stocks.length; i++) {
-        const stock = stocks[i];
-        await syncStockFinancials(stock.symbol);
-        // Rate limit: FinMind allows ~600/hour. We sleep 6s between stocks to be safe.
-        // 3 calls per stock -> 18s per stock + overhead. 
-        // This is slow but safe.
+        await syncStockFinancials(stocks[i].symbol);
         await sleep(6000);
     }
 }
 
-module.exports = { syncStockFinancials, syncAllStocksFinancials };
+module.exports = { syncStockFinancials, syncAllStocksFinancials, syncBrokerTrading, syncMarginTrading };

@@ -4,31 +4,29 @@ import { getHistory } from '../utils/api';
 import { Stochastic } from 'technicalindicators';
 import { Activity } from 'lucide-react';
 
-export default function KDView({ symbol }) {
+export default function KDView({ symbol, period = '日K' }) {
     const chartContainerRef = useRef();
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         let chart = null;
+        let isMounted = true;
 
         const initChart = async () => {
             setLoading(true);
             try {
-                // Fetch recent 300 days for better calculation margin
-                const historyData = await getHistory(symbol, 300);
+                const historyData = await getHistory(symbol, 300, period);
 
-                if (!historyData || historyData.length === 0 || !chartContainerRef.current) {
+                if (!isMounted || !historyData || historyData.length === 0 || !chartContainerRef.current) {
                     setLoading(false);
                     return;
                 }
 
-                // Prepare Data for Calculation
+                // ... Preparation ...
                 const highPrices = historyData.map(d => parseFloat(d.high));
                 const lowPrices = historyData.map(d => parseFloat(d.low));
                 const closePrices = historyData.map(d => parseFloat(d.close));
 
-                // Calculate Stochastic KD (9, 3, 3 usually, but technicalindicators takes period and signalPeriod)
-                // period: 9, signalPeriod: 3 gives K(9,3) and D is 3-day SMA of K
                 const kdInput = {
                     high: highPrices,
                     low: lowPrices,
@@ -38,8 +36,6 @@ export default function KDView({ symbol }) {
                 };
 
                 const kdResult = Stochastic.calculate(kdInput);
-
-                // Align with timescale
                 const offset = historyData.length - kdResult.length;
 
                 const candlestickData = [];
@@ -64,6 +60,8 @@ export default function KDView({ symbol }) {
                     }
                 });
 
+                if (!isMounted) return;
+
                 // Create Chart
                 chart = createChart(chartContainerRef.current, {
                     layout: {
@@ -74,21 +72,24 @@ export default function KDView({ symbol }) {
                         vertLines: { color: '#f1f5f9' },
                         horzLines: { color: '#f1f5f9' },
                     },
+                    leftPriceScale: {
+                        visible: true,
+                        borderColor: '#e2e8f0',
+                    },
                     rightPriceScale: {
                         scaleMargins: {
                             top: 0.1,
-                            bottom: 0.4, // leave bottom 40% for KD
+                            bottom: 0.4,
                         },
                     },
                     timeScale: {
                         borderColor: '#e2e8f0',
                     },
                     crosshair: {
-                        mode: 1, // Normal mode
+                        mode: 1,
                     }
                 });
 
-                // 1. Candlestick Series (Main Price)
                 const candleSeries = chart.addSeries(CandlestickSeries, {
                     upColor: '#ef4444',
                     downColor: '#22c55e',
@@ -98,30 +99,22 @@ export default function KDView({ symbol }) {
                 });
                 candleSeries.setData(candlestickData);
 
-                // Add a separate price scale for KD on the left
-                chart.priceScale('kd').applyOptions({
+                chart.priceScale('left').applyOptions({
                     scaleMargins: {
-                        top: 0.7, // start at bottom 30%
+                        top: 0.7,
                         bottom: 0,
                     },
                     autoScale: false,
-                });
-                // KD is bound 0-100
-                chart.priceScale('kd').applyOptions({
-                    autoScale: false,
-                    scaleMargins: { top: 0.7, bottom: 0 },
                     mode: 0,
                 });
 
-                // 2. K Line (Fast)
                 const kSeries = chart.addSeries(LineSeries, {
-                    color: '#3b82f6', // Blue
+                    color: '#3b82f6',
                     lineWidth: 2,
-                    priceScaleId: 'kd',
+                    priceScaleId: 'left',
                 });
                 kSeries.setData(kLineData);
 
-                // Add Overbought / Oversold lines
                 kSeries.createPriceLine({
                     price: 80,
                     color: '#ef4444',
@@ -139,18 +132,16 @@ export default function KDView({ symbol }) {
                     title: '超賣(20)'
                 });
 
-                // 3. D Line (Slow)
                 const dSeries = chart.addSeries(LineSeries, {
-                    color: '#f59e0b', // Amber
+                    color: '#f59e0b',
                     lineWidth: 2,
-                    priceScaleId: 'kd',
+                    priceScaleId: 'left',
                 });
                 dSeries.setData(dLineData);
 
                 chart.timeScale().fitContent();
 
-                // Manually set KD autoscale override after data is set to fix 0-100
-                chart.priceScale('kd').applyOptions({
+                chart.priceScale('left').applyOptions({
                     autoscaleInfoProvider: () => ({
                         priceRange: { minValue: 0, maxValue: 100 },
                     }),
@@ -159,13 +150,12 @@ export default function KDView({ symbol }) {
             } catch (err) {
                 console.error("Failed to load KD data:", err);
             } finally {
-                setLoading(false);
+                if (isMounted) setLoading(false);
             }
         };
 
         initChart();
 
-        // Handle Resize
         const handleResize = () => {
             if (chartContainerRef.current && chart) {
                 chart.applyOptions({ width: chartContainerRef.current.clientWidth });
@@ -174,12 +164,13 @@ export default function KDView({ symbol }) {
         window.addEventListener('resize', handleResize);
 
         return () => {
+            isMounted = false;
             window.removeEventListener('resize', handleResize);
             if (chart) {
                 chart.remove();
             }
         };
-    }, [symbol]);
+    }, [symbol, period]);
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 h-full flex flex-col">

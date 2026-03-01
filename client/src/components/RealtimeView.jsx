@@ -52,12 +52,15 @@ export default function RealtimeView({ stock }) {
                         </div>
                         <div className="flex justify-between items-end">
                             <div>
-                                <p className="text-3xl font-black">{parseFloat(stock.close_price).toFixed(2)}</p>
+                                <p className="text-3xl font-black">
+                                    {!isNaN(parseFloat(stock.close_price)) ? parseFloat(stock.close_price).toFixed(2) : '--'}
+                                </p>
                                 <p className="text-xs font-bold text-slate-400 mt-1">成交價 (Last Sale)</p>
                             </div>
                             <div className="text-right">
                                 <p className={`text-xl font-black ${parseFloat(stock.change_percent) >= 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                    {parseFloat(stock.change_percent) >= 0 ? '+' : ''}{parseFloat(stock.change_percent).toFixed(2)}%
+                                    {parseFloat(stock.change_percent) >= 0 ? '+' : ''}
+                                    {!isNaN(parseFloat(stock.change_percent)) ? parseFloat(stock.change_percent).toFixed(2) : '--'}%
                                 </p>
                                 <p className="text-[10px] font-bold text-slate-500">本日漲跌幅</p>
                             </div>

@@ -4,28 +4,27 @@ import { getHistory } from '../utils/api';
 import { MACD } from 'technicalindicators';
 import { Activity } from 'lucide-react';
 
-export default function MACDView({ symbol }) {
+export default function MACDView({ symbol, period = '日K' }) {
     const chartContainerRef = useRef();
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         let chart = null;
+        let isMounted = true;
 
         const initChart = async () => {
             setLoading(true);
             try {
-                // Fetch recent 300 days for better calculation margin
-                const historyData = await getHistory(symbol, 300);
+                const historyData = await getHistory(symbol, 300, period);
 
-                if (!historyData || historyData.length === 0 || !chartContainerRef.current) {
+                if (!isMounted || !historyData || historyData.length === 0 || !chartContainerRef.current) {
                     setLoading(false);
                     return;
                 }
 
-                // Prepare Data for Calculation
+                // ... Preparation logic ...
                 const closePrices = historyData.map(d => parseFloat(d.close));
 
-                // Calculate MACD (12, 26, 9)
                 const macdInput = {
                     values: closePrices,
                     fastPeriod: 12,
@@ -36,9 +35,6 @@ export default function MACDView({ symbol }) {
                 };
 
                 const macdResult = MACD.calculate(macdInput);
-
-                // technicalindicators returns an array that is shorter than input (by slowPeriod + signalPeriod - 2 or similar)
-                // We need to align it with historyData's timescale
                 const offset = historyData.length - macdResult.length;
 
                 const candlestickData = [];
@@ -63,11 +59,13 @@ export default function MACDView({ symbol }) {
                             histogramData.push({
                                 time: d.time,
                                 value: m.histogram,
-                                color: m.histogram >= 0 ? 'rgba(239, 68, 68, 0.8)' : 'rgba(34, 197, 94, 0.8)' // Red for positive (TW style), Green for negative
+                                color: m.histogram >= 0 ? 'rgba(239, 68, 68, 0.8)' : 'rgba(34, 197, 94, 0.8)'
                             });
                         }
                     }
                 });
+
+                if (!isMounted) return;
 
                 // Create Chart
                 chart = createChart(chartContainerRef.current, {
@@ -79,21 +77,24 @@ export default function MACDView({ symbol }) {
                         vertLines: { color: '#f1f5f9' },
                         horzLines: { color: '#f1f5f9' },
                     },
+                    leftPriceScale: {
+                        visible: true,
+                        borderColor: '#e2e8f0',
+                    },
                     rightPriceScale: {
                         scaleMargins: {
                             top: 0.1,
-                            bottom: 0.4, // leave bottom 40% for MACD
+                            bottom: 0.4,
                         },
                     },
                     timeScale: {
                         borderColor: '#e2e8f0',
                     },
                     crosshair: {
-                        mode: 1, // Normal mode
+                        mode: 1,
                     }
                 });
 
-                // 1. Candlestick Series (Main Price)
                 const candleSeries = chart.addSeries(CandlestickSeries, {
                     upColor: '#ef4444',
                     downColor: '#22c55e',
@@ -103,34 +104,30 @@ export default function MACDView({ symbol }) {
                 });
                 candleSeries.setData(candlestickData);
 
-                // Add a separate price scale for MACD on the left
-                chart.priceScale('macd').applyOptions({
+                chart.priceScale('left').applyOptions({
                     scaleMargins: {
-                        top: 0.7, // start at bottom 30%
+                        top: 0.7,
                         bottom: 0,
                     },
                     autoScale: true,
                 });
 
-                // 2. MACD Histogram
                 const histSeries = chart.addSeries(HistogramSeries, {
-                    priceScaleId: 'macd',
+                    priceScaleId: 'left',
                 });
                 histSeries.setData(histogramData);
 
-                // 3. MACD Line (Fast)
                 const macdSeries = chart.addSeries(LineSeries, {
-                    color: '#3b82f6', // Blue
+                    color: '#3b82f6',
                     lineWidth: 2,
-                    priceScaleId: 'macd',
+                    priceScaleId: 'left',
                 });
                 macdSeries.setData(macdLineData);
 
-                // 4. Signal Line (Slow)
                 const signalSeries = chart.addSeries(LineSeries, {
-                    color: '#f59e0b', // Amber
+                    color: '#f59e0b',
                     lineWidth: 2,
-                    priceScaleId: 'macd',
+                    priceScaleId: 'left',
                 });
                 signalSeries.setData(signalLineData);
 
@@ -139,13 +136,12 @@ export default function MACDView({ symbol }) {
             } catch (err) {
                 console.error("Failed to load MACD data:", err);
             } finally {
-                setLoading(false);
+                if (isMounted) setLoading(false);
             }
         };
 
         initChart();
 
-        // Handle Resize
         const handleResize = () => {
             if (chartContainerRef.current && chart) {
                 chart.applyOptions({ width: chartContainerRef.current.clientWidth });
@@ -154,12 +150,13 @@ export default function MACDView({ symbol }) {
         window.addEventListener('resize', handleResize);
 
         return () => {
+            isMounted = false;
             window.removeEventListener('resize', handleResize);
             if (chart) {
                 chart.remove();
             }
         };
-    }, [symbol]);
+    }, [symbol, period]);
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 h-full flex flex-col">

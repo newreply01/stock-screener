@@ -57,9 +57,9 @@ export async function getNews(category = 'all', limit = 10) {
     return res.json();
 }
 
-export async function getHistory(symbol, limit = 200) {
+export async function getHistory(symbol, limit = 200, period = '日K') {
     if (!symbol) return [];
-    const res = await fetch(`${API_BASE}/history/${symbol}?limit=${limit}`);
+    const res = await fetch(`${API_BASE}/history/${symbol}?limit=${limit}&period=${encodeURIComponent(period)}`);
     if (!res.ok) throw new Error('獲取歷史資料失敗');
     return res.json();
 }
@@ -138,5 +138,24 @@ export async function deleteFilter(id) {
         method: 'DELETE'
     });
     if (!res.ok) throw new Error('刪除篩選器失敗');
+    return res.json();
+}
+export async function getBrokerTrading(symbol, period = '日K') {
+    if (!symbol) return { buyers: [], sellers: [], date: null };
+    const res = await fetch(`${API_BASE}/stock/${symbol}/broker-trading?period=${encodeURIComponent(period)}`);
+    if (!res.ok) throw new Error('獲取分點進出失敗');
+    return res.json();
+}
+
+export async function getMarginTrading(symbol, limit = 60) {
+    if (!symbol) return { data: [] };
+    const res = await fetch(`${API_BASE}/stock/${symbol}/margin-trading?limit=${limit}`);
+    if (!res.ok) throw new Error('獲取融資融券失敗');
+    return res.json();
+}
+export async function getBrokerTrace(symbol, limit = 60, period = '日K') {
+    if (!symbol) return { data: [] };
+    const res = await fetch(`${API_BASE}/stock/${symbol}/broker-trace?limit=${limit}&period=${encodeURIComponent(period)}`);
+    if (!res.ok) throw new Error('獲取分點進跡失敗');
     return res.json();
 }
