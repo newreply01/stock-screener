@@ -1,13 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { initDatabase } = require('./db');
-const { startScheduler } = require('./scheduler');
-const watchlistRoutes = require('./routes/watchlist');
-const screenerRoutes = require('./routes/screener');
-const filterRoutes = require('./routes/filters');
 const authRoutes = require('./routes/auth');
-
+const screenerRoutes = require('./routes/screener');
+const { startScheduler } = require('./scheduler');
 require('dotenv').config();
 
 const app = express();
@@ -18,64 +14,25 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/watchlists', watchlistRoutes);
-app.use('/api/filters', filterRoutes);
 app.use('/api', screenerRoutes);
 
-// 託管靜態檔案 (Vite build output)
+// Serve static files from React app
 const distPath = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(distPath));
 
-// 所有其他路由導向 index.html (SPA)
+// All other routes redirect to index.html (SPA)
 app.get('*', (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
 });
 
-async function start() {
-    let retries = 0;
-    const maxRetries = 10;
-
-    while (retries < maxRetries) {
-        try {
-            // 啟動時確保 DB 初始化
-            await initDatabase();
-            console.log('✅ 資料庫連線與初始化成功');
-            break;
-        } catch (err) {
-            retries++;
-            console.error(`❌ 資料庫連接失敗 (${retries}/${maxRetries}):`, err.message);
-            if (retries < maxRetries) {
-                console.log(`⏳ 等待 5 秒後進行第 ${retries + 1} 次重試...`);
-                await new Promise(resolve => setTimeout(resolve, 5000));
-            } else {
-                console.error('💥 達到最大重試次數，無法連接到資料庫，程式終止');
-                process.exit(1);
-            }
-        }
-    }
-
+async function startServer() {
     try {
-        const { catchUp } = require('./fetcher');
+        console.log('\n🚀 台股篩選器已啟動');
 
-        // 啟動排程
+        // Start scheduler
         startScheduler();
 
-        // 啟動時檢查是否需要補齊資料 (Background) - 暫時停用以排查效能問題
-        // setImmediate(() => {
-        //     console.log('🔄 啟動自動補齊檢查...');
-        //     catchUp().catch(err => console.error('補齊失敗:', err));
-
-        //     console.log('📰 啟動初始新聞抓取...');
-        //     const { syncAllNews } = require('./news_fetcher');
-        //     syncAllNews().catch(err => console.error('新聞抓取失敗:', err));
-
-        //     console.log('📊 啟動基本面資料補齊 (FinMind)...');
-        //     const { syncAllStocksFinancials } = require('./finmind_fetcher');
-        //     syncAllStocksFinancials().catch(err => console.error('基本面同步失敗:', err));
-        // });
-
         app.listen(PORT, () => {
-            console.log(`\n🚀 台股篩選器已啟動`);
             console.log(`📡 PORT: ${PORT}`);
         });
     } catch (err) {
@@ -84,4 +41,4 @@ async function start() {
     }
 }
 
-start();
+startServer();
