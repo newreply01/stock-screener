@@ -41,8 +41,11 @@ export async function getMarketSummary(params = {}) {
 
 export async function getInstitutionalRank(params = {}) {
     const searchParams = new URLSearchParams();
-    if (params.type) searchParams.append('type', params.type);
-    if (params.range) searchParams.append('range', params.range);
+    Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+            searchParams.append(key, value);
+        }
+    });
     const res = await fetch(`${API_BASE}/institutional-rank?${searchParams.toString()}`);
     if (!res.ok) throw new Error('獲取法人排行失敗');
     return res.json();

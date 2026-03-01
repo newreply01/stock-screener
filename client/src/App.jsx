@@ -61,8 +61,14 @@ function App() {
     const handleSearch = (e) => {
       setSearchTerm(e.detail)
       setPage(1)
+      // 清除舊的主選股票，讓 search 完後的結果能自動遞補 (配合 line 94)
       setMainStock(null)
-      if (currentView !== 'dashboard') setCurrentView('dashboard')
+      if (currentView !== 'stock-detail') setCurrentView('stock-detail')
+    }
+    const handleSelect = (e) => {
+      const stock = e.detail
+      setMainStock(stock)
+      if (currentView !== 'stock-detail') setCurrentView('stock-detail')
     }
     const handleSwitchView = (e) => {
       console.log('App: Switching view to', e.detail);
@@ -77,11 +83,13 @@ function App() {
     }
     window.addEventListener('muchstock-view', handleSwitchView)
     window.addEventListener('muchstock-search', handleSearch)
+    window.addEventListener('muchstock-select', handleSelect)
     return () => {
       window.removeEventListener('muchstock-search', handleSearch)
       window.removeEventListener('muchstock-view', handleSwitchView)
+      window.removeEventListener('muchstock-select', handleSelect)
     }
-  }, [currentView])
+  }, [currentView, requireLogin])
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -107,13 +115,27 @@ function App() {
   return (
     <Layout currentView={currentView}>
       <MarketStats stats={stats} fallbackDate={results?.latestDate} />
-      <div className="container mx-auto px-4 py-8">
+      <div className="max-w-[1600px] mx-auto px-4 py-8">
         {currentView === 'screener-config' ? (
           <ScreenerConfigPage
-            onFilter={(f) => { setFilters(f); setPage(1); setMainStock(null); setCurrentView('dashboard') }}
+            onFilter={(f) => { setFilters(f); setPage(1); }}
             onClear={() => { setFilters({}); setPage(1); setMainStock(null); }}
             filters={filters}
             onBack={() => setCurrentView('dashboard')}
+            results={results}
+            loading={loading}
+            sortBy={sortBy}
+            sortDir={sortDir}
+            onSort={(c) => {
+              if (sortBy === c) setSortDir(p => p === 'desc' ? 'asc' : 'desc');
+              else { setSortBy(c); setSortDir('desc'); }
+              setPage(1);
+            }}
+            page={page}
+            onPageChange={setPage}
+            onStockClick={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }}
+            watchedSymbols={watchedSymbols}
+            onToggleWatchlist={toggleWatchlist}
           />
         ) : currentView === 'watchlist' ? (
           <WatchlistDashboard
@@ -131,14 +153,18 @@ function App() {
         ) : currentView === 'sentiment' ? (
           <MarketSentimentView />
         ) : currentView === 'market-overview' ? (
-          <MarketDashboard onStockSelect={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('dashboard'); }} />
+          <MarketDashboard onStockSelect={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }} />
+        ) : currentView === 'stock-detail' ? (
+          <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
+            <StockDetail stock={mainStock} isInline={true} />
+          </div>
         ) : currentView === 'dashboard' ? (
           <PatternAnalysisDashboard
             selectedStock={mainStock}
             symbol={mainStock?.symbol}
             activePatterns={activePatterns}
             onPatternsChange={setActivePatterns}
-            onStockSelect={(s) => { setMainStock(s); setDetailStock(null); setSearchTerm(s.symbol); setPage(1); }}
+            onStockSelect={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }}
           >
             <ResultTable
               results={results}
@@ -152,7 +178,7 @@ function App() {
               }}
               page={page}
               onPageChange={setPage}
-              onStockClick={(s) => { setMainStock(s); setDetailStock(s) }}
+              onStockClick={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }}
               watchedSymbols={watchedSymbols}
               onToggleWatchlist={toggleWatchlist}
               onCompare={setActiveCompareSymbols}
@@ -160,7 +186,7 @@ function App() {
           </PatternAnalysisDashboard>
         ) : <NewsBoard />}
       </div>
-      {detailStock && (
+      {detailStock && currentView !== 'dashboard' && (
         <StockDetail
           stock={detailStock}
           onClose={() => setDetailStock(null)}

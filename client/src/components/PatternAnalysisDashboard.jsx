@@ -9,6 +9,7 @@ import { saveAs } from 'file-saver';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { TrendingUp, TrendingDown, Activity, FileText, Download, CheckCircle2, Circle, Search, Users, Bot, RefreshCw } from 'lucide-react';
+import StockDetail from './StockDetail';
 
 const CATEGORIES = [
     '總覽', '籌碼面', 'AI分析報告'
@@ -63,6 +64,7 @@ export default function PatternAnalysisDashboard({
             handleGenerateAI();
         }
     }, [selectedStock, activeCategory]);
+
 
     const handleGenerateAI = () => {
         if (!selectedStock?.symbol) return;

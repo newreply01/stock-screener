@@ -39,7 +39,7 @@ node server/start_finmind_sync.js
 
 服務啟動後，請從 Windows 瀏覽器訪問：
 -   **Web 介面**: [http://localhost:20000](http://localhost:20000)
--   **API 端點**: [http://localhost:10000/api](http://localhost:10000/api)
+-   **API 端點**: [http://localhost:3000/api](http://localhost:3000/api)
 
 ## 5. 注意事項
 

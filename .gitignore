@@ -5,3 +5,4 @@ node_modules/
 testOutput*.txt
 *.sql
 *.log
+.vite/

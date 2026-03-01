@@ -22,6 +22,9 @@ router.get('/screen', async (req, res) => {
             rsi_min, rsi_max,
             macd_hist_min, macd_hist_max,
             ma20_min, ma20_max,
+            adx_min, adx_max,
+            bb_width_min, bb_width_max,
+            wpr_min, wpr_max,
             foreign_net_min, foreign_net_max,
             trust_net_min, trust_net_max,
             dealer_net_min, dealer_net_max,
@@ -100,6 +103,10 @@ router.get('/screen', async (req, res) => {
         addRangeFilter('i.rsi_14', rsi_min, rsi_max);
         addRangeFilter('i.macd_hist', macd_hist_min, macd_hist_max);
         addRangeFilter('i.ma_20', ma20_min, ma20_max);
+        // 暫時註解掉資料庫尚未存在的欄位
+        // addRangeFilter('i.adx', adx_min, adx_max);
+        // addRangeFilter('i.bb_width', bb_width_min, bb_width_max);
+        // addRangeFilter('i.wpr', wpr_min, wpr_max);
         addRangeFilter('inst.foreign_net', foreign_net_min, foreign_net_max);
         addRangeFilter('inst.trust_net', trust_net_min, trust_net_max);
         addRangeFilter('inst.dealer_net', dealer_net_min, dealer_net_max);
@@ -124,21 +131,21 @@ router.get('/screen', async (req, res) => {
             LEFT JOIN LATERAL (
                 SELECT pe_ratio, pb_ratio, dividend_yield
                 FROM fundamentals f_sub
-                WHERE f_sub.symbol = s.symbol AND f_sub.trade_date <= $1
+                WHERE f_sub.symbol = s.symbol AND f_sub.trade_date <= $1::date
                 ORDER BY f_sub.trade_date DESC
                 LIMIT 1
             ) f ON true
             LEFT JOIN LATERAL (
                 SELECT foreign_net, trust_net, dealer_net, total_net
                 FROM institutional inst_sub
-                WHERE inst_sub.symbol = s.symbol AND inst_sub.trade_date <= $1
+                WHERE inst_sub.symbol = s.symbol AND inst_sub.trade_date <= $1::date
                 ORDER BY inst_sub.trade_date DESC
                 LIMIT 1
             ) inst ON true
             LEFT JOIN LATERAL (
                 SELECT patterns, rsi_14, macd_hist, ma_20
                 FROM indicators i_sub
-                WHERE i_sub.symbol = s.symbol AND i_sub.trade_date <= $1
+                WHERE i_sub.symbol = s.symbol AND i_sub.trade_date <= $1::date
                 ORDER BY i_sub.trade_date DESC
                 LIMIT 1
             ) i ON true
@@ -157,7 +164,7 @@ router.get('/screen', async (req, res) => {
                 f.pe_ratio, f.pb_ratio, f.dividend_yield,
                 inst.foreign_net, inst.trust_net, inst.dealer_net, inst.total_net,
                 i.rsi_14, i.macd_hist, i.ma_20 as ma_20, i.patterns,
-                p.trade_date as result_date
+                p.trade_date::text as result_date
             ${baseQuery}
             ORDER BY ${sort_by === 'symbol' ? 's.symbol' : sort_by === 'name' ? 's.name' : 'p.' + sort_by} ${sort_dir}
             LIMIT $${paramCount} OFFSET $${paramCount + 1}
@@ -166,8 +173,12 @@ router.get('/screen', async (req, res) => {
 
         const dataResult = await query(dataSQL, params);
 
-        // 返回前端預期的格式
-        const displayDateStr = new Date(actualDate).toISOString().split('T')[0];
+        // 返回前端預期的格式 - 使用本地日期字串避免時區偏離
+        const d = new Date(actualDate);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const displayDateStr = `${year}-${month}-${day}`;
 
         res.json({
             success: true,
@@ -390,7 +401,8 @@ router.get('/stock/:symbol/financials', async (req, res) => {
 // GET /api/institutional-rank - 三大法人排行
 router.get('/institutional-rank', async (req, res) => {
     try {
-        const { type = 'foreign', range = '3d' } = req.query;
+        const { type = 'foreign', range = '3d', action = 'buy' } = req.query;
+        const isSell = action === 'sell';
 
         // 映射類型到欄位
         const fieldMap = {
@@ -429,8 +441,8 @@ router.get('/institutional-rank', async (req, res) => {
             JOIN stocks s ON i.symbol = s.symbol
             WHERE i.trade_date = ANY($1)
             GROUP BY i.symbol, s.name, s.industry, s.market
-            HAVING SUM(i.${field}) > 0
-            ORDER BY net_buy DESC
+            HAVING SUM(i.${field}) ${isSell ? '< 0' : '> 0'}
+            ORDER BY net_buy ${isSell ? 'ASC' : 'DESC'}
             LIMIT 20
         `;
 
@@ -438,6 +450,27 @@ router.get('/institutional-rank', async (req, res) => {
         res.json({ success: true, data: result.rows });
     } catch (err) {
         console.error('Institutional rank error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET /api/market-summary - 市場統計 (別名，用於相容)
+router.get('/market-summary', async (req, res) => {
+    try {
+        const sql = `
+            WITH latest AS (
+                SELECT MAX(trade_date) as m_date FROM daily_prices
+            )
+            SELECT 
+                COUNT(*) filter (where change_percent > 0) as up_count,
+                COUNT(*) filter (where change_percent < 0) as down_count,
+                TO_CHAR((SELECT m_date FROM latest), 'YYYY-MM-DD') as latestDate
+            FROM daily_prices
+            WHERE trade_date = (SELECT m_date FROM latest)
+        `;
+        const result = await query(sql);
+        res.json({ success: true, ...result.rows[0] });
+    } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }
 });

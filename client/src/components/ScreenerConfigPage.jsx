@@ -15,21 +15,19 @@ const TABS = [
 ];
 
 const CLASSIC_PATTERNS = [
-    { id: 'red_three_soldiers', name: '紅三兵', type: 'bullish' },
-    { id: 'three_black_crows', name: '三隻烏鴉', type: 'bearish' },
-    { id: 'morning_star', name: '晨星', type: 'bullish' },
-    { id: 'evening_star', name: '夜星', type: 'bearish' },
-    { id: 'bullish_engulfing', name: '吞噬型態', type: 'bullish' },
-    { id: 'bearish_engulfing', name: '空頭吞噬', type: 'bearish' },
-    { id: 'piercing_line', name: '貫穿/烏雲', type: 'neutral' },
-    { id: 'hammer', name: '鎚子線', type: 'bullish' },
-    { id: 'inverted_hammer', name: '倒鎚子', type: 'bullish' },
-    { id: 'hanging_man', name: '上吊線', type: 'bearish' },
-    { id: 'shooting_star', name: '射擊之星', type: 'bearish' },
-    { id: 'three_inside_up', name: '三內升', type: 'bullish' },
-    { id: 'three_inside_down', name: '三內降', type: 'bearish' },
-    { id: 'elliott_wave_3', name: '波浪-主升段', type: 'bullish' },
-    { id: 'elliott_wave_c', name: '波浪-C波殺多', type: 'bearish' },
+    { id: 'red_three_soldiers', name: '紅三兵', type: 'bullish', desc: '連三根紅棒且收盤價創新高，預示多頭強力續漲。' },
+    { id: 'three_black_crows', name: '三隻烏鴉', type: 'bearish', desc: '連三根黑棒且收盤價創新低，預示空頭強力續跌。' },
+    { id: 'morning_star', name: '晨星', type: 'bullish', desc: '底部的反轉訊號，由長黑、小K、長紅組成。' },
+    { id: 'evening_star', name: '夜星', type: 'bearish', desc: '高檔的反轉訊號，由長紅、小K、長黑組成。' },
+    { id: 'bullish_engulfing', name: '吞噬型態', type: 'bullish', desc: '紅棒完全覆蓋前一根黑棒，強烈的買進訊號。' },
+    { id: 'bearish_engulfing', name: '空頭吞噬', type: 'bearish', desc: '黑棒完全覆蓋前一根紅棒，強烈的起跌訊號。' },
+    { id: 'piercing_line', name: '貫穿線', type: 'bullish', desc: '長紅棒超越前一根黑棒中心，多頭反攻訊號。' },
+    { id: 'hammer', name: '鎚子線', type: 'bullish', desc: '底部帶長下影線的小K線，顯示支撐強勁。' },
+    { id: 'inverted_hammer', name: '倒鎚子', type: 'bullish', desc: '底部帶長上影線的小K線，預示低檔反彈。' },
+    { id: 'hanging_man', name: '上吊線', type: 'bearish', desc: '高檔出現在長下影線小K線，預示賣壓沉重。' },
+    { id: 'shooting_star', name: '射擊之星', type: 'bearish', desc: '高價位出現長上影線小K線，反轉看跌訊號。' },
+    { id: 'three_inside_up', name: '三內升', type: 'bullish', desc: '母子線後接紅棒確認，穩健的反轉看漲。' },
+    { id: 'three_inside_down', name: '三內降', type: 'bearish', desc: '母子線後接黑棒確認，穩健的反轉看跌。' },
 ];
 
 export default function ScreenerConfigPage({
@@ -203,7 +201,7 @@ export default function ScreenerConfigPage({
                             <LayoutGrid className="w-5 h-5 text-brand-primary" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-black text-gray-900 tracking-tight">智能篩選邏輯設定</h1>
+                            <h1 className="text-xl font-black text-gray-900 tracking-tight">智能篩選</h1>
                             <p className="text-sm font-medium text-gray-500 mt-0.5">組合多項條件找出潛力飆股</p>
                         </div>
                     </div>
@@ -319,10 +317,9 @@ export default function ScreenerConfigPage({
                     {/* Global Context (Market, Date) always visible at top of content area */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-8 border-b border-gray-100">
                         <div className="space-y-3">
-                            <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 bg-brand-primary rounded-full"></span>
-                                市場分類
-                            </label>
+                            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                <span className="text-blue-600">⚡</span> 智能篩選
+                            </h2>
                             <div className="flex gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
                                 {['all', 'twse', 'tpex'].map((m) => (
                                     <button
@@ -380,13 +377,14 @@ export default function ScreenerConfigPage({
                                                     </div>
                                                     <div>
                                                         <h4 className={`font-bold text-[15px] ${isSelected ? 'text-gray-900' : 'text-gray-700 group-hover:text-gray-900'}`}>{pat.name}</h4>
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                            <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded
+                                                        <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">{pat.desc}</p>
+                                                        <div className="flex items-center gap-2 mt-2">
+                                                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded uppercase
                                                                 ${pat.type === 'bullish' ? 'bg-red-100 text-red-700' :
                                                                     pat.type === 'bearish' ? 'bg-green-100 text-green-700' :
                                                                         'bg-gray-100 text-gray-700'}
                                                             `}>
-                                                                {pat.type === 'bullish' ? '看漲' : pat.type === 'bearish' ? '看跌' : '中性'}
+                                                                {pat.type === 'bullish' ? 'BULLISH 看漲' : pat.type === 'bearish' ? 'BEARISH 看跌' : 'NEUTRAL 中性'}
                                                             </span>
                                                         </div>
                                                     </div>

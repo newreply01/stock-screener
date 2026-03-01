@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 
 export default function Header({ currentView = 'dashboard' }) {
     const { user, logout, showLoginModal, setShowLoginModal } = useAuth();
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const dispatchView = (view) => {
         window.dispatchEvent(new CustomEvent('muchstock-view', { detail: view }));
@@ -52,6 +53,12 @@ export default function Header({ currentView = 'dashboard' }) {
                             台股篩選
                         </button>
                         <button
+                            onClick={() => dispatchView('stock-detail')}
+                            className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'stock-detail' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
+                        >
+                            個股資訊
+                        </button>
+                        <button
                             onClick={() => dispatchView('institutional')}
                             className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'institutional' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
                         >
@@ -67,7 +74,7 @@ export default function Header({ currentView = 'dashboard' }) {
                             onClick={() => dispatchView('screener-config')}
                             className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'screener-config' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
                         >
-                            進階篩選設定
+                            智能篩選
                         </button>
                         <button
                             onClick={() => dispatchView('news')}
@@ -151,11 +158,42 @@ export default function Header({ currentView = 'dashboard' }) {
                         )}
                     </div>
 
-                    <button className="lg:hidden p-2 text-gray-300 hover:text-white transition-colors">
+                    <button
+                        className="lg:hidden p-2 text-gray-300 hover:text-white transition-colors"
+                        onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    >
                         <Menu className="w-6 h-6" />
                     </button>
                 </div>
             </div>
+
+            {/* Mobile Menu */}
+            {isMenuOpen && (
+                <div className="lg:hidden bg-brand-dark border-t border-white/5 py-4 px-4 space-y-2 animate-in slide-in-from-top duration-200">
+                    <button onClick={() => { dispatchView('market-overview'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'market-overview' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>大盤概況</button>
+                    <button onClick={() => { dispatchView('dashboard'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'dashboard' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>台股篩選</button>
+                    <button onClick={() => { dispatchView('stock-detail'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'stock-detail' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>個股資訊</button>
+                    <button onClick={() => { dispatchView('institutional'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'institutional' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>三大法人</button>
+                    <button onClick={() => { dispatchView('sentiment'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'sentiment' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>市場情緒</button>
+                    <button onClick={() => { dispatchView('screener-config'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'screener-config' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>智能篩選</button>
+                    <div className="pt-2 border-t border-white/5">
+                        <div className="flex items-center bg-white/10 rounded-md px-3 py-1.5 mt-2">
+                            <input
+                                type="text"
+                                placeholder="搜尋股票..."
+                                className="bg-transparent border-none outline-none text-sm w-full text-white"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        window.dispatchEvent(new CustomEvent('muchstock-search', { detail: e.target.value }));
+                                        setIsMenuOpen(false);
+                                    }
+                                }}
+                            />
+                            <Search className="w-4 h-4 text-gray-400" />
+                        </div>
+                    </div>
+                </div>
+            )}
 
 
         </header>

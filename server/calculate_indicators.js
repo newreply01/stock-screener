@@ -19,7 +19,7 @@ async function calculateAndStoreIndicators() {
 
             // 2. 取得歷史價量資料 (由舊到新)
             const pricesRes = await query(`
-                SELECT trade_date, close_price 
+                SELECT trade_date, open_price, high_price, low_price, close_price 
                 FROM daily_prices 
                 WHERE symbol = $1 
                 ORDER BY trade_date ASC
@@ -78,22 +78,27 @@ async function calculateAndStoreIndicators() {
                 const lows = prices.map(p => parseFloat(p.low_price));
 
                 const input = {
-                    open: opens.slice(len - 5, len),
-                    high: highs.slice(len - 5, len),
-                    low: lows.slice(len - 5, len),
-                    close: closes.slice(len - 5, len)
+                    open: opens.slice(len - 5, len).map(v => parseFloat(v)),
+                    high: highs.slice(len - 5, len).map(v => parseFloat(v)),
+                    low: lows.slice(len - 5, len).map(v => parseFloat(v)),
+                    close: closes.slice(len - 5, len).map(v => parseFloat(v))
                 };
 
                 const patternsFound = [];
-                if (safeCheck(bullishengulfingpattern, input)) patternsFound.push('bullish_engulfing');
-                if (safeCheck(bearishengulfingpattern, input)) patternsFound.push('bearish_engulfing');
-                if (safeCheck(bullishhammerstick, input)) patternsFound.push('hammer');
-                if (safeCheck(hangingman, input)) patternsFound.push('hanging_man');
-                if (safeCheck(morningstar, input)) patternsFound.push('morning_star');
-                if (safeCheck(eveningstar, input)) patternsFound.push('evening_star');
-                if (safeCheck(threewhitesoldiers, input)) patternsFound.push('red_three_soldiers');
-                if (safeCheck(threeblackcrows, input)) patternsFound.push('three_black_crows');
-                if (safeCheck(piercingline, input)) patternsFound.push('piercing_line');
+                // 確保輸入資料完整且沒有 NaN
+                const isValidInput = input.open.every(v => !isNaN(v)) && input.high.every(v => !isNaN(v));
+
+                if (isValidInput) {
+                    if (safeCheck(bullishengulfingpattern, input)) patternsFound.push('bullish_engulfing');
+                    if (safeCheck(bearishengulfingpattern, input)) patternsFound.push('bearish_engulfing');
+                    if (safeCheck(bullishhammerstick, input)) patternsFound.push('hammer');
+                    if (safeCheck(hangingman, input)) patternsFound.push('hanging_man');
+                    if (safeCheck(morningstar, input)) patternsFound.push('morning_star');
+                    if (safeCheck(eveningstar, input)) patternsFound.push('evening_star');
+                    if (safeCheck(threewhitesoldiers, input)) patternsFound.push('red_three_soldiers');
+                    if (safeCheck(threeblackcrows, input)) patternsFound.push('three_black_crows');
+                    if (safeCheck(piercingline, input)) patternsFound.push('piercing_line');
+                }
 
                 currentPatterns = patternsFound;
             }

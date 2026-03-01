@@ -18,7 +18,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/watchlist', watchlistRoutes);
+app.use('/api/watchlists', watchlistRoutes);
 app.use('/api/filters', filterRoutes);
 app.use('/api', screenerRoutes);
 
