@@ -108,33 +108,60 @@ export default function MarketDashboard({ onStockSelect }) {
 
                     <div className="flex-1 flex items-end justify-between gap-2 h-48 mb-4">
                         {[
-                            { label: '漲停', count: distribution?.limit_up, color: 'bg-red-600', hoverColor: 'hover:bg-red-700' },
-                            { label: '5%↑', count: distribution?.up_5, color: 'bg-red-500', hoverColor: 'hover:bg-red-600' },
-                            { label: '2-5%', count: distribution?.up_2_5, color: 'bg-red-400', hoverColor: 'hover:bg-red-500' },
-                            { label: '0-2%', count: distribution?.up_0_2, color: 'bg-red-300', hoverColor: 'hover:bg-red-400' },
-                            { label: '平盤', count: distribution?.flat, color: 'bg-gray-400', hoverColor: 'hover:bg-gray-500' },
-                            { label: '0-2%↓', count: distribution?.down_0_2, color: 'bg-green-300', hoverColor: 'hover:bg-green-400' },
-                            { label: '2-5%↓', count: distribution?.down_2_5, color: 'bg-green-400', hoverColor: 'hover:bg-green-500' },
-                            { label: '5%↓', count: distribution?.down_5, color: 'bg-green-500', hoverColor: 'hover:bg-green-600' },
-                            { label: '跌停', count: distribution?.limit_down, color: 'bg-green-600', hoverColor: 'hover:bg-green-700' },
+                            { id: 'limit_up', label: '漲停', count: distribution?.limit_up, color: 'bg-red-600', hoverColor: 'hover:bg-red-700' },
+                            { id: 'up_5', label: '5%↑', count: distribution?.up_5, color: 'bg-red-500', hoverColor: 'hover:bg-red-600' },
+                            { id: 'up_2_5', label: '2-5%', count: distribution?.up_2_5, color: 'bg-red-400', hoverColor: 'hover:bg-red-500' },
+                            { id: 'up_0_2', label: '0-2%', count: distribution?.up_0_2, color: 'bg-red-300', hoverColor: 'hover:bg-red-400' },
+                            { id: 'flat', label: '平盤', count: distribution?.flat, color: 'bg-gray-400', hoverColor: 'hover:bg-gray-500' },
+                            { id: 'down_0_2', label: '0-2%↓', count: distribution?.down_0_2, color: 'bg-green-300', hoverColor: 'hover:bg-green-400' },
+                            { id: 'down_2_5', label: '2-5%↓', count: distribution?.down_2_5, color: 'bg-green-400', hoverColor: 'hover:bg-green-500' },
+                            { id: 'down_5', label: '5%↓', count: distribution?.down_5, color: 'bg-green-500', hoverColor: 'hover:bg-green-600' },
+                            { id: 'limit_down', label: '跌停', count: distribution?.limit_down, color: 'bg-green-600', hoverColor: 'hover:bg-green-700' },
                         ].map((bar, i) => {
                             const histogramValues = distribution ? [
                                 distribution.limit_up, distribution.up_5, distribution.up_2_5, distribution.up_0_2,
                                 distribution.flat,
                                 distribution.down_0_2, distribution.down_2_5, distribution.down_5, distribution.limit_down
-                            ].map(Number) : [1];
+                            ].map(v => Number(v) || 0) : [1];
                             const maxVal = Math.max(...histogramValues, 1);
-                            const height = `${(Number(bar.count) / maxVal) * 100}%`;
+                            const countNum = Number(bar.count) || 0;
+                            const height = `${(countNum / maxVal) * 100}%`;
+
+                            // 點擊後發送事件給 Screener 讓他跳轉或篩選
+                            const getCategoryFilter = (id) => {
+                                switch (id) {
+                                    case 'limit_up': return { change_min: '9.5', change_max: '' };
+                                    case 'up_5': return { change_min: '5.0', change_max: '9.49' };
+                                    case 'up_2_5': return { change_min: '2.0', change_max: '4.99' };
+                                    case 'up_0_2': return { change_min: '0.01', change_max: '1.99' };
+                                    case 'flat': return { change_min: '0', change_max: '0' };
+                                    case 'down_0_2': return { change_min: '-1.99', change_max: '-0.01' };
+                                    case 'down_2_5': return { change_min: '-4.99', change_max: '-2.0' };
+                                    case 'down_5': return { change_min: '-9.49', change_max: '-5.0' };
+                                    case 'limit_down': return { change_min: '', change_max: '-9.5' };
+                                    default: return {};
+                                }
+                            };
+
+                            const handleBarClick = () => {
+                                window.dispatchEvent(new CustomEvent('muchstock-view', {
+                                    detail: {
+                                        view: 'screener-config',
+                                        filters: getCategoryFilter(bar.id)
+                                    }
+                                }));
+                            };
+
                             return (
-                                <div key={i} className="flex-1 flex flex-col items-center group">
-                                    <div className="relative w-full flex flex-col items-center mb-2">
-                                        <div className="absolute -top-6 text-[10px] font-black text-gray-800 opacity-0 group-hover:opacity-100 transition-opacity bg-white px-1.5 py-0.5 rounded shadow-sm border border-gray-100 z-10">{bar.count}</div>
+                                <div key={i} className="flex-1 flex flex-col items-center group cursor-pointer" onClick={handleBarClick}>
+                                    <div className="relative w-full flex flex-col items-center mb-2 justify-end" style={{ height: '100%' }}>
+                                        <div className="absolute -top-6 text-[10px] font-black text-gray-800 opacity-0 group-hover:opacity-100 transition-opacity bg-white px-1.5 py-0.5 rounded shadow-sm border border-gray-100 z-10 whitespace-nowrap">{countNum} 家</div>
                                         <div
                                             className={`w-full rounded-t-lg transition-all duration-700 ease-out shadow-sm ${bar.color} ${bar.hoverColor} group-hover:-translate-y-1`}
-                                            style={{ height: height || '2px', minHeight: '2px' }}
+                                            style={{ height: height, minHeight: countNum > 0 ? '4px' : '2px' }}
                                         ></div>
                                     </div>
-                                    <span className="text-[10px] font-black text-gray-400 mt-2 whitespace-nowrap tracking-tighter">{bar.label}</span>
+                                    <span className="text-[10px] font-black text-gray-400 mt-2 whitespace-nowrap tracking-tighter group-hover:text-gray-700">{bar.label}</span>
                                 </div>
                             );
                         })}

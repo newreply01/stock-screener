@@ -71,14 +71,26 @@ function App() {
       if (currentView !== 'stock-detail') setCurrentView('stock-detail')
     }
     const handleSwitchView = (e) => {
-      console.log('App: Switching view to', e.detail);
+      let targetView = e.detail;
+      let incomingFilters = null;
+
+      if (typeof e.detail === 'object') {
+        targetView = e.detail.view;
+        incomingFilters = e.detail.filters;
+      }
+
+      console.log('App: Switching view to', targetView, 'with filters', incomingFilters);
 
       // 未登入不可進入自選股
-      if (e.detail === 'watchlist' && !requireLogin()) {
+      if (targetView === 'watchlist' && !requireLogin()) {
         return;
       }
 
-      setCurrentView(e.detail)
+      setCurrentView(targetView)
+      if (incomingFilters) {
+        setFilters(prev => ({ ...prev, ...incomingFilters }));
+        setPage(1);
+      }
       window.scrollTo(0, 0)
     }
     window.addEventListener('muchstock-view', handleSwitchView)
