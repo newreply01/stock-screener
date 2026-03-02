@@ -23,7 +23,7 @@ export default function ValuationView({ financials, loading, currentPe, currentP
         // Data is DESC by date from API, need ASC for chart
         return [...sourceData].reverse().map(item => ({
             name: item.date ? new Date(item.date).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit' }) : 'N/A',
-            eps: parseFloat(item.eps)
+            eps: parseFloat(item.value || item.eps)
         }));
     }, [financials]);
 
@@ -128,9 +128,9 @@ export default function ValuationView({ financials, loading, currentPe, currentP
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[350px]">
                 <h3 className="text-slate-800 font-bold mb-6 flex items-center gap-2">
                     <TrendingUp className="text-purple-600 w-5 h-5" />
-                    近 12 季每股盈餘 (EPS) 趨勢
+                    近 8 季每股盈餘 (EPS) 走勢
                 </h3>
-                <div className="flex-1 w-full">
+                <line_number>: </line_number>                <div className="flex-1 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={epsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />

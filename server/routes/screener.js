@@ -412,14 +412,20 @@ router.get('/stock/:symbol/financials', async (req, res) => {
         const { symbol } = req.params;
 
         // Parallel queries for better performance
-        const [fundamentals, monthlyRevenue, eps, dividends, balanceSheet, incomeStatement, cashFlow] = await Promise.all([
+        const [fundamentals, monthlyRevenue, eps, dividends, balanceSheet, incomeStatement, cashFlow, ratios] = await Promise.all([
             query('SELECT * FROM fundamentals WHERE symbol = $1', [symbol]),
             query('SELECT * FROM monthly_revenue WHERE symbol = $1 ORDER BY revenue_year DESC, revenue_month DESC LIMIT 12', [symbol]),
             query('SELECT * FROM financial_statements WHERE symbol = $1 AND type = $2 ORDER BY date DESC LIMIT 8', [symbol, 'EPS']),
             query('SELECT * FROM fm_dividend WHERE stock_id = $1 ORDER BY date DESC LIMIT 20', [symbol]),
-            query('SELECT * FROM fm_financial_statements WHERE stock_id = $1 AND type = $2 ORDER BY date DESC LIMIT 4', [symbol, 'Balance Sheet']),
-            query('SELECT * FROM fm_financial_statements WHERE stock_id = $1 AND type = $2 ORDER BY date DESC LIMIT 4', [symbol, 'Income Statement']),
-            query('SELECT * FROM fm_financial_statements WHERE stock_id = $1 AND type = $2 ORDER BY date DESC LIMIT 4', [symbol, 'Cash Flows'])
+            query('SELECT * FROM fm_financial_statements WHERE stock_id = $1 AND type = $2 ORDER BY date DESC LIMIT 8', [symbol, 'Balance Sheet']),
+            query('SELECT * FROM fm_financial_statements WHERE stock_id = $1 AND type = $2 ORDER BY date DESC LIMIT 8', [symbol, 'Income Statement']),
+            query('SELECT * FROM fm_financial_statements WHERE stock_id = $1 AND type = $2 ORDER BY date DESC LIMIT 8', [symbol, 'Cash Flows']),
+            query(`
+                SELECT * FROM fm_financial_statements 
+                WHERE stock_id = $1 
+                AND item IN ('GrossProfitMargin', 'OperatingIncomeMargin', 'NetIncomeMargin', 'ROE', 'ROA')
+                ORDER BY date DESC LIMIT 40
+            `, [symbol])
         ]);
 
         res.json({
@@ -431,7 +437,8 @@ router.get('/stock/:symbol/financials', async (req, res) => {
                 balanceSheet: balanceSheet.rows || [],
                 incomeStatement: incomeStatement.rows || [],
                 cashFlow: cashFlow.rows || []
-            }
+            },
+            ratios: ratios.rows || []
         });
     } catch (err) {
         console.error('Error fetching financials:', err);

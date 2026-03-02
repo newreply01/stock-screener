@@ -182,7 +182,7 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
         const dateStr = item.date ? new Date(item.date).toLocaleDateString('zh-TW', { year: '2-digit', month: '2-digit' }) : 'N/A';
         return {
             name: dateStr,
-            eps: parseFloat(item.eps)
+            eps: parseFloat(item.value)
         };
     }).reverse() || []
 

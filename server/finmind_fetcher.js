@@ -5,7 +5,8 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const { pool } = require('./db');
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+const fetch = require('node-fetch');
+const nodeFetch = fetch.default || fetch;
 
 const BASE_URL = 'https://api.finmindtrade.com/api/v4/data';
 const TOKENS = (process.env.FINMIND_TOKENS || process.env.FINMIND_TOKEN || '')
@@ -52,7 +53,7 @@ async function fetchFinMind(dataset, data_id, start_date = START_DATE) {
         url += `&token=${token}`;
     }
     try {
-        const res = await fetch(url);
+        const res = await nodeFetch(url);
         if (!res.ok) {
             if (res.status === 429) {
                 console.warn(`⚠️ [FinMind] Rate limited on Token #${currentTokenIndex + 1}. Trying to rotate...`);
@@ -139,6 +140,138 @@ async function syncMarginTrading(symbol) {
     }
 }
 
+async function syncFinancialRatios(symbol) {
+    const client = await pool.connect();
+    try {
+        console.log(`🔄 [FinMind] Calculating financial ratios (ROE/ROA/Margins) for ${symbol}...`);
+
+        console.log(`🔍 [FinMind] Debugging syncFinancialRatios for ${symbol}`);
+
+        // Let's just fetch EVERYTHING for this symbol and log it
+        const allRes = await client.query(`SELECT type, item, date FROM fm_financial_statements WHERE stock_id = $1 LIMIT 10`, [symbol]);
+        console.log(`🔍 [FinMind] Total rows for ${symbol} in DB: ${allRes.rows.length} (sample shown above)`);
+        allRes.rows.forEach(r => console.log(`  - ${r.date}: [${r.type}] [${r.item}]`));
+
+        const res = await client.query(`SELECT date, type, value, item FROM fm_financial_statements WHERE stock_id = $1`, [symbol]);
+        console.log(`🔍 [FinMind] Query returned ${res.rows.length} rows for ${symbol}`);
+
+        if (res.rows.length === 0) {
+            console.warn(`⚠️ [FinMind] No financial statement data found for ${symbol} in fm_financial_statements, cannot calculate ratios.`);
+            return;
+        }
+
+        // Group by date
+        const dataByDate = {};
+        res.rows.forEach(r => {
+            // Ensure date is a string in YYYY-MM-DD format
+            const dateStr = r.date instanceof Date ? r.date.toISOString().split('T')[0] : r.date;
+            if (!dataByDate[dateStr]) dataByDate[dateStr] = {};
+
+            // r.type is the item name (Revenue, TotalAssets, etc.)
+            // r.item is the category (Income Statement, Balance Sheet)
+            if (r.type) dataByDate[dateStr][r.type] = parseFloat(r.value);
+            // Also support localized names if they are in the 'item' column for older data
+            if (r.item && r.item !== 'Income Statement' && r.item !== 'Balance Sheet') {
+                dataByDate[dateStr][r.item] = parseFloat(r.value);
+            }
+        });
+
+        let count = 0;
+        const sortedDates = Object.keys(dataByDate).sort().reverse();
+        if (sortedDates.length > 0) {
+            const latestDate = sortedDates[0];
+            console.log(`🔍 [FinMind] Latest date: ${latestDate}, keys count: ${Object.keys(dataByDate[latestDate]).length}`);
+        }
+
+        for (const [date, data] of Object.entries(dataByDate)) {
+            // Support both English and Chinese keys for robustness
+            const revenue = data['Revenue'] || data['營業收入'] || 0;
+            const grossProfit = data['GrossProfit'] || data['營業毛利（毛損）'] || 0;
+            const opIncome = data['OperatingIncome'] || data['營業利益（損失）'] || 0;
+            const netIncome = data['NetIncome'] || data['IncomeAfterTaxes'] || data['本期淨利（淨損）'] || 0;
+            const totalAssets = data['TotalAssets'] || data['資產總額'] || data['資產總計'] || 0;
+            const equity = data['Equity'] || data['權益總額'] || data['權益總計'] || 0;
+
+            const ratios = [];
+            if (revenue > 0) {
+                ratios.push({ item: 'GrossProfitMargin', value: (grossProfit / revenue) * 100 });
+                ratios.push({ item: 'OperatingIncomeMargin', value: (opIncome / revenue) * 100 });
+                ratios.push({ item: 'NetIncomeMargin', value: (netIncome / revenue) * 100 });
+            }
+            if (equity > 0) {
+                ratios.push({ item: 'ROE', value: (netIncome / equity) * 100 });
+            }
+            if (totalAssets > 0) {
+                ratios.push({ item: 'ROA', value: (netIncome / totalAssets) * 100 });
+            }
+
+            if (ratios.length > 0) {
+                for (const r of ratios) {
+                    await client.query(`
+                        INSERT INTO fm_financial_statements (stock_id, date, type, value, item)
+                        VALUES ($1, $2, $3, $4, $5)
+                        ON CONFLICT (stock_id, date, type, item) DO UPDATE SET
+                            value = EXCLUDED.value
+                    `, [symbol, date, 'Ratio', r.value, r.item]);
+                }
+                count++;
+            }
+        }
+        console.log(`✅ [FinMind] Calculated and saved ratios for ${symbol} across ${count} periods.`);
+    } catch (err) {
+        console.error(`❌ [FinMind] Failed to calculate ratios for ${symbol}:`, err.message);
+    } finally {
+        client.release();
+    }
+}
+
+async function syncDetailedFinancials(symbol) {
+    const client = await pool.connect();
+    try {
+        console.log(`🔄 [FinMind] Syncing detailed financials (BS/IS/CF) for ${symbol}...`);
+
+        // TaiwanStockFinancialStatements datasets:
+        // - TaiwanStockFinancialStatements: Income Statement
+        // - TaiwanStockBalanceSheet: Balance Sheet
+        const datasets = ['TaiwanStockFinancialStatements', 'TaiwanStockBalanceSheet'];
+
+        for (const dataset of datasets) {
+            console.log(`  [FinMind] Fetching ${dataset}...`);
+            const data = await fetchFinMind(dataset, symbol);
+            if (data && data.length > 0) {
+                for (const item of data) {
+                    // FinMind 'type' mapping:
+                    // In TaiwanStockFinancialStatements, item.type is basically the item name (Revenue, etc.)
+                    // In TaiwanStockBalanceSheet, item.type is also the item name (TotalAssets, etc.)
+                    // We need to determine the CATEGORY (Income Statement / Balance Sheet)
+                    let category = 'Unknown';
+                    if (dataset === 'TaiwanStockFinancialStatements') category = 'Income Statement';
+                    if (dataset === 'TaiwanStockBalanceSheet') category = 'Balance Sheet';
+
+                    await client.query(`
+                        INSERT INTO fm_financial_statements (stock_id, date, type, value, item)
+                        VALUES ($1, $2, $3, $4, $5)
+                        ON CONFLICT (stock_id, date, type, item) DO UPDATE SET
+                            value = EXCLUDED.value
+                    `, [symbol, item.date, item.type || item.item, item.value, category]);
+
+                    // Also update legacy tables
+                    if (category === 'Balance Sheet') {
+                        await client.query(`INSERT INTO fm_balance_sheet (stock_id, date, value, item) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`, [symbol, item.date, item.value, item.origin_name || item.type]).catch(e => { });
+                    } else if (category === 'Income Statement') {
+                        await client.query(`INSERT INTO fm_income_statement (stock_id, date, value, item) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`, [symbol, item.date, item.value, item.origin_name || item.type]).catch(e => { });
+                    }
+                }
+                console.log(`✅ [FinMind] Synced ${dataset} for ${symbol}: ${data.length} items.`);
+            }
+        }
+    } catch (err) {
+        console.error(`❌ [FinMind] Failed to sync detailed financials for ${symbol}:`, err.message);
+    } finally {
+        client.release();
+    }
+}
+
 async function syncStockFinancials(symbol) {
     const client = await pool.connect();
     try {
@@ -154,17 +287,7 @@ async function syncStockFinancials(symbol) {
             `, [symbol, item.revenue_year, item.revenue_month, item.revenue]);
         }
 
-        const statements = await fetchFinMind('TaiwanStockFinancialStatements', symbol);
-        for (const item of statements) {
-            if (item.type === 'EPS' || item.type === 'EarningsPerShare') {
-                await client.query(`
-                    INSERT INTO financial_statements (symbol, date, type, value, origin_name)
-                    VALUES ($1, $2, $3, $4, $5)
-                    ON CONFLICT (symbol, date, type, origin_name) 
-                    DO UPDATE SET value = EXCLUDED.value
-                `, [symbol, item.date, 'EPS', item.value, item.type]);
-            }
-        }
+        await syncDetailedFinancials(symbol);
 
         try {
             const dividends = await fetchFinMind('TaiwanStockDividend', symbol);
@@ -206,6 +329,8 @@ async function syncStockFinancials(symbol) {
 
         await syncBrokerTrading(symbol);
         await syncMarginTrading(symbol);
+        await syncDetailedFinancials(symbol);
+        await syncFinancialRatios(symbol);
 
         console.log(`✅ [FinMind] Synced ${symbol} successfully.`);
     } catch (err) {
@@ -229,4 +354,4 @@ async function syncAllStocksFinancials() {
     }
 }
 
-module.exports = { syncStockFinancials, syncAllStocksFinancials, syncBrokerTrading, syncMarginTrading };
+module.exports = { syncStockFinancials, syncAllStocksFinancials, syncBrokerTrading, syncMarginTrading, syncFinancialRatios, syncDetailedFinancials, syncDetailedFinancials };
