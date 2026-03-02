@@ -265,23 +265,20 @@ export default function ResultTable({ results, loading, sortBy, sortDir, onSort,
         }
     };
 
-    if (loading) {
-        return (
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-20 flex flex-col items-center justify-center min-h-[500px]">
-                <div className="relative">
-                    <div className="animate-spin rounded-full h-20 w-20 border-[3px] border-slate-100 border-t-brand-primary"></div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-4 h-4 bg-brand-primary rounded-full animate-pulse"></div>
-                    </div>
-                </div>
-                <div className="mt-8 text-brand-dark font-black uppercase tracking-[0.2em] text-sm italic">Synchronizing Data...</div>
-                <div className="text-slate-400 text-xs mt-2 font-bold uppercase tracking-widest">Applying financial filters</div>
-            </div>
-        )
-    }
-
     return (
-        <div className="flex flex-col gap-6 animate-in fade-in zoom-in-95 duration-500">
+        <div className="relative flex flex-col gap-6 animate-in fade-in zoom-in-95 duration-500 min-h-[500px]">
+            {loading && (
+                <div className="absolute inset-0 z-50 bg-white/70 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center border border-slate-200 shadow-xl transition-all duration-300">
+                    <div className="relative">
+                        <div className="animate-spin rounded-full h-20 w-20 border-[3px] border-slate-100 border-t-brand-primary"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-4 h-4 bg-brand-primary rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
+                    <div className="mt-8 text-brand-dark font-black uppercase tracking-[0.2em] text-sm italic">Synchronizing Data...</div>
+                    <div className="text-slate-400 text-xs mt-2 font-bold uppercase tracking-widest">Applying financial filters</div>
+                </div>
+            )}
             {/* Header Info Banner */}
             <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200 p-6 flex flex-col md:flex-row justify-between items-center gap-6">
                 <div className="flex items-center gap-4">
