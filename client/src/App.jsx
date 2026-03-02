@@ -13,6 +13,8 @@ import ComparisonChart from './components/ComparisonChart'
 import ProfilePage from './components/ProfilePage'
 import LoginModal from './components/LoginModal'
 import MarketDashboard from './components/MarketDashboard'
+import TradingDashboard from './components/TradingDashboard'
+import RealtimeExplorer from './components/RealtimeExplorer'
 import { screenStocks, getStats, getWatchlists, addStockToWatchlist, removeStockFromWatchlist } from './utils/api'
 import { useAuth } from './context/AuthContext'
 
@@ -166,6 +168,10 @@ function App() {
           <MarketSentimentView />
         ) : currentView === 'market-overview' ? (
           <MarketDashboard onStockSelect={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }} />
+        ) : currentView === 'trading' ? (
+          <TradingDashboard />
+        ) : currentView === 'explorer' ? (
+          <RealtimeExplorer onStockSelect={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }} />
         ) : currentView === 'stock-detail' ? (
           <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
             <StockDetail stock={mainStock} isInline={true} />

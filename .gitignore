@@ -12,3 +12,10 @@ server/realtime_crawler.js
 server/historical_tick_sync.js
 start_crawler.sh
 start_historical.sh
+
+# Debug & Scratch Scripts
+server/debug_*.js
+server/backfill_*.js
+server/test_*.js
+tmp/
+*.tmp

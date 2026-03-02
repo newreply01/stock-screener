@@ -77,10 +77,16 @@ export default function Header({ currentView = 'dashboard' }) {
                             財經新聞
                         </button>
                         <button
-                            onClick={() => dispatchView('dashboard')}
-                            className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'dashboard' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
+                            onClick={() => dispatchView('trading')}
+                            className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'trading' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
                         >
-                            台股篩選
+                            即時看盤
+                        </button>
+                        <button
+                            onClick={() => dispatchView('explorer')}
+                            className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'explorer' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
+                        >
+                            歷史交易
                         </button>
                     </nav>
                 </div>
@@ -176,7 +182,8 @@ export default function Header({ currentView = 'dashboard' }) {
                     <button onClick={() => { dispatchView('sentiment'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'sentiment' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>市場情緒</button>
                     <button onClick={() => { dispatchView('screener-config'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'screener-config' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>智能選股</button>
                     <button onClick={() => { dispatchView('news'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'news' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>財經新聞</button>
-                    <button onClick={() => { dispatchView('dashboard'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'dashboard' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>台股篩選</button>
+                    <button onClick={() => { dispatchView('trading'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'trading' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>即時看盤</button>
+                    <button onClick={() => { dispatchView('explorer'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'explorer' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>歷史交易</button>
                     <div className="pt-2 border-t border-white/5">
                         <div className="flex items-center bg-white/10 rounded-md px-3 py-1.5 mt-2">
                             <input

@@ -181,3 +181,11 @@ export async function getRealtimeData(symbol) {
     if (!res.ok) throw new Error('獲取即時行情失敗');
     return res.json();
 }
+
+export async function getRealtimeTicks(symbol, date) {
+    if (!symbol) return { data: [], date: null };
+    const dateParam = date ? `&date=${date}` : '';
+    const res = await fetch(`${API_BASE}/realtime-ticks?symbol=${symbol}${dateParam}`);
+    if (!res.ok) throw new Error('獲取盤中分時資料失敗');
+    return res.json();
+}

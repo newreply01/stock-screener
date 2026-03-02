@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import api from '../api';
 
 const TradingDashboard = () => {
     const defaultSymbols = ['2330', '2317', '2454']; // Taiwan Semi, Hon Hai, MediaTek

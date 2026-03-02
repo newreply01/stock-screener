@@ -109,13 +109,14 @@ async function fetchTPEx(dateObj) {
         const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36' } });
         const json = await res.json();
 
-        if (!json.aaData || json.aaData.length === 0) {
+        const dataRows = (json.tables && json.tables[0] && json.tables[0].data) ? json.tables[0].data : json.aaData;
+        if (!dataRows || dataRows.length === 0) {
             console.log(`[TPEx] ${rocDate} 無資料`);
             return;
         }
 
         let count = 0;
-        for (const row of json.aaData) {
+        for (const row of dataRows) {
             const symbol = row[0];
             const name = row[1];
             if (!/^\d{4,6}$/.test(symbol)) continue;
@@ -128,9 +129,13 @@ async function fetchTPEx(dateObj) {
             const open = parseNumber(row[4]);
             const high = parseNumber(row[5]);
             const low = parseNumber(row[6]);
-            const volume = parseNumber(row[7]);
-            const tradeValue = parseNumber(row[8]);
-            const transactions = parseNumber(row[9]);
+
+            // New format (tables[0].data) has an extra 'Avg Price' column at index 7.
+            // Old format (aaData) was 16-17 cols, new is 19.
+            const isNewFormat = row.length >= 19;
+            const volume = parseNumber(isNewFormat ? row[8] : row[7]);
+            const tradeValue = parseNumber(isNewFormat ? row[9] : row[8]);
+            const transactions = parseNumber(isNewFormat ? row[10] : row[9]);
 
             const changePercent = (close && change) ? (change / (close - change) * 100) : 0;
 
@@ -463,4 +468,4 @@ if (require.main === module) {
         .catch(err => { console.error(err); process.exit(1); });
 }
 
-module.exports = { catchUp, fetchRange };
+module.exports = { catchUp, fetchRange, fetchTPEx };
