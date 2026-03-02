@@ -13,7 +13,7 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
 
     // Filter and table state
     const [filters, setFilters] = useState({});
-    const [results, setResults] = useState(null);
+    const [results, setResults] = useState({ data: [], total: 0, page: 1, totalPages: 0, latestDate: null });
     const [tableLoading, setTableLoading] = useState(false);
     const [page, setPage] = useState(1);
     const [sortBy, setSortBy] = useState('volume');
