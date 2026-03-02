@@ -1,13 +1,46 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { TrendingUp, TrendingDown, Activity, BarChart3, Flame, Calendar, ArrowRight } from 'lucide-react';
-import { getMarketSummary } from '../utils/api';
+import { getMarketSummary, screenStocks } from '../utils/api';
 import MarketFocus from './MarketFocus';
 import MarketMarginChart from './MarketMarginChart';
+import ResultTable from './ResultTable';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, CartesianGrid } from 'recharts';
 
-export default function MarketDashboard({ onStockSelect }) {
+export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggleWatchlist }) {
     const [market, setMarket] = useState('all');
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+
+    // Filter and table state
+    const [filters, setFilters] = useState({});
+    const [results, setResults] = useState(null);
+    const [tableLoading, setTableLoading] = useState(false);
+    const [page, setPage] = useState(1);
+    const [sortBy, setSortBy] = useState('volume');
+    const [sortDir, setSortDir] = useState('desc');
+
+    const fetchTableData = useCallback(async () => {
+        setTableLoading(true);
+        try {
+            const res = await screenStocks({
+                ...filters,
+                market: market === 'all' ? undefined : market,
+                sort_by: sortBy,
+                sort_dir: sortDir,
+                page,
+                limit: 50
+            });
+            setResults(res || { data: [], total: 0, page: 1, totalPages: 0, latestDate: null });
+        } catch (err) {
+            console.error('Table fetch error:', err);
+        } finally {
+            setTableLoading(false);
+        }
+    }, [filters, sortBy, sortDir, page, market]);
+
+    useEffect(() => {
+        fetchTableData();
+    }, [fetchTableData]);
 
     useEffect(() => {
         const fetchSummary = async () => {
@@ -50,7 +83,7 @@ export default function MarketDashboard({ onStockSelect }) {
         );
     }
 
-    const { distribution, industries, hotStocks, latestDate } = data || {};
+    const { distribution, industries, twseVolume, tpexVolume, latestDate } = data || {};
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -144,12 +177,9 @@ export default function MarketDashboard({ onStockSelect }) {
                             };
 
                             const handleBarClick = () => {
-                                window.dispatchEvent(new CustomEvent('muchstock-view', {
-                                    detail: {
-                                        view: 'screener-config',
-                                        filters: getCategoryFilter(bar.id)
-                                    }
-                                }));
+                                setFilters(getCategoryFilter(bar.id));
+                                setPage(1);
+                                document.getElementById('market-result-table')?.scrollIntoView({ behavior: 'smooth' });
                             };
 
                             return (
@@ -188,7 +218,15 @@ export default function MarketDashboard({ onStockSelect }) {
                         ].map((ind, i) => {
                             const change = parseFloat(ind.avg_change);
                             return (
-                                <div key={i} className="flex flex-col gap-1.5 group cursor-default">
+                                <div
+                                    key={i}
+                                    className="flex flex-col gap-1.5 group cursor-pointer"
+                                    onClick={() => {
+                                        setFilters({ industry: ind.industry });
+                                        setPage(1);
+                                        document.getElementById('market-result-table')?.scrollIntoView({ behavior: 'smooth' });
+                                    }}
+                                >
                                     <div className="flex justify-between items-end">
                                         <span className="text-sm font-black text-gray-700 group-hover:text-brand-primary transition-colors">{ind.industry}</span>
                                         <span className={`text-xs font-black ${change >= 0 ? 'text-red-500' : 'text-green-600'}`}>
@@ -207,69 +245,141 @@ export default function MarketDashboard({ onStockSelect }) {
                     </div>
                 </div>
 
-                {/* 3. Hot Stocks Table - full width or grid */}
-                <div className="lg:col-span-12 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                    <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-slate-50/50">
-                        <div className="flex items-center gap-3">
+                {/* 3. Hot Volume Charts - Split TWSE / TPEX */}
+                <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                    {/* TWSE Top Volume */}
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden p-6">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center border border-blue-200">
+                                <Flame className="w-5 h-5 text-blue-500" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black text-gray-800 tracking-tight">上市成交量榜</h3>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">TWSE Hot Volume</p>
+                            </div>
+                        </div>
+                        <div className="h-64 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={twseVolume} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                                    <XAxis type="number" fontSize={10} tickFormatter={(val) => `${(val / 1000).toFixed(0)}k`} />
+                                    <YAxis type="category" dataKey="name" width={70} fontSize={11} fontWeight="bold" />
+                                    <Tooltip
+                                        cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                                        content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                                const data = payload[0].payload;
+                                                const isUp = parseFloat(data.change_percent) >= 0;
+                                                return (
+                                                    <div className="z-50 bg-white/95 backdrop-blur-sm p-3 border border-gray-200 shadow-lg rounded-xl">
+                                                        <p className="font-black text-gray-800 text-sm mb-1">{data.name} ({data.symbol})</p>
+                                                        <p className="font-bold text-gray-600 text-xs">成交價: <span className="text-gray-900">{data.close_price}</span></p>
+                                                        <p className="font-bold text-xs mt-0.5">漲跌: <span className={isUp ? 'text-red-500' : 'text-green-500'}>{isUp ? '+' : ''}{data.change_percent}%</span></p>
+                                                        <p className="font-bold text-indigo-500 text-xs mt-0.5">成交量: {(data.volume / 1000).toFixed(0)} 張</p>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        }}
+                                    />
+                                    <Bar dataKey="volume" radius={[0, 4, 4, 0]}>
+                                        {twseVolume?.map((entry, index) => {
+                                            const isUp = parseFloat(entry.change_percent) >= 0;
+                                            return <Cell key={`cell-${index}`} fill={isUp ? '#ef4444' : '#22c55e'} />;
+                                        })}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* TPEX Top Volume */}
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden p-6">
+                        <div className="flex items-center gap-3 mb-6">
                             <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center border border-amber-200">
                                 <Flame className="w-5 h-5 text-amber-500" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-black text-gray-800 tracking-tight">盤中成交量榜</h3>
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">Today's Hot Trading Tickers</p>
+                                <h3 className="text-lg font-black text-gray-800 tracking-tight">上櫃成交量榜</h3>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">TPEX Hot Volume</p>
                             </div>
                         </div>
-                        <button
-                            className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-lg text-xs font-black hover:border-brand-primary hover:text-brand-primary transition-all flex items-center gap-2 shadow-sm"
-                            onClick={() => window.dispatchEvent(new CustomEvent('muchstock-view', { detail: 'screener-config' }))}
-                        >
-                            智能選股 <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead className="bg-gray-50/80">
-                                    <tr>
-                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">代號 / 名稱</th>
-                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">成交價</th>
-                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">漲跌幅</th>
-                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">成交量 (張)</th>
-                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {hotStocks?.map((stock, i) => {
-                                        const change = parseFloat(stock.change_percent);
-                                        return (
-                                            <tr key={i} className="hover:bg-blue-50/30 transition-colors group cursor-pointer" onClick={() => onStockSelect(stock)}>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-black text-gray-900 group-hover:text-brand-primary transition-colors">{stock.name}</span>
-                                                        <span className="text-[11px] font-bold text-gray-400 group-hover:text-brand-primary/60 transition-colors">{stock.symbol}</span>
+                        <div className="h-64 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={tpexVolume} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                                    <XAxis type="number" fontSize={10} tickFormatter={(val) => `${(val / 1000).toFixed(0)}k`} />
+                                    <YAxis type="category" dataKey="name" width={70} fontSize={11} fontWeight="bold" />
+                                    <Tooltip
+                                        cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                                        content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                                const data = payload[0].payload;
+                                                const isUp = parseFloat(data.change_percent) >= 0;
+                                                return (
+                                                    <div className="z-50 bg-white/95 backdrop-blur-sm p-3 border border-gray-200 shadow-lg rounded-xl">
+                                                        <p className="font-black text-gray-800 text-sm mb-1">{data.name} ({data.symbol})</p>
+                                                        <p className="font-bold text-gray-600 text-xs">成交價: <span className="text-gray-900">{data.close_price}</span></p>
+                                                        <p className="font-bold text-xs mt-0.5">漲跌: <span className={isUp ? 'text-red-500' : 'text-green-500'}>{isUp ? '+' : ''}{data.change_percent}%</span></p>
+                                                        <p className="font-bold text-indigo-500 text-xs mt-0.5">成交量: {(data.volume / 1000).toFixed(0)} 張</p>
                                                     </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <span className="text-sm font-black text-gray-800 tracking-tight">{parseFloat(stock.close_price).toFixed(2)}</span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <span className={`text-sm font-black flex items-center justify-end gap-1 ${change >= 0 ? 'text-red-500' : 'text-green-600'}`}>
-                                                        {change >= 0 ? '+' : ''}{change.toFixed(2)}%
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <span className="text-sm font-black text-indigo-600 tracking-tight">{Math.floor(Number(stock.volume) / 1000).toLocaleString()}</span>
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <button className="text-[10px] font-black uppercase tracking-tighter text-slate-400 group-hover:text-brand-primary border border-transparent group-hover:border-brand-primary/20 bg-transparent group-hover:bg-brand-primary/5 px-2.5 py-1.5 rounded-lg transition-all">
-                                                        View Chart
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
+                                                );
+                                            }
+                                            return null;
+                                        }}
+                                    />
+                                    <Bar dataKey="volume" radius={[0, 4, 4, 0]}>
+                                        {tpexVolume?.map((entry, index) => {
+                                            const isUp = parseFloat(entry.change_percent) >= 0;
+                                            return <Cell key={`cell-${index}`} fill={isUp ? '#ef4444' : '#22c55e'} />;
+                                        })}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
+                </div>
+
+                {/* 4. Embedded ResultTable */}
+                <div id="market-result-table" className="lg:col-span-12 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mt-8">
+                    <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-slate-50/50">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center border border-indigo-200">
+                                <Activity className="w-5 h-5 text-indigo-500" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black text-gray-800 tracking-tight">盤中篩選結果</h3>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">Screening Results</p>
+                            </div>
+                        </div>
+                        {Object.keys(filters).length > 0 && (
+                            <button
+                                onClick={() => {
+                                    setFilters({});
+                                    setPage(1);
+                                }}
+                                className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-lg text-xs font-black hover:border-brand-primary hover:text-brand-primary transition-all flex items-center gap-2 shadow-sm"
+                            >
+                                清除篩選
+                            </button>
+                        )}
+                    </div>
+                    <ResultTable
+                        results={results}
+                        loading={tableLoading}
+                        sortBy={sortBy}
+                        sortDir={sortDir}
+                        onSort={(c) => {
+                            if (sortBy === c) setSortDir(p => p === 'desc' ? 'asc' : 'desc');
+                            else { setSortBy(c); setSortDir('desc'); }
+                            setPage(1);
+                        }}
+                        page={page}
+                        onPageChange={setPage}
+                        onStockClick={onStockSelect}
+                        watchedSymbols={watchedSymbols}
+                        onToggleWatchlist={onToggleWatchlist}
+                    />
                 </div>
             </div>
         </div>

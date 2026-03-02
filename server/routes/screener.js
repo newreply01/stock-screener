@@ -287,24 +287,37 @@ router.get('/market-summary', async (req, res) => {
             `;
         const industryResult = await query(industrySql, params);
 
-        // 4. 即時熱門股 (Top Volume)
-        const hotStocksSql = `
+        // 4. 即時熱門股 (Top Volume) - TWSE
+        const twseVolumeSql = `
         SELECT
         s.symbol, s.name, p.close_price, p.change_percent, p.volume
             FROM daily_prices p
             JOIN stocks s ON p.symbol = s.symbol
-            ${whereClause}
+            ${whereClause} AND s.market = 'twse'
             ORDER BY p.volume DESC
             LIMIT 10
             `;
-        const hotResult = await query(hotStocksSql, params);
+        const twseResult = await query(twseVolumeSql, params);
+
+        // 5. 即時熱門股 (Top Volume) - TPEX
+        const tpexVolumeSql = `
+        SELECT
+        s.symbol, s.name, p.close_price, p.change_percent, p.volume
+            FROM daily_prices p
+            JOIN stocks s ON p.symbol = s.symbol
+            ${whereClause} AND s.market = 'tpex'
+            ORDER BY p.volume DESC
+            LIMIT 10
+            `;
+        const tpexResult = await query(tpexVolumeSql, params);
 
         res.json({
             success: true,
             latestDate: latestDateStr,
             distribution: distResult.rows[0],
             industries: industryResult.rows,
-            hotStocks: hotResult.rows
+            twseVolume: twseResult.rows,
+            tpexVolume: tpexResult.rows
         });
     } catch (err) {
         console.error('Market summary error:', err);

@@ -469,6 +469,41 @@ export default function ScreenerConfigPage({
                                         })}
                                     </div>
                                 </div>
+                                <div className="mb-4">
+                                    <h3 className="text-lg font-black text-gray-900 mb-1">大師策略</h3>
+                                    <p className="text-gray-500 text-sm mb-6">跟隨全球頂尖投資大師的選股邏輯，發掘潛力黑馬與穩健好股。</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        {[
+                                            { id: 'kenneth_fisher', name: '肯尼斯費雪', desc: '利用營收獲利成長，找出超級強勢股', color: 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:border-indigo-400' },
+                                            { id: 'michael_price', name: '麥克喜偉', desc: '尋找連續三年高成長行業，且具高投資報酬率', color: 'bg-purple-50 text-purple-700 border-purple-200 hover:border-purple-400' },
+                                            { id: 'warren_buffett', name: '華倫巴菲特', desc: '價值投資大師，尋找股東權益報酬率與毛利高標的', color: 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-400' },
+                                            { id: 'benjamin_graham', name: '班哲明格拉罕', desc: '防禦型投資，高流動比與低負債比，兼顧獲利', color: 'bg-teal-50 text-teal-700 border-teal-200 hover:border-teal-400' },
+                                            { id: 'peter_lynch', name: '彼得林區', desc: '尋找具備成長潛力的隱形冠軍，連續淨利成長', color: 'bg-cyan-50 text-cyan-700 border-cyan-200 hover:border-cyan-400' },
+                                            { id: 'michael_murphy', name: '麥克墨菲', desc: '高科技與高成長，營收與淨利雙成長，重視營業利益率', color: 'bg-sky-50 text-sky-700 border-sky-200 hover:border-sky-400' },
+                                            { id: 'safe_dividend', name: '安心存股', desc: '長線穩定發放股利，防禦力強的存股標的', color: 'bg-rose-50 text-rose-700 border-rose-200 hover:border-rose-400' },
+                                            { id: 'financial_giant', name: '財務大腕', desc: '營收創新高且毛利明顯提升的成長股，且股價便宜', color: 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-400' },
+                                        ].map(strat => {
+                                            const isSelected = localFilters.strategy === strat.id;
+                                            return (
+                                                <button
+                                                    key={strat.id}
+                                                    onClick={() => handleStrategySelect(strat.id)}
+                                                    className={`p-4 rounded-xl border-2 text-left transition-all relative overflow-hidden group
+                                                        ${isSelected ? `${strat.color.split(' ')[0]} border-brand-primary shadow-sm` : 'bg-white border-gray-200 hover:border-gray-300'}
+                                                    `}
+                                                >
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <h4 className={`font-black text-[16px] ${isSelected ? 'text-brand-primary' : 'text-gray-900'}`}>{strat.name}</h4>
+                                                        <div className={`w-5 h-5 rounded-full border ${isSelected ? 'bg-brand-primary border-brand-primary flex items-center justify-center' : 'bg-white border-gray-300'}`}>
+                                                            {isSelected && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-[12px] text-gray-500 leading-snug">{strat.desc}</p>
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
                             </div>
                         )}
                         {activeTab === 'technical' && <div className="animate-in fade-in duration-300"><TechnicalFilters filters={localFilters} onChange={updateFilter} /></div>}

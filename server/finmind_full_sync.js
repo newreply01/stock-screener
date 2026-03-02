@@ -1,15 +1,15 @@
 /**
- * FinMind Full Sync - 全 34 資料集同步程式
- * 支援：多 Token 輪替、斷點續跑、進度追蹤
+ * FinMind Full Sync - ? 34 ???????
+ * ???? Token ????????????
  */
 
 // Global crash handlers
 process.on('uncaughtException', (err) => {
-    console.error('💀 [CRASH] Uncaught Exception:', err.stack || err.message);
+    console.error('?? [CRASH] Uncaught Exception:', err.stack || err.message);
     process.exit(1);
 });
 process.on('unhandledRejection', (reason) => {
-    console.error('💀 [CRASH] Unhandled Rejection:', reason);
+    console.error('?? [CRASH] Unhandled Rejection:', reason);
     process.exit(1);
 });
 
@@ -18,15 +18,15 @@ const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fet
 
 // Periodic Activity Logger
 setInterval(() => {
-    console.log(`💓 [Heartbeat] ${new Date().toLocaleTimeString()} - Process alive (UP: ${process.uptime().toFixed(0)}s)`);
+    console.log(`?? [Heartbeat] ${new Date().toLocaleTimeString()} - Process alive (UP: ${process.uptime().toFixed(0)}s)`);
 }, 60000);
 
 process.on('exit', (code) => {
-    console.log(`🛑 [Process] Exiting with code: ${code}`);
+    console.log(`?? [Process] Exiting with code: ${code}`);
 });
 
 const BASE_URL = 'https://api.finmindtrade.com/api/v4/data';
-const START_DATE = '2021-01-01'; // 近 5 年
+const START_DATE = '2021-01-01'; // ? 5 ?
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ========== CLI Arguments ==========
@@ -36,7 +36,7 @@ const CL_PHASE = args.find(a => a.startsWith('--phase='))?.split('=')[1] || null
 const CL_START = args.find(a => a.startsWith('--start='))?.split('=')[1] || null;
 
 if (CL_LIMIT || CL_PHASE || CL_START) {
-    console.log('🛠️ [CLI] Overrides detected:', {
+    console.log('??? [CLI] Overrides detected:', {
         limit: CL_LIMIT, phase: CL_PHASE, start: CL_START
     });
 }
@@ -56,60 +56,61 @@ function rotateToken(reason = '') {
         const next = (currentTokenIndex + i) % TOKENS.length;
         if (!exhaustedTokens.has(next)) {
             currentTokenIndex = next;
-            console.log(`🔄 [Token] 切換至 Token #${next + 1}/${TOKENS.length} (${reason})`);
+            console.log(`?? [Token] ??? Token #${next + 1}/${TOKENS.length} (${reason})`);
             return true;
         }
     }
-    console.error(`❌ [Token] 所有 ${TOKENS.length} 組 Token 額度皆已耗盡！`);
+    console.error(`?? [Token] All ${TOKENS.length} tokens exhausted`);
     return false;
 }
 
 // ========== Core API Fetcher ==========
-const startTime = Date.now();
-let url = `${BASE_URL}?dataset=${dataset}&start_date=${start_date}`;
-if (data_id) url += `&data_id=${data_id}`;
-const token = getCurrentToken();
-if (token) url += `&token=${token}`;
+async function fetchFinMind(dataset, data_id = '', start_date = START_DATE) {
+    const startTime = Date.now();
+    let url = `${BASE_URL}?dataset=${dataset}&start_date=${start_date}`;
+    if (data_id) url += `&data_id=${data_id}`;
+    const token = getCurrentToken();
+    if (token) url += `&token=${token}`;
 
-console.log(`  🌐 [Fetch] ${dataset}${data_id ? '/' + data_id : ''} (Token #${currentTokenIndex + 1})`);
+    console.log(`  ?? [Fetch] ${dataset}${data_id ? '/' + data_id : ''} (Token #${currentTokenIndex + 1})`);
 
-try {
-    const res = await fetch(url, { timeout: 180000 }); // 3 mins timeout
-    if (!res.ok) {
-        // ... (keep current 429/402 logic)
-        if (res.status === 429) {
-            console.warn(`⚠️ [FinMind] Rate limited (429) on Token #${currentTokenIndex + 1}`);
-            if (rotateToken('HTTP 429')) return fetchFinMind(dataset, data_id, start_date);
-            console.warn(`⚠️ 所有 Token 被限速，等待 60s...`);
-            await sleep(60000);
-            exhaustedTokens.clear();
-            return fetchFinMind(dataset, data_id, start_date);
+    try {
+        const res = await fetch(url, { timeout: 180000 }); // 3 mins timeout
+        if (!res.ok) {
+            // ... (keep current 429/402 logic)
+            if (res.status === 429) {
+                console.warn(`?? [FinMind] Rate limited (429) on Token #${currentTokenIndex + 1}`);
+                if (rotateToken('HTTP 429')) return fetchFinMind(dataset, data_id, start_date);
+                console.warn(`?? ?? Token ?????? 60s...`);
+                await sleep(60000);
+                exhaustedTokens.clear();
+                return fetchFinMind(dataset, data_id, start_date);
+            }
+            if (res.status === 402) {
+                console.warn(`?? [FinMind] Token #${currentTokenIndex + 1} ???? (402)`);
+                if (rotateToken('HTTP 402')) return fetchFinMind(dataset, data_id, start_date);
+                console.warn(`?? ?? Token ?????? (402)??? 60s ???...`);
+                await sleep(60000);
+                exhaustedTokens.clear();
+                return fetchFinMind(dataset, data_id, start_date);
+            }
+            throw new Error(`HTTP ${res.status}`);
         }
-        if (res.status === 402) {
-            console.warn(`⚠️ [FinMind] Token #${currentTokenIndex + 1} 額度耗盡 (402)`);
-            if (rotateToken('HTTP 402')) return fetchFinMind(dataset, data_id, start_date);
-            console.warn(`⚠️ 所有 Token 額度皆已耗盡 (402)，等待 60s 後重試...`);
-            await sleep(60000);
-            exhaustedTokens.clear();
-            return fetchFinMind(dataset, data_id, start_date);
-        }
-        throw new Error(`HTTP ${res.status}`);
+
+        console.log(`  ?? [Response] Received headers, reading body...`);
+        const text = await res.text();
+        console.log(`  ?? [Body] Size: ${(text.length / 1024).toFixed(1)} KB`);
+
+        console.log(`  ?? [JSON] Parsing...`);
+        const json = JSON.parse(text);
+        const data = json.data || [];
+        const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+        console.log(`  ?? [Data] Records: ${data.length} (${duration}s)`);
+        return data;
+    } catch (err) {
+        console.error(`? [FinMind] ${dataset}${data_id ? '/' + data_id : ''} ??: ${err.message}`);
+        return [];
     }
-
-    console.log(`  📦 [Response] Received headers, reading body...`);
-    const text = await res.text();
-    console.log(`  📦 [Body] Size: ${(text.length / 1024).toFixed(1)} KB`);
-
-    console.log(`  ⚙️ [JSON] Parsing...`);
-    const json = JSON.parse(text);
-    const data = json.data || [];
-    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-    console.log(`  📊 [Data] Records: ${data.length} (${duration}s)`);
-    return data;
-} catch (err) {
-    console.error(`❌ [FinMind] ${dataset}${data_id ? '/' + data_id : ''} 錯誤: ${err.message}`);
-    return [];
-}
 }
 
 // ========== Progress Tracker ==========
@@ -134,7 +135,7 @@ async function bulkUpsert(client, table, columns, conflictKeys, rows) {
     if (!rows || rows.length === 0) return 0;
     let count = 0;
     const BATCH_SIZE = 500;
-    console.log(`    🚀 [${table}] 開始寫入 ${rows.length} 筆資料 (Batch Size: ${BATCH_SIZE})`);
+    console.log(`    ?? [${table}] ???? ${rows.length} ??? (Batch Size: ${BATCH_SIZE})`);
 
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
         const batch = rows.slice(i, i + BATCH_SIZE);
@@ -156,10 +157,10 @@ async function bulkUpsert(client, table, columns, conflictKeys, rows) {
                 count++;
             }
             await client.query('COMMIT');
-            console.log(`    📦 [${table}] 寫入進度: ${Math.min(i + BATCH_SIZE, rows.length)}/${rows.length}`);
+            console.log(`    ?? [${table}] ????: ${Math.min(i + BATCH_SIZE, rows.length)}/${rows.length}`);
         } catch (e) {
             await client.query('ROLLBACK').catch(() => { });
-            console.error(`  ❌ [${table}] Batch error at row ${i}: ${e.message}`);
+            console.error(`  ? [${table}] Batch error at row ${i}: ${e.message}`);
             // If it's a fatal DB error, rethrow to stop the script
             if (e.message.includes('terminat') || e.message.includes('connection')) throw e;
         }
@@ -175,12 +176,12 @@ async function getAllStockSymbols() {
 
 // ========== Dataset Sync Functions ==========
 
-// --- 全量類 (不需 data_id, 一次抓完) ---
+// --- ??? (?? data_id, ????) ---
 
 async function syncTaiwanStockInfo() {
     const ds = 'TaiwanStockInfo';
-    if (await isCompleted(ds)) { console.log(`⏭️ ${ds} 已完成`); return; }
-    console.log(`📥 [${ds}] 同步台股總覽...`);
+    if (await isCompleted(ds)) { console.log(`?? ${ds} ???`); return; }
+    console.log(`?? [${ds}] ??????...`);
     const data = await fetchFinMind(ds);
     const client = await pool.connect();
     try {
@@ -195,15 +196,15 @@ async function syncTaiwanStockInfo() {
                 count++;
             } catch (e) { /* skip bad row */ }
         }
-        console.log(`✅ [${ds}] 同步 ${count}/${data.length} 筆`);
+        console.log(`? [${ds}] ?? ${count}/${data.length} ?`);
         await markCompleted(ds);
     } finally { client.release(); }
 }
 
 async function syncTaiwanStockTradingDate() {
     const ds = 'TaiwanStockTradingDate';
-    if (await isCompleted(ds)) { console.log(`⏭️ ${ds} 已完成`); return; }
-    console.log(`📥 [${ds}] 同步交易日...`);
+    if (await isCompleted(ds)) { console.log(`?? ${ds} ???`); return; }
+    console.log(`?? [${ds}] ?????...`);
     const data = await fetchFinMind(ds);
     const client = await pool.connect();
     try {
@@ -213,31 +214,31 @@ async function syncTaiwanStockTradingDate() {
         }));
 
         const count = await bulkUpsert(client, 'trading_dates', ['date', 'description'], ['date'], mapped);
-        console.log(`✅ [${ds}] 同步 ${count}/${data.length} 筆`);
+        console.log(`? [${ds}] ?? ${count}/${data.length} ?`);
         await markCompleted(ds);
     } catch (e) {
-        console.error(`❌ [${ds}] 錯誤: ${e.message}`);
+        console.error(`? [${ds}] ??: ${e.message}`);
     } finally { client.release(); }
 }
 
 async function syncTaiwanStockTotalReturnIndex() {
     const ds = 'TaiwanStockTotalReturnIndex';
-    if (await isCompleted(ds)) { console.log(`⏭️ ${ds} 已完成`); return; }
-    console.log(`📥 [${ds}] 同步報酬指數...`);
+    if (await isCompleted(ds)) { console.log(`?? ${ds} ???`); return; }
+    console.log(`?? [${ds}] ??????...`);
     const data = await fetchFinMind(ds);
     const client = await pool.connect();
     try {
         const count = await bulkUpsert(client, 'fm_total_return_index',
             ['date', 'price', 'stock_id'], ['stock_id', 'date'], data);
-        console.log(`✅ [${ds}] 同步 ${count} 筆`);
+        console.log(`? [${ds}] ?? ${count} ?`);
         await markCompleted(ds);
     } finally { client.release(); }
 }
 
 async function syncTaiwanStockTotalMarginPurchaseShortSale() {
     const ds = 'TaiwanStockTotalMarginPurchaseShortSale';
-    if (await isCompleted(ds)) { console.log(`⏭️ ${ds} 已完成`); return; }
-    console.log(`📥 [${ds}] 同步整體融資融券...`);
+    if (await isCompleted(ds)) { console.log(`?? ${ds} ???`); return; }
+    console.log(`?? [${ds}] ????????...`);
     const data = await fetchFinMind(ds);
     const client = await pool.connect();
     try {
@@ -258,30 +259,30 @@ async function syncTaiwanStockTotalMarginPurchaseShortSale() {
             short_sale_today_balance: d.ShortSaleTodayBalance
         }));
         const count = await bulkUpsert(client, 'fm_total_margin', cols, ['date', 'name'], mapped);
-        console.log(`✅ [${ds}] 同步 ${count} 筆`);
+        console.log(`? [${ds}] ?? ${count} ?`);
         await markCompleted(ds);
     } finally { client.release(); }
 }
 
 async function syncTaiwanStockTotalInstitutionalInvestors() {
     const ds = 'TaiwanStockTotalInstitutionalInvestors';
-    if (await isCompleted(ds)) { console.log(`⏭️ ${ds} 已完成`); return; }
-    console.log(`📥 [${ds}] 同步整體法人買賣...`);
+    if (await isCompleted(ds)) { console.log(`?? ${ds} ???`); return; }
+    console.log(`?? [${ds}] ????????...`);
     const data = await fetchFinMind(ds);
     const client = await pool.connect();
     try {
         const mapped = data.map(d => ({ date: d.date, name: d.name, buy: d.buy, sell: d.sell }));
         const count = await bulkUpsert(client, 'fm_total_institutional',
             ['date', 'name', 'buy', 'sell'], ['date', 'name'], mapped);
-        console.log(`✅ [${ds}] 同步 ${count} 筆`);
+        console.log(`? [${ds}] ?? ${count} ?`);
         await markCompleted(ds);
     } finally { client.release(); }
 }
 
 async function syncTaiwanStockDelisting() {
     const ds = 'TaiwanStockDelisting';
-    if (await isCompleted(ds)) { console.log(`⏭️ ${ds} 已完成`); return; }
-    console.log(`📥 [${ds}] 同步下市櫃表...`);
+    if (await isCompleted(ds)) { console.log(`?? ${ds} ???`); return; }
+    console.log(`?? [${ds}] ??????...`);
     const data = await fetchFinMind(ds);
     const client = await pool.connect();
     try {
@@ -290,15 +291,15 @@ async function syncTaiwanStockDelisting() {
         }));
         const count = await bulkUpsert(client, 'fm_delisting',
             ['stock_id', 'date', 'stock_name', 'reason'], ['stock_id', 'date'], mapped);
-        console.log(`✅ [${ds}] 同步 ${count} 筆`);
+        console.log(`? [${ds}] ?? ${count} ?`);
         await markCompleted(ds);
     } finally { client.release(); }
 }
 
 async function syncTaiwanSecuritiesTraderInfo() {
     const ds = 'TaiwanSecuritiesTraderInfo';
-    if (await isCompleted(ds)) { console.log(`⏭️ ${ds} 已完成`); return; }
-    console.log(`📥 [${ds}] 同步券商資訊...`);
+    if (await isCompleted(ds)) { console.log(`?? ${ds} ???`); return; }
+    console.log(`?? [${ds}] ??????...`);
     const data = await fetchFinMind(ds);
     const client = await pool.connect();
     try {
@@ -309,17 +310,17 @@ async function syncTaiwanSecuritiesTraderInfo() {
         const count = await bulkUpsert(client, 'fm_securities_trader_info',
             ['securities_trader_id', 'securities_trader', 'address', 'phone', 'is_main'],
             ['securities_trader_id'], mapped);
-        console.log(`✅ [${ds}] 同步 ${count} 筆`);
+        console.log(`? [${ds}] ?? ${count} ?`);
         await markCompleted(ds);
     } finally { client.release(); }
 }
 
-// --- 衍生性：全量類 ---
+// --- ??????? ---
 
 async function syncTaiwanFutOptDailyInfo() {
     const ds = 'TaiwanFutOptDailyInfo';
-    if (await isCompleted(ds)) { console.log(`⏭️ ${ds} 已完成`); return; }
-    console.log(`📥 [${ds}] 同步期貨選擇權總覽...`);
+    if (await isCompleted(ds)) { console.log(`?? ${ds} ???`); return; }
+    console.log(`?? [${ds}] ?????????...`);
     const data = await fetchFinMind(ds);
     const client = await pool.connect();
     try {
@@ -334,15 +335,15 @@ async function syncTaiwanFutOptDailyInfo() {
             ['date', 'call_put', 'contract_date', 'close', 'change_percent', 'open', 'high',
                 'low', 'volume', 'settlement_price', 'open_interest', 'trading_session', 'futures_id'],
             ['date', 'futures_id', 'contract_date'], mapped);
-        console.log(`✅ [${ds}] 同步 ${count} 筆`);
+        console.log(`? [${ds}] ?? ${count} ?`);
         await markCompleted(ds);
     } finally { client.release(); }
 }
 
 async function syncTaiwanFuturesInstitutionalInvestors() {
     const ds = 'TaiwanFuturesInstitutionalInvestors';
-    if (await isCompleted(ds)) { console.log(`⏭️ ${ds} 已完成`); return; }
-    console.log(`📥 [${ds}] 同步期貨法人...`);
+    if (await isCompleted(ds)) { console.log(`?? ${ds} ???`); return; }
+    console.log(`?? [${ds}] ??????...`);
     const data = await fetchFinMind(ds);
     const client = await pool.connect();
     try {
@@ -361,15 +362,15 @@ async function syncTaiwanFuturesInstitutionalInvestors() {
                 'short_deal_volume', 'short_deal_amount', 'long_open_interest_volume',
                 'long_open_interest_amount', 'short_open_interest_volume', 'short_open_interest_amount'],
             ['date', 'name', 'institutional_investors'], mapped);
-        console.log(`✅ [${ds}] 同步 ${count} 筆`);
+        console.log(`? [${ds}] ?? ${count} ?`);
         await markCompleted(ds);
     } finally { client.release(); }
 }
 
 async function syncTaiwanOptionInstitutionalInvestors() {
     const ds = 'TaiwanOptionInstitutionalInvestors';
-    if (await isCompleted(ds)) { console.log(`⏭️ ${ds} 已完成`); return; }
-    console.log(`📥 [${ds}] 同步選擇權法人...`);
+    if (await isCompleted(ds)) { console.log(`?? ${ds} ???`); return; }
+    console.log(`?? [${ds}] ???????...`);
     const data = await fetchFinMind(ds);
     const client = await pool.connect();
     try {
@@ -388,12 +389,12 @@ async function syncTaiwanOptionInstitutionalInvestors() {
                 'short_deal_volume', 'short_deal_amount', 'long_open_interest_volume',
                 'long_open_interest_amount', 'short_open_interest_volume', 'short_open_interest_amount'],
             ['date', 'name', 'institutional_investors'], mapped);
-        console.log(`✅ [${ds}] 同步 ${count} 筆`);
+        console.log(`? [${ds}] ?? ${count} ?`);
         await markCompleted(ds);
     } finally { client.release(); }
 }
 
-// --- 逐股類 (需要 data_id 逐股抓取) ---
+// --- ??? (?? data_id ????) ---
 
 // Generic per-stock sync function
 async function syncPerStock(dataset, table, columns, conflictKeys, mapFn) {
@@ -403,18 +404,18 @@ async function syncPerStock(dataset, table, columns, conflictKeys, mapFn) {
     if (CL_START) {
         const startIndex = symbols.findIndex(s => s >= CL_START);
         if (startIndex !== -1) {
-            console.log(`  ⏩ [${dataset}] Starting from ${CL_START} (index ${startIndex})`);
+            console.log(`  ? [${dataset}] Starting from ${CL_START} (index ${startIndex})`);
             symbols = symbols.slice(startIndex);
         }
     }
 
-    console.log(`📥 [${dataset}] 開始逐股同步 ${symbols.length} 檔...`);
+    console.log(`?? [${dataset}] ?????? ${symbols.length} ?...`);
     let synced = 0, skipped = 0;
 
     for (const symbol of symbols) {
         // Apply CLI limit override
         if (CL_LIMIT && synced >= parseInt(CL_LIMIT)) {
-            console.log(`  ✋ [${dataset}] Reached limit of ${CL_LIMIT}, stopping phase.`);
+            console.log(`  ? [${dataset}] Reached limit of ${CL_LIMIT}, stopping phase.`);
             break;
         }
 
@@ -423,7 +424,7 @@ async function syncPerStock(dataset, table, columns, conflictKeys, mapFn) {
             continue;
         }
 
-        console.log(`  👉 [${dataset}] ${synced + 1}/${symbols.length} (${symbol}) starting...`);
+        console.log(`  ?? [${dataset}] ${synced + 1}/${symbols.length} (${symbol}) starting...`);
         const itemStartTime = Date.now();
 
         try {
@@ -440,18 +441,18 @@ async function syncPerStock(dataset, table, columns, conflictKeys, mapFn) {
             await markCompleted(dataset, symbol);
             synced++;
             const itemElapsed = ((Date.now() - itemStartTime) / 1000).toFixed(1);
-            console.log(`  ✅ [${dataset}] ${symbol} done in ${itemElapsed}s`);
+            console.log(`  ? [${dataset}] ${symbol} done in ${itemElapsed}s`);
         } catch (e) {
-            console.error(`  ❌ [${dataset}] ${symbol} 嚴重錯誤: ${e.message}`);
+            console.error(`  ? [${dataset}] ${symbol} ????: ${e.message}`);
             // Let it continue to next stock
         }
 
         if (synced % 10 === 0 && synced > 0) {
-            console.log(`📊 [${dataset}] Progress: ${synced}/${symbols.length} processed (Skipped: ${skipped})`);
+            console.log(`?? [${dataset}] Progress: ${synced}/${symbols.length} processed (Skipped: ${skipped})`);
         }
         await sleep(3000); // Rate limit: ~3s per stock
     }
-    console.log(`✅ [${dataset}] 完成！同步 ${synced}，跳過 ${skipped}`);
+    console.log(`? [${dataset}] ????? ${synced}??? ${skipped}`);
 }
 
 // 4. TaiwanStockPrice
@@ -693,7 +694,7 @@ function syncShortSaleBalances() {
     );
 }
 
-// 28. TaiwanFuturesDaily (逐商品)
+// 28. TaiwanFuturesDaily (???)
 function syncFuturesDaily() {
     return syncPerStock('TaiwanFuturesDaily', 'fm_futures_daily',
         ['date', 'futures_id', 'contract_date', 'open', 'high', 'low', 'close', 'change',
@@ -709,7 +710,7 @@ function syncFuturesDaily() {
     );
 }
 
-// 29. TaiwanOptionDaily (逐商品)
+// 29. TaiwanOptionDaily (???)
 function syncOptionDaily() {
     return syncPerStock('TaiwanOptionDaily', 'fm_option_daily',
         ['date', 'option_id', 'contract_date', 'call_put', 'strike_price', 'open', 'high', 'low',
@@ -768,12 +769,12 @@ function syncStockNews() {
 // ========== Taiwan Stock Info With Warrant ==========
 async function syncTaiwanStockInfoWithWarrant() {
     const ds = 'TaiwanStockInfoWithWarrant';
-    if (await isCompleted(ds)) { console.log(`⏭️ ${ds} 已完成`); return; }
-    console.log(`📥 [${ds}] 同步含權證總覽 (僅存 4 碼股票)...`);
+    if (await isCompleted(ds)) { console.log(`?? ${ds} ???`); return; }
+    console.log(`?? [${ds}] ??????? (?? 4 ???)...`);
     const data = await fetchFinMind(ds);
     // Filter: only keep 4-digit numeric stock IDs (skip 100K+ warrants)
     const stocks = data.filter(d => /^[0-9]{4}$/.test(d.stock_id));
-    console.log(`  📊 篩選後: ${stocks.length}/${data.length} 筆 (4碼股票)`);
+    console.log(`  ?? ???: ${stocks.length}/${data.length} ? (4???)`);
 
     const client = await pool.connect();
     try {
@@ -788,10 +789,10 @@ async function syncTaiwanStockInfoWithWarrant() {
             ['symbol', 'name', 'industry', 'market'],
             ['symbol'], mapped);
 
-        console.log(`✅ [${ds}] 同步 ${count}/${stocks.length} 筆`);
+        console.log(`? [${ds}] ?? ${count}/${stocks.length} ?`);
         await markCompleted(ds);
     } catch (e) {
-        console.error(`❌ [${ds}] 錯誤: ${e.message}`);
+        console.error(`? [${ds}] ??: ${e.message}`);
         // Consider this non-critical as TaiwanStockInfo already ran
         await markCompleted(ds);
     } finally { client.release(); }
@@ -800,11 +801,11 @@ async function syncTaiwanStockInfoWithWarrant() {
 // ========== Main Orchestrator ==========
 async function syncAll() {
     console.log('');
-    console.log('═══════════════════════════════════════════════════');
-    console.log('  📦 FinMind 全量同步 - 34 資料集 × 近 5 年');
-    console.log(`  🔑 Token: ${TOKENS.length} 組，從 #${currentTokenIndex + 1} 開始`);
-    console.log(`  📅 起始日期: ${START_DATE}`);
-    console.log('═══════════════════════════════════════════════════');
+    console.log('???????????????????????????????????????????????????');
+    console.log('  ?? FinMind ???? - 34 ??? ? ? 5 ?');
+    console.log(`  ?? Token: ${TOKENS.length} ??? #${currentTokenIndex + 1} ??`);
+    console.log(`  ?? ????: ${START_DATE}`);
+    console.log('???????????????????????????????????????????????????');
     console.log('');
 
     const startTime = Date.now();
@@ -815,18 +816,18 @@ async function syncAll() {
             // Skip phase
             return;
         }
-        console.log(`\n⏳ [${new Date().toLocaleTimeString()}] 開始同步: ${name} (Phase ${phase})`);
+        console.log(`\n? [${new Date().toLocaleTimeString()}] ????: ${name} (Phase ${phase})`);
         try {
             await fn();
-            console.log(`✅ [${new Date().toLocaleTimeString()}] 完成同步: ${name}`);
+            console.log(`? [${new Date().toLocaleTimeString()}] ????: ${name}`);
         } catch (e) {
-            console.error(`⚠️ [${name}] 失敗，跳過: ${e.message}`);
+            console.error(`?? [${name}] ?????: ${e.message}`);
         }
         await sleep(2000);
     }
 
-    // Phase 1: 全量資料集 (快速，不需要逐股)
-    console.log('\n🔶 Phase 1: 全量資料集 (無需逐股)\n');
+    // Phase 1: ????? (????????)
+    console.log('\n?? Phase 1: ????? (????)\n');
     await safeSync(1, 'TaiwanStockInfo', syncTaiwanStockInfo);
     await safeSync(1, 'TaiwanStockTradingDate', syncTaiwanStockTradingDate);
     // Skiped large/problematic ones for now
@@ -839,14 +840,14 @@ async function syncAll() {
     await safeSync(1, 'TaiwanFuturesInstitutionalInvestors', syncTaiwanFuturesInstitutionalInvestors);
     await safeSync(1, 'TaiwanOptionInstitutionalInvestors', syncTaiwanOptionInstitutionalInvestors);
 
-    // Phase 2: 技術面逐股 (核心)
-    console.log('\n🔶 Phase 2: 技術面 (逐股)\n');
+    // Phase 2: ????? (??)
+    console.log('\n?? Phase 2: ??? (??)\n');
     await safeSync(2, 'StockPrice', syncStockPrice);
     await safeSync(2, 'StockPER', syncStockPER);
     await safeSync(2, 'StockDayTrading', syncStockDayTrading);
 
-    // Phase 3: 基本面逐股
-    console.log('\n🔶 Phase 3: 基本面 (逐股)\n');
+    // Phase 3: ?????
+    console.log('\n?? Phase 3: ??? (??)\n');
     await safeSync(3, 'FinancialStatements', syncFinancialStatements);
     await safeSync(3, 'BalanceSheet', syncBalanceSheet);
     await safeSync(3, 'CashFlows', syncCashFlows);
@@ -857,8 +858,8 @@ async function syncAll() {
     await safeSync(3, 'SplitPrice', syncSplitPrice);
     await safeSync(3, 'ParValueChange', syncParValueChange);
 
-    // Phase 4: 籌碼面逐股
-    console.log('\n🔶 Phase 4: 籌碼面 (逐股)\n');
+    // Phase 4: ?????
+    console.log('\n?? Phase 4: ??? (??)\n');
     await safeSync(4, 'MarginTrading', syncMarginTrading);
     await safeSync(4, 'Institutional', syncInstitutional);
     await safeSync(4, 'Shareholding', syncShareholding);
@@ -866,22 +867,22 @@ async function syncAll() {
     await safeSync(4, 'ShortSaleSuspension', syncShortSaleSuspension);
     await safeSync(4, 'ShortSaleBalances', syncShortSaleBalances);
 
-    // Phase 5: 衍生性逐商品
-    console.log('\n🔶 Phase 5: 衍生性金融商品 (逐商品)\n');
+    // Phase 5: ??????
+    console.log('\n?? Phase 5: ??????? (???)\n');
     await safeSync(5, 'FuturesDaily', syncFuturesDaily);
     await safeSync(5, 'OptionDaily', syncOptionDaily);
     await safeSync(5, 'FuturesDealer', syncFuturesDealer);
     await safeSync(5, 'OptionDealer', syncOptionDealer);
 
-    // Phase 6: 其他
-    console.log('\n🔶 Phase 6: 其他\n');
+    // Phase 6: ??
+    console.log('\n?? Phase 6: ??\n');
     await safeSync(6, 'StockNews', syncStockNews);
 
     const elapsed = ((Date.now() - startTime) / 1000 / 60).toFixed(1);
     console.log('');
-    console.log('═══════════════════════════════════════════════════');
-    console.log(`  ✅ 同步任務進度處理完成！本次耗時 ${elapsed} 分鐘`);
-    console.log('═══════════════════════════════════════════════════');
+    console.log('???????????????????????????????????????????????????');
+    console.log(`  ? ??????????????? ${elapsed} ??`);
+    console.log('???????????????????????????????????????????????????');
 }
 
 // ========== Entry Point ==========
@@ -890,15 +891,16 @@ if (require.main === module) {
 
     syncAll()
         .then(async () => {
-            console.log('🎉 Done!');
+            console.log('?? Done!');
             await pool.end();
             process.exit(0);
         })
         .catch(async (err) => {
-            console.error('❌ Fatal:', err);
+            console.error('? Fatal:', err);
             await pool.end();
             process.exit(1);
         });
 }
 
 module.exports = { syncAll, fetchFinMind, syncInstitutional };
+

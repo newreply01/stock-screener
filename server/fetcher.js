@@ -19,8 +19,18 @@ const parseNumber = (str) => {
 };
 
 // 日期格式化
-const toDateStr = (d) => d.toISOString().split('T')[0].replace(/-/g, ''); // 20240218
-const toDateHyphen = (d) => d.toISOString().split('T')[0]; // 2024-02-18
+const toDateStr = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}${month}${day}`;
+};
+const toDateHyphen = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 const toRocDate = (d) => { // 113/02/18
     const year = d.getFullYear() - 1911;
     const month = String(d.getMonth() + 1).padStart(2, '0');
