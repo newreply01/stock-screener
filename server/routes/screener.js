@@ -314,11 +314,11 @@ router.get('/market-summary', async (req, res) => {
         // 6. 漲幅最高 (Top Gainers) - TWSE
         const twseGainersSql = `
         SELECT
-        s.symbol, s.name, p.close_price, p.change_percent, p.volume
+        s.symbol, s.name, p.close_price, p.change_amount, p.volume
             FROM daily_prices p
             JOIN stocks s ON p.symbol = s.symbol
-            ${whereClause} AND s.market = 'twse'
-            ORDER BY p.change_percent DESC
+            ${whereClause} AND s.market = 'twse' AND p.change_amount IS NOT NULL
+            ORDER BY p.change_amount DESC
             LIMIT 10
             `;
         const twseGainersResult = await query(twseGainersSql, params);
@@ -326,11 +326,11 @@ router.get('/market-summary', async (req, res) => {
         // 7. 跌幅最高 (Top Losers) - TWSE
         const twseLosersSql = `
         SELECT
-        s.symbol, s.name, p.close_price, p.change_percent, p.volume
+        s.symbol, s.name, p.close_price, p.change_amount, p.volume
             FROM daily_prices p
             JOIN stocks s ON p.symbol = s.symbol
-            ${whereClause} AND s.market = 'twse'
-            ORDER BY p.change_percent ASC
+            ${whereClause} AND s.market = 'twse' AND p.change_amount IS NOT NULL
+            ORDER BY p.change_amount ASC
             LIMIT 10
             `;
         const twseLosersResult = await query(twseLosersSql, params);
@@ -338,11 +338,11 @@ router.get('/market-summary', async (req, res) => {
         // 8. 漲幅最高 (Top Gainers) - TPEX
         const tpexGainersSql = `
         SELECT
-        s.symbol, s.name, p.close_price, p.change_percent, p.volume
+        s.symbol, s.name, p.close_price, p.change_amount, p.volume
             FROM daily_prices p
             JOIN stocks s ON p.symbol = s.symbol
-            ${whereClause} AND s.market = 'tpex'
-            ORDER BY p.change_percent DESC
+            ${whereClause} AND s.market = 'tpex' AND p.change_amount IS NOT NULL
+            ORDER BY p.change_amount DESC
             LIMIT 10
             `;
         const tpexGainersResult = await query(tpexGainersSql, params);
@@ -350,11 +350,11 @@ router.get('/market-summary', async (req, res) => {
         // 9. 跌幅最高 (Top Losers) - TPEX
         const tpexLosersSql = `
         SELECT
-        s.symbol, s.name, p.close_price, p.change_percent, p.volume
+        s.symbol, s.name, p.close_price, p.change_amount, p.volume
             FROM daily_prices p
             JOIN stocks s ON p.symbol = s.symbol
-            ${whereClause} AND s.market = 'tpex'
-            ORDER BY p.change_percent ASC
+            ${whereClause} AND s.market = 'tpex' AND p.change_amount IS NOT NULL
+            ORDER BY p.change_amount ASC
             LIMIT 10
             `;
         const tpexLosersResult = await query(tpexLosersSql, params);

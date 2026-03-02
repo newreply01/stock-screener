@@ -277,8 +277,8 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
                         </div>
                         <div className="flex bg-gray-100 p-1 rounded-xl shadow-inner border border-gray-200">
                             {[
-                                { id: 'gainers', label: '漲幅最高' },
-                                { id: 'losers', label: '跌幅最高' },
+                                { id: 'gainers', label: '漲最多點數' },
+                                { id: 'losers', label: '跌最多點數' },
                                 { id: 'volume', label: '成交量榜' }
                             ].map(rank => (
                                 <button
@@ -311,7 +311,7 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
                                         <XAxis
                                             type="number"
                                             fontSize={10}
-                                            tickFormatter={(val) => rankingType === 'volume' ? `${(val / 1000).toFixed(0)}k` : `${val}%`}
+                                            tickFormatter={(val) => rankingType === 'volume' ? `${(val / 1000).toFixed(0)}k` : `${val}`}
                                             domain={rankingType !== 'volume' ? ['dataMin - 1', 'dataMax + 1'] : [0, 'auto']}
                                         />
                                         <YAxis type="category" dataKey="name" width={70} fontSize={11} fontWeight="bold" />
@@ -320,12 +320,12 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
                                             content={({ active, payload }) => {
                                                 if (active && payload && payload.length) {
                                                     const data = payload[0].payload;
-                                                    const isUp = parseFloat(data.change_percent) >= 0;
+                                                    const isUp = parseFloat(rankingType === 'volume' ? data.change_percent : data.change_amount) >= 0;
                                                     return (
                                                         <div className="z-50 bg-white/95 backdrop-blur-sm p-3 border border-gray-200 shadow-lg rounded-xl">
                                                             <p className="font-black text-gray-800 text-sm mb-1">{data.name} ({data.symbol})</p>
                                                             <p className="font-bold text-gray-600 text-xs">成交價: <span className="text-gray-900">{data.close_price}</span></p>
-                                                            <p className="font-bold text-xs mt-0.5">漲跌: <span className={isUp ? 'text-red-500' : 'text-green-500'}>{isUp ? '+' : ''}{data.change_percent}%</span></p>
+                                                            <p className="font-bold text-xs mt-0.5">漲跌: <span className={isUp ? 'text-red-500' : 'text-green-500'}>{isUp ? '+' : ''}{rankingType === 'volume' ? data.change_percent + '%' : data.change_amount}</span></p>
                                                             <p className="font-bold text-indigo-500 text-xs mt-0.5">成交量: {(data.volume / 1000).toFixed(0)} 張</p>
                                                         </div>
                                                     );
@@ -333,9 +333,9 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
                                                 return null;
                                             }}
                                         />
-                                        <Bar dataKey={rankingType === 'volume' ? 'volume' : 'change_percent'} radius={[0, 4, 4, 0]}>
+                                        <Bar dataKey={rankingType === 'volume' ? 'volume' : 'change_amount'} radius={[0, 4, 4, 0]}>
                                             {getRankData('twse')?.map((entry, index) => {
-                                                const isUp = parseFloat(entry.change_percent) >= 0;
+                                                const isUp = parseFloat(rankingType === 'volume' ? entry.change_percent : entry.change_amount) >= 0;
                                                 return <Cell key={`cell-${index}`} fill={isUp ? '#ef4444' : '#22c55e'} />;
                                             })}
                                         </Bar>
@@ -357,7 +357,7 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
                                         <XAxis
                                             type="number"
                                             fontSize={10}
-                                            tickFormatter={(val) => rankingType === 'volume' ? `${(val / 1000).toFixed(0)}k` : `${val}%`}
+                                            tickFormatter={(val) => rankingType === 'volume' ? `${(val / 1000).toFixed(0)}k` : `${val}`}
                                             domain={rankingType !== 'volume' ? ['dataMin - 1', 'dataMax + 1'] : [0, 'auto']}
                                         />
                                         <YAxis type="category" dataKey="name" width={70} fontSize={11} fontWeight="bold" />
@@ -366,12 +366,12 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
                                             content={({ active, payload }) => {
                                                 if (active && payload && payload.length) {
                                                     const data = payload[0].payload;
-                                                    const isUp = parseFloat(data.change_percent) >= 0;
+                                                    const isUp = parseFloat(rankingType === 'volume' ? data.change_percent : data.change_amount) >= 0;
                                                     return (
                                                         <div className="z-50 bg-white/95 backdrop-blur-sm p-3 border border-gray-200 shadow-lg rounded-xl">
                                                             <p className="font-black text-gray-800 text-sm mb-1">{data.name} ({data.symbol})</p>
                                                             <p className="font-bold text-gray-600 text-xs">成交價: <span className="text-gray-900">{data.close_price}</span></p>
-                                                            <p className="font-bold text-xs mt-0.5">漲跌: <span className={isUp ? 'text-red-500' : 'text-green-500'}>{isUp ? '+' : ''}{data.change_percent}%</span></p>
+                                                            <p className="font-bold text-xs mt-0.5">漲跌: <span className={isUp ? 'text-red-500' : 'text-green-500'}>{isUp ? '+' : ''}{rankingType === 'volume' ? data.change_percent + '%' : data.change_amount}</span></p>
                                                             <p className="font-bold text-indigo-500 text-xs mt-0.5">成交量: {(data.volume / 1000).toFixed(0)} 張</p>
                                                         </div>
                                                     );
@@ -379,9 +379,9 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
                                                 return null;
                                             }}
                                         />
-                                        <Bar dataKey={rankingType === 'volume' ? 'volume' : 'change_percent'} radius={[0, 4, 4, 0]}>
+                                        <Bar dataKey={rankingType === 'volume' ? 'volume' : 'change_amount'} radius={[0, 4, 4, 0]}>
                                             {getRankData('tpex')?.map((entry, index) => {
-                                                const isUp = parseFloat(entry.change_percent) >= 0;
+                                                const isUp = parseFloat(rankingType === 'volume' ? entry.change_percent : entry.change_amount) >= 0;
                                                 return <Cell key={`cell-${index}`} fill={isUp ? '#ef4444' : '#22c55e'} />;
                                             })}
                                         </Bar>
