@@ -233,20 +233,18 @@ async function syncDetailedFinancials(symbol) {
         // TaiwanStockFinancialStatements datasets:
         // - TaiwanStockFinancialStatements: Income Statement
         // - TaiwanStockBalanceSheet: Balance Sheet
-        const datasets = ['TaiwanStockFinancialStatements', 'TaiwanStockBalanceSheet'];
+        // - TaiwanStockCashFlowsStatement: Cash Flows
+        const datasets = ['TaiwanStockFinancialStatements', 'TaiwanStockBalanceSheet', 'TaiwanStockCashFlowsStatement'];
 
         for (const dataset of datasets) {
             console.log(`  [FinMind] Fetching ${dataset}...`);
             const data = await fetchFinMind(dataset, symbol);
             if (data && data.length > 0) {
                 for (const item of data) {
-                    // FinMind 'type' mapping:
-                    // In TaiwanStockFinancialStatements, item.type is basically the item name (Revenue, etc.)
-                    // In TaiwanStockBalanceSheet, item.type is also the item name (TotalAssets, etc.)
-                    // We need to determine the CATEGORY (Income Statement / Balance Sheet)
                     let category = 'Unknown';
                     if (dataset === 'TaiwanStockFinancialStatements') category = 'Income Statement';
                     if (dataset === 'TaiwanStockBalanceSheet') category = 'Balance Sheet';
+                    if (dataset === 'TaiwanStockCashFlowsStatement') category = 'Cash Flows';
 
                     await client.query(`
                         INSERT INTO fm_financial_statements (stock_id, date, type, value, item)

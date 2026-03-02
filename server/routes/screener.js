@@ -416,10 +416,10 @@ router.get('/stock/:symbol/financials', async (req, res) => {
             query('SELECT * FROM fundamentals WHERE symbol = $1', [symbol]),
             query('SELECT * FROM monthly_revenue WHERE symbol = $1 ORDER BY revenue_year DESC, revenue_month DESC LIMIT 12', [symbol]),
             query('SELECT * FROM financial_statements WHERE symbol = $1 AND type = $2 ORDER BY date DESC LIMIT 8', [symbol, 'EPS']),
-            query('SELECT * FROM fm_dividend WHERE stock_id = $1 ORDER BY date DESC LIMIT 20', [symbol]),
-            query('SELECT * FROM fm_financial_statements WHERE stock_id = $1 AND type = $2 ORDER BY date DESC LIMIT 8', [symbol, 'Balance Sheet']),
-            query('SELECT * FROM fm_financial_statements WHERE stock_id = $1 AND type = $2 ORDER BY date DESC LIMIT 8', [symbol, 'Income Statement']),
-            query('SELECT * FROM fm_financial_statements WHERE stock_id = $1 AND type = $2 ORDER BY date DESC LIMIT 8', [symbol, 'Cash Flows']),
+            query('SELECT year as date, year, cash_dividend as cash_earnings_distribution, stock_dividend as stock_earnings_distribution FROM dividend_policy WHERE symbol = $1 ORDER BY year DESC LIMIT 20', [symbol]),
+            query('SELECT type as item, value, date FROM fm_financial_statements WHERE stock_id = $1 AND item = $2 ORDER BY date DESC LIMIT 1000', [symbol, 'Balance Sheet']),
+            query('SELECT type as item, value, date FROM fm_financial_statements WHERE stock_id = $1 AND item = $2 ORDER BY date DESC LIMIT 1000', [symbol, 'Income Statement']),
+            query('SELECT type as item, value, date FROM fm_financial_statements WHERE stock_id = $1 AND item = $2 ORDER BY date DESC LIMIT 1000', [symbol, 'Cash Flows']),
             query(`
                 SELECT * FROM fm_financial_statements 
                 WHERE stock_id = $1 
