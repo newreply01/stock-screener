@@ -309,7 +309,7 @@ router.get('/market-summary', async (req, res) => {
             ORDER BY p.volume DESC
             LIMIT 10
             `;
-        const tpexResult = await query(tpexVolumeSql, params);
+        const tpexResult = await query(tpexVolumeSql, []);
 
         // 6. 漲幅最高 (Top Gainers) - TWSE
         const twseGainersSql = `
@@ -345,7 +345,7 @@ router.get('/market-summary', async (req, res) => {
             ORDER BY p.change_amount DESC
             LIMIT 10
             `;
-        const tpexGainersResult = await query(tpexGainersSql, params);
+        const tpexGainersResult = await query(tpexGainersSql, []);
 
         // 9. 跌幅最高 (Top Losers) - TPEX
         const tpexLosersSql = `
@@ -357,7 +357,7 @@ router.get('/market-summary', async (req, res) => {
             ORDER BY p.change_amount ASC
             LIMIT 10
             `;
-        const tpexLosersResult = await query(tpexLosersSql, params);
+        const tpexLosersResult = await query(tpexLosersSql, []);
 
         res.json({
             success: true,

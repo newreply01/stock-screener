@@ -3,6 +3,8 @@ const cors = require('cors');
 const path = require('path');
 const authRoutes = require('./routes/auth');
 const screenerRoutes = require('./routes/screener');
+const streamRoutes = require('./routes/stream');
+const realtimeQueryRoutes = require('./routes/realtime_query');
 const { startScheduler } = require('./scheduler');
 require('dotenv').config();
 
@@ -15,6 +17,8 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api', screenerRoutes);
+app.use('/api/stream', streamRoutes);
+app.use('/api', realtimeQueryRoutes);
 
 // Serve static files from React app
 const distPath = path.join(__dirname, '..', 'client', 'dist');
