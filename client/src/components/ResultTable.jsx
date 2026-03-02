@@ -372,7 +372,7 @@ export default function ResultTable({ results, loading, sortBy, sortDir, onSort,
                         <div ref={tableRef} className="bg-white">
                             {/* Hidden header for PDF export only */}
                             <div className="hidden export-pdf-header p-6 pb-2 border-b border-slate-100">
-                                <h1 className="text-2xl font-black text-slate-900">MuchStock 智能篩選報表</h1>
+                                <h1 className="text-2xl font-black text-slate-900">MuchStock 智能選股報表</h1>
                                 <p className="text-sm text-slate-500 font-bold mt-1">資料基準日: {latestDate}</p>
                             </div>
                             <table className="w-full text-sm text-left border-collapse">

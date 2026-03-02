@@ -47,12 +47,6 @@ export default function Header({ currentView = 'dashboard' }) {
                             大盤概況
                         </button>
                         <button
-                            onClick={() => dispatchView('dashboard')}
-                            className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'dashboard' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
-                        >
-                            台股篩選
-                        </button>
-                        <button
                             onClick={() => dispatchView('stock-detail')}
                             className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'stock-detail' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
                         >
@@ -74,13 +68,19 @@ export default function Header({ currentView = 'dashboard' }) {
                             onClick={() => dispatchView('screener-config')}
                             className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'screener-config' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
                         >
-                            智能篩選
+                            智能選股
                         </button>
                         <button
                             onClick={() => dispatchView('news')}
                             className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'news' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
                         >
                             財經新聞
+                        </button>
+                        <button
+                            onClick={() => dispatchView('dashboard')}
+                            className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'dashboard' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
+                        >
+                            台股篩選
                         </button>
                     </nav>
                 </div>
@@ -171,11 +171,12 @@ export default function Header({ currentView = 'dashboard' }) {
             {isMenuOpen && (
                 <div className="lg:hidden bg-brand-dark border-t border-white/5 py-4 px-4 space-y-2 animate-in slide-in-from-top duration-200">
                     <button onClick={() => { dispatchView('market-overview'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'market-overview' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>大盤概況</button>
-                    <button onClick={() => { dispatchView('dashboard'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'dashboard' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>台股篩選</button>
                     <button onClick={() => { dispatchView('stock-detail'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'stock-detail' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>個股資訊</button>
                     <button onClick={() => { dispatchView('institutional'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'institutional' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>三大法人</button>
                     <button onClick={() => { dispatchView('sentiment'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'sentiment' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>市場情緒</button>
-                    <button onClick={() => { dispatchView('screener-config'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'screener-config' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>智能篩選</button>
+                    <button onClick={() => { dispatchView('screener-config'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'screener-config' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>智能選股</button>
+                    <button onClick={() => { dispatchView('news'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'news' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>財經新聞</button>
+                    <button onClick={() => { dispatchView('dashboard'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'dashboard' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>台股篩選</button>
                     <div className="pt-2 border-t border-white/5">
                         <div className="flex items-center bg-white/10 rounded-md px-3 py-1.5 mt-2">
                             <input

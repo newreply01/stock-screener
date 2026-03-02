@@ -122,7 +122,7 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
     const [institutionalData, setInstitutionalData] = useState([])
     const [loading, setLoading] = useState(true)
     const [loadingChips, setLoadingChips] = useState(false)
-    const [activeTab, setActiveTab] = useState('price_vol')
+    const [activeTab, setActiveTab] = useState('realtime')
     const [activeSubTab, setActiveSubTab] = useState(null)
     const [activeSubSubTab, setActiveSubSubTab] = useState(null)
     const [activePatterns, setActivePatterns] = useState([])
@@ -448,7 +448,7 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
                                         <div className="text-2xl font-black text-red-500">
                                             {(() => {
                                                 const yieldVal = parseFloat(stock?.dividend_yield) || parseFloat(financials?.info?.dividend_yield);
-                                                return !isNaN(yieldVal) ? (yieldVal * 100).toFixed(2) + '%' : '--';
+                                                return !isNaN(yieldVal) ? yieldVal.toFixed(2) + '%' : '--';
                                             })()}
                                         </div>
                                         <div className="text-slate-400 text-[10px] mt-1 italic font-medium">

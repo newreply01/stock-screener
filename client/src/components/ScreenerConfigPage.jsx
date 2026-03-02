@@ -201,7 +201,7 @@ export default function ScreenerConfigPage({
                             <LayoutGrid className="w-5 h-5 text-brand-primary" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-black text-gray-900 tracking-tight">智能篩選</h1>
+                            <h1 className="text-xl font-black text-gray-900 tracking-tight">智能選股</h1>
                             <p className="text-sm font-medium text-gray-500 mt-0.5">組合多項條件找出潛力飆股</p>
                         </div>
                     </div>
@@ -318,7 +318,7 @@ export default function ScreenerConfigPage({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-8 border-b border-gray-100">
                         <div className="space-y-3">
                             <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                                <span className="text-blue-600">⚡</span> 智能篩選
+                                <span className="text-blue-600">⚡</span> 智能選股
                             </h2>
                             <div className="flex gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
                                 {['all', 'twse', 'tpex'].map((m) => (

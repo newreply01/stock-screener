@@ -159,3 +159,10 @@ export async function getBrokerTrace(symbol, limit = 60, period = '日K') {
     if (!res.ok) throw new Error('獲取分點進跡失敗');
     return res.json();
 }
+
+export async function getRealtimeData(symbol) {
+    if (!symbol) return null;
+    const res = await fetch(`${API_BASE}/realtime/${symbol}`);
+    if (!res.ok) throw new Error('獲取即時行情失敗');
+    return res.json();
+}

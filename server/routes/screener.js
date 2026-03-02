@@ -762,4 +762,102 @@ router.get('/stock/:symbol/broker-trace', async (req, res) => {
     }
 });
 
+const https = require('https');
+const fetchJson = (url) => new Promise((resolve, reject) => {
+    https.get(url, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+            try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
+        });
+    }).on('error', reject);
+});
+
+// GET /api/realtime/:symbol - 獲取即時行情 (代理 TWSE MIS)
+router.get('/realtime/:symbol', async (req, res) => {
+    try {
+        const { symbol } = req.params;
+
+        // 1. 先確認該檔股票是上市(twse)還是上櫃(tpex)
+        const marketRes = await query('SELECT market FROM stocks WHERE symbol = $1', [symbol]);
+        const market = marketRes.rows[0]?.market === 'twse' ? 'tse' : 'otc';
+
+        // 2. 向臺灣證券交易所 MIS 系統發起請求
+        // ex_ch=tse_2330.tw
+        const url = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${market}_${symbol}.tw`;
+        const misData = await fetchJson(url);
+
+        if (!misData || !misData.msgArray || misData.msgArray.length === 0) {
+            return res.json({ success: false, message: '無即時報價資料' });
+        }
+
+        const info = misData.msgArray[0];
+
+        // 解析資料 (格式參考 TWSE JSON，欄位皆為字串)
+        // z: 最近成交價, tv: 當盤成交量, v: 累積成交量, y: 昨收
+        // b: 買價五檔 (以 _ 分隔), g: 買量五檔
+        // a: 賣價五檔, f: 賣量五檔
+        const parseFiveLevels = (pricesStr, volsStr) => {
+            if (!pricesStr || !volsStr) return [];
+            const prices = pricesStr.split('_').filter(Boolean);
+            const vols = volsStr.split('_').filter(Boolean);
+            return prices.map((p, i) => ({
+                price: p === '-' ? null : parseFloat(p),
+                volume: vols[i] ? parseInt(vols[i]) : 0
+            })).filter(level => level.price !== null);
+        };
+
+        const bids = parseFiveLevels(info.b, info.g);
+        const asks = parseFiveLevels(info.a, info.f);
+
+        // 將五檔整合為一組陣列，供前端對齊渲染 (最多五檔)
+        const bidAskData = [];
+        for (let i = 0; i < 5; i++) {
+            bidAskData.push({
+                bid: bids[i]?.price || null,
+                bVol: bids[i]?.volume || null,
+                ask: asks[i]?.price || null,
+                aVol: asks[i]?.volume || null
+            });
+        }
+
+        const z = parseFloat(info.z);
+        const y = parseFloat(info.y);
+        const change = z && y ? (z - y) : 0;
+        const changePercent = z && y ? (change / y) * 100 : 0;
+
+        // 大致推算內外盤比例 (這只是粗略推估，不是精確值)
+        // 假設最新價貼近買價=內盤(Sell intensity)，貼近賣價=外盤(Buy intensity)
+        let buyIntensity = 50;
+        let sellIntensity = 50;
+        if (asks.length > 0 && bids.length > 0 && z) {
+            const bestBid = bids[0].price;
+            const bestAsk = asks[0].price;
+            if (z >= bestAsk) { buyIntensity = 65; sellIntensity = 35; }
+            else if (z <= bestBid) { buyIntensity = 35; sellIntensity = 65; }
+        }
+
+        res.json({
+            success: true,
+            symbol: info.c,
+            name: info.n,
+            last_price: info.z === '-' ? null : z,
+            change: change,
+            change_percent: changePercent,
+            volume: parseInt(info.v),
+            trade_volume: parseInt(info.tv),
+            open: parseFloat(info.o),
+            high: parseFloat(info.h),
+            low: parseFloat(info.l),
+            latest_time: info.t,
+            buy_intensity: buyIntensity,
+            sell_intensity: sellIntensity,
+            five_levels: bidAskData
+        });
+    } catch (err) {
+        console.error('Failed to fetch realtime data:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 module.exports = router;

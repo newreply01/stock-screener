@@ -191,7 +191,7 @@ export default function MarketDashboard({ onStockSelect }) {
                             className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-lg text-xs font-black hover:border-brand-primary hover:text-brand-primary transition-all flex items-center gap-2 shadow-sm"
                             onClick={() => window.dispatchEvent(new CustomEvent('muchstock-view', { detail: 'screener-config' }))}
                         >
-                            智能篩選 <ArrowRight className="w-3.5 h-3.5" />
+                            智能選股 <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                     </div>
 

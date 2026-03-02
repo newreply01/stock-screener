@@ -171,7 +171,7 @@ export default function FilterPanel({ onFilter, onClear, filters }) {
                     onClick={handleSubmit}
                 >
                     <Search className="w-4 h-4 stroke-[3px]" />
-                    執行智能篩選
+                    執行智能選股
                 </button>
             </div>
         </div>
