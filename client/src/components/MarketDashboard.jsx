@@ -106,7 +106,7 @@ export default function MarketDashboard({ onStockSelect }) {
                         <div className="text-[10px] font-black bg-gray-100 px-2 py-1 rounded text-gray-500 uppercase tracking-tighter">Real-time Stats</div>
                     </div>
 
-                    <div className="flex-1 flex items-end justify-between gap-2 h-48 mb-4">
+                    <div className="flex-1 flex justify-between gap-2 h-48 mb-4">
                         {[
                             { id: 'limit_up', label: '漲停', count: distribution?.limit_up, color: 'bg-red-600', hoverColor: 'hover:bg-red-700' },
                             { id: 'up_5', label: '5%↑', count: distribution?.up_5, color: 'bg-red-500', hoverColor: 'hover:bg-red-600' },
@@ -153,8 +153,8 @@ export default function MarketDashboard({ onStockSelect }) {
                             };
 
                             return (
-                                <div key={i} className="flex-1 flex flex-col items-center group cursor-pointer" onClick={handleBarClick}>
-                                    <div className="relative w-full flex flex-col items-center mb-2 justify-end" style={{ height: '100%' }}>
+                                <div key={i} className="flex-1 h-full flex flex-col items-center group cursor-pointer" onClick={handleBarClick}>
+                                    <div className="relative w-full flex-1 flex flex-col items-center mb-2 justify-end">
                                         <div className="absolute -top-6 text-[10px] font-black text-gray-800 opacity-0 group-hover:opacity-100 transition-opacity bg-white px-1.5 py-0.5 rounded shadow-sm border border-gray-100 z-10 whitespace-nowrap">{countNum} 家</div>
                                         <div
                                             className={`w-full rounded-t-lg transition-all duration-700 ease-out shadow-sm ${bar.color} ${bar.hoverColor} group-hover:-translate-y-1`}

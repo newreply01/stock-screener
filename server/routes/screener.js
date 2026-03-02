@@ -525,26 +525,7 @@ i.symbol,
     }
 });
 
-// GET /api/market-summary - 市場統計 (別名，用於相容)
-router.get('/market-summary', async (req, res) => {
-    try {
-        const sql = `
-            WITH latest AS(
-        SELECT MAX(trade_date) as m_date FROM daily_prices
-    )
-SELECT
-COUNT(*) filter(where change_percent > 0) as up_count,
-    COUNT(*) filter(where change_percent < 0) as down_count,
-        TO_CHAR((SELECT m_date FROM latest), 'YYYY-MM-DD') as latestDate
-            FROM daily_prices
-            WHERE trade_date = (SELECT m_date FROM latest)
-`;
-        const result = await query(sql);
-        res.json({ success: true, ...result.rows[0] });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
+
 
 // GET /api/market-stats - 市場統計 (用於頁首)
 router.get('/market-stats', async (req, res) => {
