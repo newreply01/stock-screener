@@ -128,6 +128,26 @@ CREATE INDEX IF NOT EXISTS idx_institutional_date ON institutional(trade_date);
 CREATE INDEX IF NOT EXISTS idx_news_publish_at ON news(publish_at);
 CREATE INDEX IF NOT EXISTS idx_news_category ON news(category);
 
+-- 盤中即時/歷史 1分鐘快照資料 (1-Minute K-Bars/Snapshots)
+CREATE TABLE IF NOT EXISTS realtime_ticks (
+  id BIGSERIAL PRIMARY KEY,
+  symbol VARCHAR(10) NOT NULL REFERENCES stocks(symbol),
+  trade_time TIMESTAMP NOT NULL,
+  price NUMERIC(10,2),
+  open_price NUMERIC(10,2),
+  high_price NUMERIC(10,2),
+  low_price NUMERIC(10,2),
+  volume BIGINT,
+  trade_volume BIGINT,
+  buy_intensity SMALLINT DEFAULT 50,
+  sell_intensity SMALLINT DEFAULT 50,
+  five_levels JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(symbol, trade_time)
+);
+CREATE INDEX IF NOT EXISTS idx_realtime_ticks_symbol_time ON realtime_ticks(symbol, trade_time DESC);
+CREATE INDEX IF NOT EXISTS idx_realtime_ticks_trade_time ON realtime_ticks(trade_time DESC);
+
 -- 技術指標表
 CREATE TABLE IF NOT EXISTS indicators (
   id SERIAL PRIMARY KEY,

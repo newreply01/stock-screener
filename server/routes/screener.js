@@ -305,7 +305,7 @@ router.get('/market-summary', async (req, res) => {
         s.symbol, s.name, p.close_price, p.change_percent, p.volume
             FROM daily_prices p
             JOIN stocks s ON p.symbol = s.symbol
-            ${whereClause} AND s.market = 'tpex'
+            WHERE p.trade_date = (SELECT MAX(p2.trade_date) FROM daily_prices p2 JOIN stocks s2 ON p2.symbol = s2.symbol WHERE s2.market = 'tpex') AND s.market = 'tpex'
             ORDER BY p.volume DESC
             LIMIT 10
             `;
@@ -341,7 +341,7 @@ router.get('/market-summary', async (req, res) => {
         s.symbol, s.name, p.close_price, p.change_amount, p.volume
             FROM daily_prices p
             JOIN stocks s ON p.symbol = s.symbol
-            ${whereClause} AND s.market = 'tpex' AND p.change_amount IS NOT NULL
+            WHERE p.trade_date = (SELECT MAX(p2.trade_date) FROM daily_prices p2 JOIN stocks s2 ON p2.symbol = s2.symbol WHERE s2.market = 'tpex') AND s.market = 'tpex' AND p.change_amount IS NOT NULL
             ORDER BY p.change_amount DESC
             LIMIT 10
             `;
@@ -353,7 +353,7 @@ router.get('/market-summary', async (req, res) => {
         s.symbol, s.name, p.close_price, p.change_amount, p.volume
             FROM daily_prices p
             JOIN stocks s ON p.symbol = s.symbol
-            ${whereClause} AND s.market = 'tpex' AND p.change_amount IS NOT NULL
+            WHERE p.trade_date = (SELECT MAX(p2.trade_date) FROM daily_prices p2 JOIN stocks s2 ON p2.symbol = s2.symbol WHERE s2.market = 'tpex') AND s.market = 'tpex' AND p.change_amount IS NOT NULL
             ORDER BY p.change_amount ASC
             LIMIT 10
             `;
