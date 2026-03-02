@@ -311,13 +311,65 @@ router.get('/market-summary', async (req, res) => {
             `;
         const tpexResult = await query(tpexVolumeSql, params);
 
+        // 6. 漲幅最高 (Top Gainers) - TWSE
+        const twseGainersSql = `
+        SELECT
+        s.symbol, s.name, p.close_price, p.change_percent, p.volume
+            FROM daily_prices p
+            JOIN stocks s ON p.symbol = s.symbol
+            ${whereClause} AND s.market = 'twse'
+            ORDER BY p.change_percent DESC
+            LIMIT 10
+            `;
+        const twseGainersResult = await query(twseGainersSql, params);
+
+        // 7. 跌幅最高 (Top Losers) - TWSE
+        const twseLosersSql = `
+        SELECT
+        s.symbol, s.name, p.close_price, p.change_percent, p.volume
+            FROM daily_prices p
+            JOIN stocks s ON p.symbol = s.symbol
+            ${whereClause} AND s.market = 'twse'
+            ORDER BY p.change_percent ASC
+            LIMIT 10
+            `;
+        const twseLosersResult = await query(twseLosersSql, params);
+
+        // 8. 漲幅最高 (Top Gainers) - TPEX
+        const tpexGainersSql = `
+        SELECT
+        s.symbol, s.name, p.close_price, p.change_percent, p.volume
+            FROM daily_prices p
+            JOIN stocks s ON p.symbol = s.symbol
+            ${whereClause} AND s.market = 'tpex'
+            ORDER BY p.change_percent DESC
+            LIMIT 10
+            `;
+        const tpexGainersResult = await query(tpexGainersSql, params);
+
+        // 9. 跌幅最高 (Top Losers) - TPEX
+        const tpexLosersSql = `
+        SELECT
+        s.symbol, s.name, p.close_price, p.change_percent, p.volume
+            FROM daily_prices p
+            JOIN stocks s ON p.symbol = s.symbol
+            ${whereClause} AND s.market = 'tpex'
+            ORDER BY p.change_percent ASC
+            LIMIT 10
+            `;
+        const tpexLosersResult = await query(tpexLosersSql, params);
+
         res.json({
             success: true,
             latestDate: latestDateStr,
             distribution: distResult.rows[0],
             industries: industryResult.rows,
             twseVolume: twseResult.rows,
-            tpexVolume: tpexResult.rows
+            tpexVolume: tpexResult.rows,
+            twseGainers: twseGainersResult.rows,
+            twseLosers: twseLosersResult.rows,
+            tpexGainers: tpexGainersResult.rows,
+            tpexLosers: tpexLosersResult.rows
         });
     } catch (err) {
         console.error('Market summary error:', err);

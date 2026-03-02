@@ -8,6 +8,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, Cartes
 
 export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggleWatchlist }) {
     const [market, setMarket] = useState('all');
+    const [rankingType, setRankingType] = useState('gainers'); // 'gainers', 'losers', 'volume'
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -83,7 +84,24 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
         );
     }
 
-    const { distribution, industries, twseVolume, tpexVolume, latestDate } = data || {};
+    const {
+        distribution, industries, latestDate,
+        twseVolume, tpexVolume,
+        twseGainers, tpexGainers,
+        twseLosers, tpexLosers
+    } = data || {};
+
+    const getRankData = (marketType) => {
+        if (marketType === 'twse') {
+            if (rankingType === 'gainers') return twseGainers;
+            if (rankingType === 'losers') return twseLosers;
+            return twseVolume;
+        } else {
+            if (rankingType === 'gainers') return tpexGainers;
+            if (rankingType === 'losers') return tpexLosers;
+            return tpexVolume;
+        }
+    };
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -245,97 +263,131 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
                     </div>
                 </div>
 
-                {/* 3. Hot Volume Charts - Split TWSE / TPEX */}
-                <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                    {/* TWSE Top Volume */}
-                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden p-6">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center border border-blue-200">
-                                <Flame className="w-5 h-5 text-blue-500" />
+                {/* 3. Dynamic Ranking Charts - Split TWSE / TPEX */}
+                <div className="lg:col-span-12 bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mt-8">
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center border border-indigo-200">
+                                <Flame className="w-5 h-5 text-indigo-500" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-black text-gray-800 tracking-tight">上市成交量榜</h3>
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">TWSE Hot Volume</p>
+                                <h3 className="text-lg font-black text-gray-800 tracking-tight">盤中排行榜</h3>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">Top Market Leaders</p>
                             </div>
                         </div>
-                        <div className="h-64 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={twseVolume} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                                    <XAxis type="number" fontSize={10} tickFormatter={(val) => `${(val / 1000).toFixed(0)}k`} />
-                                    <YAxis type="category" dataKey="name" width={70} fontSize={11} fontWeight="bold" />
-                                    <Tooltip
-                                        cursor={{ fill: 'rgba(0,0,0,0.02)' }}
-                                        content={({ active, payload }) => {
-                                            if (active && payload && payload.length) {
-                                                const data = payload[0].payload;
-                                                const isUp = parseFloat(data.change_percent) >= 0;
-                                                return (
-                                                    <div className="z-50 bg-white/95 backdrop-blur-sm p-3 border border-gray-200 shadow-lg rounded-xl">
-                                                        <p className="font-black text-gray-800 text-sm mb-1">{data.name} ({data.symbol})</p>
-                                                        <p className="font-bold text-gray-600 text-xs">成交價: <span className="text-gray-900">{data.close_price}</span></p>
-                                                        <p className="font-bold text-xs mt-0.5">漲跌: <span className={isUp ? 'text-red-500' : 'text-green-500'}>{isUp ? '+' : ''}{data.change_percent}%</span></p>
-                                                        <p className="font-bold text-indigo-500 text-xs mt-0.5">成交量: {(data.volume / 1000).toFixed(0)} 張</p>
-                                                    </div>
-                                                );
-                                            }
-                                            return null;
-                                        }}
-                                    />
-                                    <Bar dataKey="volume" radius={[0, 4, 4, 0]}>
-                                        {twseVolume?.map((entry, index) => {
-                                            const isUp = parseFloat(entry.change_percent) >= 0;
-                                            return <Cell key={`cell-${index}`} fill={isUp ? '#ef4444' : '#22c55e'} />;
-                                        })}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                        <div className="flex bg-gray-100 p-1 rounded-xl shadow-inner border border-gray-200">
+                            {[
+                                { id: 'gainers', label: '漲幅最高' },
+                                { id: 'losers', label: '跌幅最高' },
+                                { id: 'volume', label: '成交量榜' }
+                            ].map(rank => (
+                                <button
+                                    key={rank.id}
+                                    onClick={() => setRankingType(rank.id)}
+                                    className={`px-4 py-1.5 text-xs font-black transition-all rounded-lg flex items-center gap-1.5
+                                        ${rankingType === rank.id
+                                            ? rank.id === 'gainers' ? 'bg-red-500 text-white shadow-md'
+                                                : rank.id === 'losers' ? 'bg-green-500 text-white shadow-md'
+                                                    : 'bg-indigo-500 text-white shadow-md'
+                                            : 'text-gray-500 hover:text-gray-900'}`}
+                                >
+                                    {rank.label}
+                                </button>
+                            ))}
                         </div>
                     </div>
 
-                    {/* TPEX Top Volume */}
-                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden p-6">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center border border-amber-200">
-                                <Flame className="w-5 h-5 text-amber-500" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* TWSE Chart */}
+                        <div>
+                            <div className="flex items-center gap-2 mb-4">
+                                <div className="w-2 h-6 bg-blue-500 rounded-full"></div>
+                                <h4 className="font-black text-gray-700">上市 (TWSE) 前 10 名</h4>
                             </div>
-                            <div>
-                                <h3 className="text-lg font-black text-gray-800 tracking-tight">上櫃成交量榜</h3>
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">TPEX Hot Volume</p>
+                            <div className="h-64 w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={getRankData('twse')} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                                        <XAxis
+                                            type="number"
+                                            fontSize={10}
+                                            tickFormatter={(val) => rankingType === 'volume' ? `${(val / 1000).toFixed(0)}k` : `${val}%`}
+                                            domain={rankingType !== 'volume' ? ['dataMin - 1', 'dataMax + 1'] : [0, 'auto']}
+                                        />
+                                        <YAxis type="category" dataKey="name" width={70} fontSize={11} fontWeight="bold" />
+                                        <Tooltip
+                                            cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                                            content={({ active, payload }) => {
+                                                if (active && payload && payload.length) {
+                                                    const data = payload[0].payload;
+                                                    const isUp = parseFloat(data.change_percent) >= 0;
+                                                    return (
+                                                        <div className="z-50 bg-white/95 backdrop-blur-sm p-3 border border-gray-200 shadow-lg rounded-xl">
+                                                            <p className="font-black text-gray-800 text-sm mb-1">{data.name} ({data.symbol})</p>
+                                                            <p className="font-bold text-gray-600 text-xs">成交價: <span className="text-gray-900">{data.close_price}</span></p>
+                                                            <p className="font-bold text-xs mt-0.5">漲跌: <span className={isUp ? 'text-red-500' : 'text-green-500'}>{isUp ? '+' : ''}{data.change_percent}%</span></p>
+                                                            <p className="font-bold text-indigo-500 text-xs mt-0.5">成交量: {(data.volume / 1000).toFixed(0)} 張</p>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            }}
+                                        />
+                                        <Bar dataKey={rankingType === 'volume' ? 'volume' : 'change_percent'} radius={[0, 4, 4, 0]}>
+                                            {getRankData('twse')?.map((entry, index) => {
+                                                const isUp = parseFloat(entry.change_percent) >= 0;
+                                                return <Cell key={`cell-${index}`} fill={isUp ? '#ef4444' : '#22c55e'} />;
+                                            })}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
                             </div>
                         </div>
-                        <div className="h-64 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={tpexVolume} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                                    <XAxis type="number" fontSize={10} tickFormatter={(val) => `${(val / 1000).toFixed(0)}k`} />
-                                    <YAxis type="category" dataKey="name" width={70} fontSize={11} fontWeight="bold" />
-                                    <Tooltip
-                                        cursor={{ fill: 'rgba(0,0,0,0.02)' }}
-                                        content={({ active, payload }) => {
-                                            if (active && payload && payload.length) {
-                                                const data = payload[0].payload;
-                                                const isUp = parseFloat(data.change_percent) >= 0;
-                                                return (
-                                                    <div className="z-50 bg-white/95 backdrop-blur-sm p-3 border border-gray-200 shadow-lg rounded-xl">
-                                                        <p className="font-black text-gray-800 text-sm mb-1">{data.name} ({data.symbol})</p>
-                                                        <p className="font-bold text-gray-600 text-xs">成交價: <span className="text-gray-900">{data.close_price}</span></p>
-                                                        <p className="font-bold text-xs mt-0.5">漲跌: <span className={isUp ? 'text-red-500' : 'text-green-500'}>{isUp ? '+' : ''}{data.change_percent}%</span></p>
-                                                        <p className="font-bold text-indigo-500 text-xs mt-0.5">成交量: {(data.volume / 1000).toFixed(0)} 張</p>
-                                                    </div>
-                                                );
-                                            }
-                                            return null;
-                                        }}
-                                    />
-                                    <Bar dataKey="volume" radius={[0, 4, 4, 0]}>
-                                        {tpexVolume?.map((entry, index) => {
-                                            const isUp = parseFloat(entry.change_percent) >= 0;
-                                            return <Cell key={`cell-${index}`} fill={isUp ? '#ef4444' : '#22c55e'} />;
-                                        })}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+
+                        {/* TPEX Chart */}
+                        <div>
+                            <div className="flex items-center gap-2 mb-4">
+                                <div className="w-2 h-6 bg-orange-500 rounded-full"></div>
+                                <h4 className="font-black text-gray-700">上櫃 (TPEX) 前 10 名</h4>
+                            </div>
+                            <div className="h-64 w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={getRankData('tpex')} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                                        <XAxis
+                                            type="number"
+                                            fontSize={10}
+                                            tickFormatter={(val) => rankingType === 'volume' ? `${(val / 1000).toFixed(0)}k` : `${val}%`}
+                                            domain={rankingType !== 'volume' ? ['dataMin - 1', 'dataMax + 1'] : [0, 'auto']}
+                                        />
+                                        <YAxis type="category" dataKey="name" width={70} fontSize={11} fontWeight="bold" />
+                                        <Tooltip
+                                            cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                                            content={({ active, payload }) => {
+                                                if (active && payload && payload.length) {
+                                                    const data = payload[0].payload;
+                                                    const isUp = parseFloat(data.change_percent) >= 0;
+                                                    return (
+                                                        <div className="z-50 bg-white/95 backdrop-blur-sm p-3 border border-gray-200 shadow-lg rounded-xl">
+                                                            <p className="font-black text-gray-800 text-sm mb-1">{data.name} ({data.symbol})</p>
+                                                            <p className="font-bold text-gray-600 text-xs">成交價: <span className="text-gray-900">{data.close_price}</span></p>
+                                                            <p className="font-bold text-xs mt-0.5">漲跌: <span className={isUp ? 'text-red-500' : 'text-green-500'}>{isUp ? '+' : ''}{data.change_percent}%</span></p>
+                                                            <p className="font-bold text-indigo-500 text-xs mt-0.5">成交量: {(data.volume / 1000).toFixed(0)} 張</p>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            }}
+                                        />
+                                        <Bar dataKey={rankingType === 'volume' ? 'volume' : 'change_percent'} radius={[0, 4, 4, 0]}>
+                                            {getRankData('tpex')?.map((entry, index) => {
+                                                const isUp = parseFloat(entry.change_percent) >= 0;
+                                                return <Cell key={`cell-${index}`} fill={isUp ? '#ef4444' : '#22c55e'} />;
+                                            })}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
                     </div>
                 </div>
