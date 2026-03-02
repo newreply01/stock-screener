@@ -8,6 +8,7 @@ import ResultTable from './ResultTable'
 import { useAuth } from '../context/AuthContext';
 
 const TABS = [
+    { id: 'strategies', label: '智慧策略', icon: Star },
     { id: 'patterns', label: 'K線型態', icon: CheckSquare },
     { id: 'technical', label: '技術指標', icon: BarChart3 },
     { id: 'fundamental', label: '基本財報', icon: ClipboardList },
@@ -47,9 +48,10 @@ export default function ScreenerConfigPage({
     onToggleWatchlist
 }) {
     const { requireLogin } = useAuth();
-    const [activeTab, setActiveTab] = useState('patterns')
+    const [activeTab, setActiveTab] = useState('strategies')
     const [localFilters, setLocalFilters] = useState({
         market: 'all',
+        strategy: '',
         patterns: [],
         price_min: '', price_max: '',
         change_min: '', change_max: '',
@@ -74,7 +76,18 @@ export default function ScreenerConfigPage({
     const [isSaving, setIsSaving] = useState(false)
     const [newFilterName, setNewFilterName] = useState('')
 
-    const lastFiltersRef = useRef('');
+    const lastFiltersRef = useRef(JSON.stringify({ market: 'all', strategy: '' }))
+
+    const getCleanedFilters = (filters) => {
+        const cleaned = {}
+        Object.entries(filters).forEach(([k, v]) => {
+            if (v !== '' && v !== null && v !== undefined && v !== 'all') {
+                if (Array.isArray(v) && v.length === 0) return;
+                cleaned[k] = v
+            }
+        })
+        return cleaned;
+    }
 
     useEffect(() => {
         fetchSavedFilters()
@@ -83,15 +96,9 @@ export default function ScreenerConfigPage({
     // 優化：只在 localFilters 有「實質」變化時才觸發 onFilter
     useEffect(() => {
         const handler = setTimeout(() => {
-            const cleaned = {}
-            Object.entries(localFilters).forEach(([k, v]) => {
-                if (v !== '' && v !== null && v !== undefined && v !== 'all') {
-                    if (Array.isArray(v) && v.length === 0) return;
-                    cleaned[k] = v
-                }
-            })
-
+            const cleaned = getCleanedFilters(localFilters);
             const currentString = JSON.stringify(cleaned);
+
             // 只有當新生成的過濾條件與上一次不同時，才通知父組件
             if (currentString !== lastFiltersRef.current) {
                 lastFiltersRef.current = currentString;
@@ -150,17 +157,50 @@ export default function ScreenerConfigPage({
     }
 
     const updateFilter = (key, value) => {
-        setLocalFilters(prev => ({ ...prev, [key]: value }))
+        setLocalFilters(prev => {
+            // 如果更新的是普通過濾條件，則清除智慧策略模式
+            const next = { ...prev, [key]: value };
+            if (key !== 'strategy' && key !== 'market' && key !== 'date') {
+                next.strategy = '';
+            }
+            return next;
+        })
     }
 
     const togglePattern = (patternId) => {
         setLocalFilters(prev => {
             const current = prev.patterns || [];
+            let nextPatterns = [];
             if (current.includes(patternId)) {
-                return { ...prev, patterns: current.filter(id => id !== patternId) };
+                nextPatterns = current.filter(id => id !== patternId);
             } else {
-                return { ...prev, patterns: [...current, patternId] };
+                nextPatterns = [...current, patternId];
             }
+            // 型態選擇與智慧策略互斥，選擇型態則清除策略
+            const next = { ...prev, patterns: nextPatterns, strategy: '' };
+            return next;
+        });
+    }
+
+    const handleStrategySelect = (stratId) => {
+        setLocalFilters(prev => {
+            const isSelected = prev.strategy === stratId;
+            const nextStrategy = isSelected ? '' : stratId;
+
+            // 智慧策略為獨立模式，選擇時清除所有其他手動過濾條件
+            const empty = { patterns: [], strategy: nextStrategy, market: prev.market, date: prev.date };
+            Object.keys(prev).forEach(k => {
+                if (!['patterns', 'strategy', 'market', 'date'].includes(k)) {
+                    empty[k] = '';
+                }
+            });
+
+            // 立即通知父組件，不用等待 debounce
+            const cleaned = getCleanedFilters(empty);
+            onFilter(cleaned);
+            lastFiltersRef.current = JSON.stringify(cleaned);
+
+            return empty;
         });
     }
 
@@ -176,9 +216,9 @@ export default function ScreenerConfigPage({
     }
 
     const handleClear = () => {
-        const empty = { patterns: [] }
+        const empty = { patterns: [], strategy: '' }
         Object.keys(localFilters).forEach(k => {
-            if (k !== 'patterns') empty[k] = k === 'market' ? 'all' : ''
+            if (k !== 'patterns' && k !== 'strategy') empty[k] = k === 'market' ? 'all' : ''
         })
         setLocalFilters(empty)
         onClear()
@@ -388,6 +428,42 @@ export default function ScreenerConfigPage({
                                                             </span>
                                                         </div>
                                                     </div>
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {activeTab === 'strategies' && (
+                            <div className="space-y-6 animate-in fade-in duration-300">
+                                <div>
+                                    <h3 className="text-lg font-black text-gray-900 mb-1">精選策略 (Yahoo 經典款)</h3>
+                                    <p className="text-gray-500 text-sm mb-6">快速選用常見的熱門投資策略，尋找符合目標條件的股票。</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        {[
+                                            { id: 'bullish_ma', name: '多頭排列', desc: '短中長期均線依序排列向上，且股價在均線之上', color: 'bg-red-50 text-red-700 border-red-200 hover:border-red-400' },
+                                            { id: 'breakout', name: '突破均線', desc: '今日收盤價向上突破 20 日均線 (月線) 的發動訊號', color: 'bg-orange-50 text-orange-700 border-orange-200 hover:border-orange-400' },
+                                            { id: 'high_yield', name: '高殖利率', desc: '現金股利殖利率大於 5%，長線穩定存股首選', color: 'bg-green-50 text-green-700 border-green-200 hover:border-green-400' },
+                                            { id: 'value_invest', name: '價值投資', desc: '低本益比 (PE < 15) 且 低淨值比 (PB < 1)', color: 'bg-amber-50 text-amber-700 border-amber-200 hover:border-amber-400' },
+                                            { id: 'inst_buy', name: '法人連買', desc: '外資與投信呈現同步淨買超的資金匯聚股', color: 'bg-blue-50 text-blue-700 border-blue-200 hover:border-blue-400' },
+                                        ].map(strat => {
+                                            const isSelected = localFilters.strategy === strat.id;
+                                            return (
+                                                <button
+                                                    key={strat.id}
+                                                    onClick={() => handleStrategySelect(strat.id)}
+                                                    className={`p-4 rounded-xl border-2 text-left transition-all relative overflow-hidden group
+                                                        ${isSelected ? `${strat.color.split(' ')[0]} border-brand-primary shadow-sm` : 'bg-white border-gray-200 hover:border-gray-300'}
+                                                    `}
+                                                >
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <h4 className={`font-black text-[16px] ${isSelected ? 'text-brand-primary' : 'text-gray-900'}`}>{strat.name}</h4>
+                                                        <div className={`w-5 h-5 rounded-full border ${isSelected ? 'bg-brand-primary border-brand-primary flex items-center justify-center' : 'bg-white border-gray-300'}`}>
+                                                            {isSelected && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-[12px] text-gray-500 leading-snug">{strat.desc}</p>
                                                 </button>
                                             )
                                         })}

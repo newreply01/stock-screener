@@ -30,7 +30,8 @@ router.get('/screen', async (req, res) => {
             dealer_net_min, dealer_net_max,
             total_net_min, total_net_max,
             date,
-            market
+            market,
+            strategy
         } = req.query;
         const offset = (parseInt(page) - 1) * parseInt(limit);
 
@@ -112,6 +113,27 @@ router.get('/screen', async (req, res) => {
         addRangeFilter('inst.dealer_net', dealer_net_min, dealer_net_max);
         addRangeFilter('inst.total_net', total_net_min, total_net_max);
 
+        // 智慧策略過濾
+        if (strategy) {
+            switch (strategy) {
+                case 'bullish_ma': // 多頭排列
+                    whereClause += ` AND i.ma_5 > i.ma_10 AND i.ma_10 > i.ma_20 AND i.ma_20 > i.ma_60 AND p.close_price > i.ma_5`;
+                    break;
+                case 'breakout': // 突破均線 (20MA)
+                    whereClause += ` AND p.close_price > i.ma_20 AND p.open_price < i.ma_20 AND p.close_price > p.open_price`;
+                    break;
+                case 'high_yield': // 高殖利率
+                    whereClause += ` AND f.dividend_yield > 5`;
+                    break;
+                case 'value_invest': // 價值投資
+                    whereClause += ` AND f.pe_ratio > 0 AND f.pe_ratio < 15 AND f.pb_ratio > 0 AND f.pb_ratio < 1`;
+                    break;
+                case 'inst_buy': // 法人連買
+                    whereClause += ` AND inst.foreign_net > 0 AND inst.trust_net > 0`;
+                    break;
+            }
+        }
+
         // K線型態過濾
         if (patterns) {
             const patternList = patterns.split(',').filter(Boolean);
@@ -143,7 +165,7 @@ router.get('/screen', async (req, res) => {
                 LIMIT 1
             ) inst ON true
             LEFT JOIN LATERAL (
-                SELECT patterns, rsi_14, macd_hist, ma_20
+                SELECT patterns, rsi_14, macd_hist, ma_5, ma_10, ma_20, ma_60
                 FROM indicators i_sub
                 WHERE i_sub.symbol = s.symbol AND i_sub.trade_date <= $1::date
                 ORDER BY i_sub.trade_date DESC
@@ -202,7 +224,7 @@ router.get('/stocks/industries', async (req, res) => {
             FROM stocks 
             WHERE industry IS NOT NULL AND industry != ''
             ORDER BY industry ASC
-        `;
+            `;
         const result = await query(sql);
         res.json(result.rows.map(row => row.industry));
     } catch (err) {
@@ -233,16 +255,16 @@ router.get('/market-summary', async (req, res) => {
 
         // 2. 漲跌分佈統計 (Histogram data)
         const distributionSql = `
-            SELECT 
-                COUNT(*) filter (where change_percent >= 9.5) as limit_up,
-                COUNT(*) filter (where change_percent >= 5 AND change_percent < 9.5) as up_5,
-                COUNT(*) filter (where change_percent >= 2 AND change_percent < 5) as up_2_5,
-                COUNT(*) filter (where change_percent > 0 AND change_percent < 2) as up_0_2,
-                COUNT(*) filter (where change_percent = 0) as flat,
-                COUNT(*) filter (where change_percent > -2 AND change_percent < 0) as down_0_2,
-                COUNT(*) filter (where change_percent > -5 AND change_percent <= -2) as down_2_5,
-                COUNT(*) filter (where change_percent > -9.5 AND change_percent <= -5) as down_5,
-                COUNT(*) filter (where change_percent <= -9.5) as limit_down
+        SELECT
+        COUNT(*) filter(where change_percent >= 9.5) as limit_up,
+            COUNT(*) filter(where change_percent >= 5 AND change_percent < 9.5) as up_5,
+                COUNT(*) filter(where change_percent >= 2 AND change_percent < 5) as up_2_5,
+                    COUNT(*) filter(where change_percent > 0 AND change_percent < 2) as up_0_2,
+                        COUNT(*) filter(where change_percent = 0) as flat,
+                            COUNT(*) filter(where change_percent > -2 AND change_percent < 0) as down_0_2,
+                                COUNT(*) filter(where change_percent > -5 AND change_percent <= -2) as down_2_5,
+                                    COUNT(*) filter(where change_percent > -9.5 AND change_percent <= -5) as down_5,
+                                        COUNT(*) filter(where change_percent <= -9.5) as limit_down
             FROM daily_prices p
             JOIN stocks s ON p.symbol = s.symbol
             ${whereClause}
@@ -251,29 +273,29 @@ router.get('/market-summary', async (req, res) => {
 
         // 3. 產業績效排行 (Industry Performance)
         const industrySql = `
-            SELECT 
-                s.industry,
-                AVG(p.change_percent) as avg_change,
-                COUNT(*) as stock_count
+        SELECT
+        s.industry,
+            AVG(p.change_percent) as avg_change,
+            COUNT(*) as stock_count
             FROM daily_prices p
             JOIN stocks s ON p.symbol = s.symbol
             ${whereClause} AND s.industry IS NOT NULL AND s.industry != ''
             GROUP BY s.industry
             ORDER BY avg_change DESC
             LIMIT 20
-        `;
+            `;
         const industryResult = await query(industrySql, params);
 
         // 4. 即時熱門股 (Top Volume)
         const hotStocksSql = `
-            SELECT 
-                s.symbol, s.name, p.close_price, p.change_percent, p.volume
+        SELECT
+        s.symbol, s.name, p.close_price, p.change_percent, p.volume
             FROM daily_prices p
             JOIN stocks s ON p.symbol = s.symbol
             ${whereClause}
             ORDER BY p.volume DESC
             LIMIT 10
-        `;
+            `;
         const hotResult = await query(hotStocksSql, params);
 
         res.json({
@@ -293,18 +315,18 @@ router.get('/market-summary', async (req, res) => {
 router.get('/stats', async (req, res) => {
     try {
         const sql = `
-            WITH latest AS (
+            WITH latest AS(
                 SELECT MAX(trade_date) as m_date FROM daily_prices
             )
-            SELECT 
-                COUNT(*) filter (where change_percent > 0) as up_count,
-                COUNT(*) filter (where change_percent < 0) as down_count,
-                COUNT(*) filter (where change_percent = 0) as flat_count,
-                AVG(change_percent) as avg_change,
-                TO_CHAR((SELECT m_date FROM latest), 'YYYY-MM-DD') as "latestDate"
+        SELECT
+        COUNT(*) filter(where change_percent > 0) as up_count,
+            COUNT(*) filter(where change_percent < 0) as down_count,
+                COUNT(*) filter(where change_percent = 0) as flat_count,
+                    AVG(change_percent) as avg_change,
+                    TO_CHAR((SELECT m_date FROM latest), 'YYYY-MM-DD') as "latestDate"
             FROM daily_prices
             WHERE trade_date = (SELECT m_date FROM latest)
-        `;
+`;
         const result = await query(sql);
         res.json(result.rows[0]);
     } catch (err) {
@@ -322,7 +344,7 @@ router.get('/news', async (req, res) => {
             WHERE category = $1
             ORDER BY publish_at DESC
             LIMIT $2
-        `;
+    `;
         const result = await query(sql, [category, parseInt(limit)]);
         res.json(result.rows);
     } catch (err) {
@@ -339,31 +361,31 @@ router.get('/history/:symbol', async (req, res) => {
         if (period === '週K' || period === '月K') {
             const dateTrunc = period === '週K' ? 'week' : 'month';
             const sql = `
-                SELECT 
-                    TO_CHAR(DATE_TRUNC($3, trade_date), 'YYYY-MM-DD') as time,
-                    (ARRAY_AGG(open_price ORDER BY trade_date ASC))[1] as open,
-                    MAX(high_price) as high,
-                    MIN(low_price) as low,
-                    (ARRAY_AGG(close_price ORDER BY trade_date DESC))[1] as close,
-                    SUM(volume) as volume
+SELECT
+TO_CHAR(DATE_TRUNC($3, trade_date), 'YYYY-MM-DD') as time,
+    (ARRAY_AGG(open_price ORDER BY trade_date ASC))[1] as open,
+    MAX(high_price) as high,
+    MIN(low_price) as low,
+    (ARRAY_AGG(close_price ORDER BY trade_date DESC))[1] as close,
+    SUM(volume) as volume
                 FROM daily_prices
                 WHERE symbol = $1 AND open_price IS NOT NULL
                 GROUP BY DATE_TRUNC($3, trade_date)
                 ORDER BY DATE_TRUNC($3, trade_date) DESC
                 LIMIT $2
-            `;
+    `;
             const result = await query(sql, [symbol, parseInt(limit), dateTrunc]);
             return res.json(result.rows.reverse());
         }
 
         const sql = `
-            SELECT 
-                TO_CHAR(trade_date, 'YYYY-MM-DD') as time,
-                open_price as open, high_price as high, low_price as low, close_price as close, volume
+SELECT
+TO_CHAR(trade_date, 'YYYY-MM-DD') as time,
+    open_price as open, high_price as high, low_price as low, close_price as close, volume
             FROM daily_prices
             WHERE symbol = $1 AND open_price IS NOT NULL
             ORDER BY trade_date DESC LIMIT $2
-        `;
+    `;
         const result = await query(sql, [symbol, parseInt(limit)]);
         res.json(result.rows.reverse());
     } catch (err) {
@@ -378,12 +400,12 @@ router.get('/stock/:symbol/news', async (req, res) => {
         const { limit = 10 } = req.query;
 
         const sql = `
-            SELECT 
-                stock_id,
-                TO_CHAR(date, 'YYYY-MM-DD') as date,
-                title,
-                source,
-                description as summary
+SELECT
+stock_id,
+    TO_CHAR(date, 'YYYY-MM-DD') as date,
+    title,
+    source,
+    description as summary
             FROM fm_stock_news
             WHERE stock_id = $1
             ORDER BY date DESC, title ASC
@@ -392,7 +414,7 @@ router.get('/stock/:symbol/news', async (req, res) => {
 
         const result = await query(sql, [symbol, parseInt(limit)]);
         const news = result.rows.map((row, idx) => ({
-            news_id: `fm-${row.stock_id}-${row.date}-${idx}`,
+            news_id: `fm - ${row.stock_id} -${row.date} -${idx} `,
             title: row.title,
             summary: row.summary,
             publish_at: row.date,
@@ -421,11 +443,11 @@ router.get('/stock/:symbol/financials', async (req, res) => {
             query('SELECT type as item, value, date FROM fm_financial_statements WHERE stock_id = $1 AND item = $2 ORDER BY date DESC LIMIT 1000', [symbol, 'Income Statement']),
             query('SELECT type as item, value, date FROM fm_financial_statements WHERE stock_id = $1 AND item = $2 ORDER BY date DESC LIMIT 1000', [symbol, 'Cash Flows']),
             query(`
-                SELECT * FROM fm_financial_statements 
+SELECT * FROM fm_financial_statements 
                 WHERE stock_id = $1 
-                AND item IN ('GrossProfitMargin', 'OperatingIncomeMargin', 'NetIncomeMargin', 'ROE', 'ROA')
+                AND item IN('GrossProfitMargin', 'OperatingIncomeMargin', 'NetIncomeMargin', 'ROE', 'ROA')
                 ORDER BY date DESC LIMIT 40
-            `, [symbol])
+    `, [symbol])
         ]);
 
         res.json({
@@ -479,12 +501,12 @@ router.get('/institutional-rank', async (req, res) => {
 
         // 彙總排行
         const sql = `
-            SELECT 
-                i.symbol, 
-                s.name, 
-                s.industry,
-                s.market,
-                SUM(i.${field}::numeric / 1000.0) as net_buy
+SELECT
+i.symbol,
+    s.name,
+    s.industry,
+    s.market,
+    SUM(i.${field}:: numeric / 1000.0) as net_buy
             FROM institutional i
             JOIN stocks s ON i.symbol = s.symbol
             WHERE i.trade_date = ANY($1)
@@ -492,7 +514,7 @@ router.get('/institutional-rank', async (req, res) => {
             HAVING SUM(i.${field}) ${isSell ? '< 0' : '> 0'}
             ORDER BY net_buy ${isSell ? 'ASC' : 'DESC'}
             LIMIT 20
-        `;
+    `;
 
         const result = await query(sql, [targetDates]);
         res.json({ success: true, data: result.rows });
@@ -506,16 +528,16 @@ router.get('/institutional-rank', async (req, res) => {
 router.get('/market-summary', async (req, res) => {
     try {
         const sql = `
-            WITH latest AS (
-                SELECT MAX(trade_date) as m_date FROM daily_prices
-            )
-            SELECT 
-                COUNT(*) filter (where change_percent > 0) as up_count,
-                COUNT(*) filter (where change_percent < 0) as down_count,
-                TO_CHAR((SELECT m_date FROM latest), 'YYYY-MM-DD') as latestDate
+            WITH latest AS(
+        SELECT MAX(trade_date) as m_date FROM daily_prices
+    )
+SELECT
+COUNT(*) filter(where change_percent > 0) as up_count,
+    COUNT(*) filter(where change_percent < 0) as down_count,
+        TO_CHAR((SELECT m_date FROM latest), 'YYYY-MM-DD') as latestDate
             FROM daily_prices
             WHERE trade_date = (SELECT m_date FROM latest)
-        `;
+`;
         const result = await query(sql);
         res.json({ success: true, ...result.rows[0] });
     } catch (err) {
@@ -527,16 +549,16 @@ router.get('/market-summary', async (req, res) => {
 router.get('/market-stats', async (req, res) => {
     try {
         const sql = `
-            WITH latest AS (
-                SELECT MAX(trade_date) as m_date FROM daily_prices
-            )
-            SELECT 
-                COUNT(*) filter (where change_percent > 0) as up_count,
-                COUNT(*) filter (where change_percent < 0) as down_count,
-                TO_CHAR((SELECT m_date FROM latest), 'YYYY-MM-DD') as latestDate
+            WITH latest AS(
+    SELECT MAX(trade_date) as m_date FROM daily_prices
+)
+SELECT
+COUNT(*) filter(where change_percent > 0) as up_count,
+    COUNT(*) filter(where change_percent < 0) as down_count,
+        TO_CHAR((SELECT m_date FROM latest), 'YYYY-MM-DD') as latestDate
             FROM daily_prices
             WHERE trade_date = (SELECT m_date FROM latest)
-        `;
+`;
         const result = await query(sql);
         res.json(result.rows[0]);
     } catch (err) {
@@ -549,14 +571,14 @@ router.get('/stock/:symbol/institutional', async (req, res) => {
         const { symbol } = req.params;
         const { limit = 60 } = req.query;
         const sql = `
-            SELECT 
-                TO_CHAR(trade_date, 'YYYY-MM-DD') as date, 
-                (total_net / 1000.0) as total_net, 
-                (foreign_net / 1000.0) as foreign_net, 
-                (trust_net / 1000.0) as trust_net, 
-                (dealer_net / 1000.0) as dealer_net
+SELECT
+TO_CHAR(trade_date, 'YYYY-MM-DD') as date,
+    (total_net / 1000.0) as total_net,
+    (foreign_net / 1000.0) as foreign_net,
+    (trust_net / 1000.0) as trust_net,
+    (dealer_net / 1000.0) as dealer_net
             FROM institutional WHERE symbol = $1 ORDER BY trade_date DESC LIMIT $2
-        `;
+    `;
         const result = await query(sql, [symbol, parseInt(limit)]);
         res.json(result.rows.reverse());
     } catch (err) {
@@ -571,48 +593,48 @@ router.get('/stocks/search', async (req, res) => {
         if (!q) return res.json([]);
 
         const sql = `
-            SELECT 
-                s.symbol, s.name, s.industry, s.market,
-                p.close_price, p.change_percent,
-                f.pe_ratio, f.pb_ratio, f.dividend_yield,
-                inst.foreign_net / 1000.0 as foreign_net,
-                inst.trust_net / 1000.0 as trust_net,
-                inst.dealer_net / 1000.0 as dealer_net
+SELECT
+s.symbol, s.name, s.industry, s.market,
+    p.close_price, p.change_percent,
+    f.pe_ratio, f.pb_ratio, f.dividend_yield,
+    inst.foreign_net / 1000.0 as foreign_net,
+    inst.trust_net / 1000.0 as trust_net,
+    inst.dealer_net / 1000.0 as dealer_net
             FROM stocks s
-            LEFT JOIN LATERAL (
-                SELECT close_price, change_percent
+            LEFT JOIN LATERAL(
+        SELECT close_price, change_percent
                 FROM daily_prices dp
                 WHERE dp.symbol = s.symbol
                 ORDER BY trade_date DESC
                 LIMIT 1
-            ) p ON true
-            LEFT JOIN LATERAL (
-                SELECT pe_ratio, pb_ratio, dividend_yield
+    ) p ON true
+            LEFT JOIN LATERAL(
+        SELECT pe_ratio, pb_ratio, dividend_yield
                 FROM fundamentals
                 WHERE symbol = s.symbol
                 ORDER BY trade_date DESC
                 LIMIT 1
-            ) f ON true
-            LEFT JOIN LATERAL (
-                SELECT foreign_net, trust_net, dealer_net
+    ) f ON true
+            LEFT JOIN LATERAL(
+        SELECT foreign_net, trust_net, dealer_net
                 FROM institutional
                 WHERE symbol = s.symbol
                 ORDER BY trade_date DESC
                 LIMIT 1
-            ) inst ON true
+    ) inst ON true
             WHERE s.symbol LIKE $1 OR s.name LIKE $1
-            ORDER BY 
-                CASE 
+            ORDER BY
+CASE 
                     WHEN s.symbol = $2 THEN 0
                     WHEN s.name = $2 THEN 1
                     WHEN s.symbol LIKE $3 THEN 2
                     WHEN s.name LIKE $3 THEN 3
                     ELSE 4
-                END,
-                s.symbol ASC
+END,
+    s.symbol ASC
             LIMIT $4
-        `;
-        const result = await query(sql, [`%${q}%`, q, `${q}%`, parseInt(limit)]);
+    `;
+        const result = await query(sql, [`% ${q}% `, q, `${q}% `, parseInt(limit)]);
         res.json(result.rows);
     } catch (err) {
         console.error('Failed to search stocks:', err);
@@ -658,16 +680,16 @@ router.get('/stock/:symbol/broker-trading', async (req, res) => {
 
         // 2. 彙總該日買超與賣超前 15 名
         const sql = `
-            SELECT 
-                broker as name,
-                buy as buy_vol,
-                sell as sell_vol,
-                (buy - sell) as net_vol
+SELECT
+broker as name,
+    buy as buy_vol,
+    sell as sell_vol,
+    (buy - sell) as net_vol
             FROM fm_broker_trading
             WHERE stock_id = $1 AND date = $2
             ORDER BY ABS(buy - sell) DESC
             LIMIT 30
-        `;
+    `;
         const result = await query(sql, [symbol, latestDate]);
 
         // 將結果分為買方與賣方
@@ -698,19 +720,19 @@ router.get('/stock/:symbol/margin-trading', async (req, res) => {
         const { limit = 60 } = req.query;
 
         const sql = `
-            SELECT 
-                TO_CHAR(date, 'YYYY-MM-DD') as date,
-                margin_purchase_today_balance as margin_balance,
-                short_sale_today_balance as short_balance,
-                margin_purchase_buy,
-                margin_purchase_sell,
-                short_sale_buy,
-                short_sale_sell
+SELECT
+TO_CHAR(date, 'YYYY-MM-DD') as date,
+    margin_purchase_today_balance as margin_balance,
+    short_sale_today_balance as short_balance,
+    margin_purchase_buy,
+    margin_purchase_sell,
+    short_sale_buy,
+    short_sale_sell
             FROM fm_margin_trading
             WHERE stock_id = $1
             ORDER BY date DESC
             LIMIT $2
-        `;
+    `;
         const result = await query(sql, [symbol, parseInt(limit)]);
         res.json({ success: true, data: result.rows.reverse() });
     } catch (err) {
@@ -730,25 +752,25 @@ router.get('/stock/:symbol/broker-trace', async (req, res) => {
         if (period === '月K') dateTrunc = 'month';
 
         const sql = `
-            WITH daily_brokers AS (
-                SELECT 
+            WITH daily_brokers AS(
+        SELECT 
                     date,
-                    (buy - sell) as net_vol,
-                    ROW_NUMBER() OVER (PARTITION BY date ORDER BY ABS(buy - sell) DESC) as rank
+        (buy - sell) as net_vol,
+        ROW_NUMBER() OVER(PARTITION BY date ORDER BY ABS(buy - sell) DESC) as rank
                 FROM fm_broker_trading
                 WHERE stock_id = $1
-            ),
-            daily_main_net AS (
-                SELECT 
+    ),
+    daily_main_net AS(
+        SELECT 
                     date,
-                    SUM(net_vol) as main_net_vol
+        SUM(net_vol) as main_net_vol
                 FROM daily_brokers
                 WHERE rank <= 15
                 GROUP BY date
-            )
-            SELECT 
-                TO_CHAR(DATE_TRUNC($3, date), 'YYYY-MM-DD') as date,
-                SUM(main_net_vol) as main_net_vol
+    )
+SELECT
+TO_CHAR(DATE_TRUNC($3, date), 'YYYY-MM-DD') as date,
+    SUM(main_net_vol) as main_net_vol
             FROM daily_main_net
             GROUP BY DATE_TRUNC($3, date)
             ORDER BY DATE_TRUNC($3, date) DESC
