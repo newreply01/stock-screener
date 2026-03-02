@@ -239,8 +239,9 @@ router.get('/market-summary', async (req, res) => {
         const { market = 'all' } = req.query;
 
         // 1. 取得最新交易日
-        const dateRes = await query('SELECT MAX(trade_date) FROM daily_prices');
-        const latestDate = dateRes.rows[0].max;
+        const dateRes = await query("SELECT TO_CHAR(MAX(trade_date), 'YYYY-MM-DD') as max_date, MAX(trade_date) as original_date FROM daily_prices");
+        const latestDateStr = dateRes.rows[0].max_date;
+        const latestDate = dateRes.rows[0].original_date;
         if (!latestDate) {
             return res.json({ success: false, message: '無資料' });
         }
@@ -300,7 +301,7 @@ router.get('/market-summary', async (req, res) => {
 
         res.json({
             success: true,
-            latestDate: latestDate,
+            latestDate: latestDateStr,
             distribution: distResult.rows[0],
             industries: industryResult.rows,
             hotStocks: hotResult.rows
@@ -671,8 +672,9 @@ router.get('/stock/:symbol/broker-trading', async (req, res) => {
         const { symbol } = req.params;
 
         // 1. 取得該股最新有分點資料的日期
-        const dateRes = await query('SELECT MAX(date) FROM fm_broker_trading WHERE stock_id = $1', [symbol]);
-        const latestDate = dateRes.rows[0].max;
+        const dateRes = await query("SELECT TO_CHAR(MAX(date), 'YYYY-MM-DD') as max_date, MAX(date) as original_date FROM fm_broker_trading WHERE stock_id = $1", [symbol]);
+        const latestDateStr = dateRes.rows[0].max_date;
+        const latestDate = dateRes.rows[0].original_date;
 
         if (!latestDate) {
             return res.json({ success: true, data: [], date: null });
@@ -702,7 +704,7 @@ broker as name,
 
         res.json({
             success: true,
-            date: latestDate,
+            date: latestDateStr,
             period: req.query.period || '日K',
             buyers,
             sellers
@@ -878,6 +880,119 @@ router.get('/realtime/:symbol', async (req, res) => {
         });
     } catch (err) {
         console.error('Failed to fetch realtime data:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET /api/market-focus - 市場焦點個股 (WantGoo style)
+router.get('/market-focus', async (req, res) => {
+    try {
+        const { market = 'all' } = req.query;
+
+        // 1. 取得最新交易日與前三個交易日
+        const datesRes = await query('SELECT DISTINCT trade_date FROM daily_prices ORDER BY trade_date DESC LIMIT 3');
+        if (datesRes.rows.length === 0) {
+            return res.json({ success: false, message: '無資料' });
+        }
+
+        const latestDate = datesRes.rows[0].trade_date;
+        const targetDates = datesRes.rows.map(r => r.trade_date);
+
+        // 1. 市場最吸金 (成交值 = 價格 * 量)
+        const turnoverSql = `
+            SELECT s.symbol, s.name, p.close_price, p.change_percent, (p.volume * p.close_price) as turnover
+            FROM daily_prices p
+            JOIN stocks s ON p.symbol = s.symbol
+            WHERE p.trade_date = $1 ${market !== 'all' ? `AND s.market = '${market}'` : ''}
+            ORDER BY turnover DESC NULLS LAST
+            LIMIT 10
+        `;
+        const turnoverRes = await query(turnoverSql, [latestDate]);
+
+        // 2. 當沖最熱門 (以成交量為代理指標) -- or we can use another proxy
+        const hotSql = `
+            SELECT s.symbol, s.name, p.close_price, p.change_percent, p.volume
+            FROM daily_prices p
+            JOIN stocks s ON p.symbol = s.symbol
+            WHERE p.trade_date = $1 ${market !== 'all' ? `AND s.market = '${market}'` : ''}
+            ORDER BY p.volume DESC NULLS LAST
+            LIMIT 10
+        `;
+        const hotRes = await query(hotSql, [latestDate]);
+
+        // 3-5. 法人買三日 (外資、投信、主力)
+        // 主力 = total_net
+        const instSql = `
+            SELECT i.symbol, s.name, 
+                   MAX(p.close_price) as close_price, 
+                   MAX(p.change_percent) as change_percent,
+                   SUM(i.foreign_net) as foreign_buy,
+                   SUM(i.trust_net) as trust_buy,
+                   SUM(i.total_net) as total_buy
+            FROM institutional i
+            JOIN stocks s ON i.symbol = s.symbol
+            -- JOIN to get latest price and change
+            JOIN daily_prices p ON p.symbol = i.symbol AND p.trade_date = $1
+            WHERE i.trade_date = ANY($2) ${market !== 'all' ? `AND s.market = '${market}'` : ''}
+            GROUP BY i.symbol, s.name
+        `;
+        const instRes = await query(instSql, [latestDate, targetDates]);
+
+        // 排序
+        const foreignRes = [...instRes.rows].sort((a, b) => b.foreign_buy - a.foreign_buy).slice(0, 10);
+        const trustRes = [...instRes.rows].sort((a, b) => b.trust_buy - a.trust_buy).slice(0, 10);
+        const totalRes = [...instRes.rows].sort((a, b) => b.total_buy - a.total_buy).slice(0, 10);
+
+        res.json({
+            success: true,
+            latestDate,
+            data: {
+                turnover: turnoverRes.rows,
+                hot: hotRes.rows,
+                foreign3d: foreignRes,
+                trust3d: trustRes,
+                main3d: totalRes
+            }
+        });
+
+    } catch (err) {
+        console.error('Market focus error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET /api/market-margin - 大盤融資融券餘額 (WantGoo style)
+router.get('/market-margin', async (req, res) => {
+    try {
+        // 從資料庫撈取最後60筆融資餘額資料
+        const marginSql = `
+            SELECT date as trade_date, margin_purchase_today_balance as balance
+            FROM fm_total_margin
+            WHERE name = 'MarginPurchaseMoney'
+            ORDER BY date DESC
+            LIMIT 60
+        `;
+        const marginRes = await query(marginSql);
+
+        if (marginRes.rows.length === 0) {
+            return res.json({ success: false, message: '無大盤融資資料' });
+        }
+
+        // 我們目前沒有大盤指數每日價格表，所以嘗試在每天配上一個模擬的走勢或留空
+        // 在前端如果沒有價格，圖表可以直接略過或我們用平滑走勢模擬
+        // 先建立 base 資料結構
+        const chartData = marginRes.rows.reverse().map(row => ({
+            date: new Date(row.trade_date).toISOString().split('T')[0],
+            marginBalance: row.balance // 應為數值(元)，前端可轉為億
+        }));
+
+        res.json({
+            success: true,
+            data: chartData
+        });
+
+    } catch (err) {
+        console.error('Market margin error:', err);
         res.status(500).json({ success: false, error: err.message });
     }
 });

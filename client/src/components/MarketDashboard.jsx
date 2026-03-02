@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Activity, BarChart3, Flame, Calendar, ArrowRight } from 'lucide-react';
 import { getMarketSummary } from '../utils/api';
+import MarketFocus from './MarketFocus';
+import MarketMarginChart from './MarketMarginChart';
 
 export default function MarketDashboard({ onStockSelect }) {
     const [market, setMarket] = useState('all');
@@ -86,6 +88,9 @@ export default function MarketDashboard({ onStockSelect }) {
                     </div>
                 </div>
             </div>
+
+            <MarketFocus market={market} onStockSelect={onStockSelect} />
+            <MarketMarginChart />
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* 1. Price Distribution (Histogram) - 4 Cols */}
@@ -193,51 +198,50 @@ export default function MarketDashboard({ onStockSelect }) {
                         >
                             智能選股 <ArrowRight className="w-3.5 h-3.5" />
                         </button>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-50/80">
-                                <tr>
-                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">代號 / 名稱</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">成交價</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">漲跌幅</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">成交量 (張)</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {hotStocks?.map((stock, i) => {
-                                    const change = parseFloat(stock.change_percent);
-                                    return (
-                                        <tr key={i} className="hover:bg-blue-50/30 transition-colors group cursor-pointer" onClick={() => onStockSelect(stock)}>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-black text-gray-900 group-hover:text-brand-primary transition-colors">{stock.name}</span>
-                                                    <span className="text-[11px] font-bold text-gray-400 group-hover:text-brand-primary/60 transition-colors">{stock.symbol}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <span className="text-sm font-black text-gray-800 tracking-tight">{parseFloat(stock.close_price).toFixed(2)}</span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <span className={`text-sm font-black flex items-center justify-end gap-1 ${change >= 0 ? 'text-red-500' : 'text-green-600'}`}>
-                                                    {change >= 0 ? '+' : ''}{change.toFixed(2)}%
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <span className="text-sm font-black text-indigo-600 tracking-tight">{Math.floor(Number(stock.volume) / 1000).toLocaleString()}</span>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <button className="text-[10px] font-black uppercase tracking-tighter text-slate-400 group-hover:text-brand-primary border border-transparent group-hover:border-brand-primary/20 bg-transparent group-hover:bg-brand-primary/5 px-2.5 py-1.5 rounded-lg transition-all">
-                                                    View Chart
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="bg-gray-50/80">
+                                    <tr>
+                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">代號 / 名稱</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">成交價</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">漲跌幅</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">成交量 (張)</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {hotStocks?.map((stock, i) => {
+                                        const change = parseFloat(stock.change_percent);
+                                        return (
+                                            <tr key={i} className="hover:bg-blue-50/30 transition-colors group cursor-pointer" onClick={() => onStockSelect(stock)}>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-black text-gray-900 group-hover:text-brand-primary transition-colors">{stock.name}</span>
+                                                        <span className="text-[11px] font-bold text-gray-400 group-hover:text-brand-primary/60 transition-colors">{stock.symbol}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <span className="text-sm font-black text-gray-800 tracking-tight">{parseFloat(stock.close_price).toFixed(2)}</span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <span className={`text-sm font-black flex items-center justify-end gap-1 ${change >= 0 ? 'text-red-500' : 'text-green-600'}`}>
+                                                        {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <span className="text-sm font-black text-indigo-600 tracking-tight">{Math.floor(Number(stock.volume) / 1000).toLocaleString()}</span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <button className="text-[10px] font-black uppercase tracking-tighter text-slate-400 group-hover:text-brand-primary border border-transparent group-hover:border-brand-primary/20 bg-transparent group-hover:bg-brand-primary/5 px-2.5 py-1.5 rounded-lg transition-all">
+                                                        View Chart
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

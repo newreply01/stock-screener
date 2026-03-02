@@ -39,6 +39,21 @@ export async function getMarketSummary(params = {}) {
     return res.json();
 }
 
+export async function getMarketFocus(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.market) searchParams.append('market', params.market);
+    const res = await fetch(`${API_BASE}/market-focus?${searchParams.toString()}`);
+    if (!res.ok) throw new Error('獲取市場焦點失敗');
+    return res.json();
+}
+
+
+export async function getMarketMargin() {
+    const res = await fetch(`${API_BASE}/market-margin`);
+    if (!res.ok) throw new Error('獲取大盤融資失敗');
+    return res.json();
+}
+
 export async function getInstitutionalRank(params = {}) {
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
