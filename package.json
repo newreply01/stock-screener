@@ -4,7 +4,7 @@
   "description": "台股篩選器 - 類似 WantGoo Screener",
   "private": true,
   "scripts": {
-    "server": "node server/index.js",
+    "server": "nodemon server/index.js",
     "client": "cd client && npm run dev",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "fetch-data": "node server/fetcher.js",
@@ -26,6 +26,7 @@
     "technicalindicators": "^3.1.0"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "nodemon": "^3.1.14"
   }
 }
