@@ -76,7 +76,7 @@ export default function MarketMarginChart() {
                 </h3>
             </div>
 
-            <div className="h-80 w-full relative group">
+            <div className="h-64 md:h-80 w-full relative group">
                 {/* 加上一個說明浮水印因為是大盤模擬價格 */}
                 <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[10px] text-gray-300 pointer-events-none font-bold select-none z-10">
                     * 註: 大盤指數曲線目前為展圖目的之模擬數值

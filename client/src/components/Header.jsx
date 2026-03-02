@@ -175,21 +175,13 @@ export default function Header({ currentView = 'dashboard' }) {
 
             {/* Mobile Menu */}
             {isMenuOpen && (
-                <div className="lg:hidden bg-brand-dark border-t border-white/5 py-4 px-4 space-y-2 animate-in slide-in-from-top duration-200">
-                    <button onClick={() => { dispatchView('market-overview'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'market-overview' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>大盤概況</button>
-                    <button onClick={() => { dispatchView('stock-detail'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'stock-detail' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>個股資訊</button>
-                    <button onClick={() => { dispatchView('institutional'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'institutional' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>三大法人</button>
-                    <button onClick={() => { dispatchView('sentiment'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'sentiment' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>市場情緒</button>
-                    <button onClick={() => { dispatchView('screener-config'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'screener-config' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>智能選股</button>
-                    <button onClick={() => { dispatchView('news'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'news' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>財經新聞</button>
-                    <button onClick={() => { dispatchView('trading'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'trading' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>即時看盤</button>
-                    <button onClick={() => { dispatchView('explorer'); setIsMenuOpen(false); }} className={`w-full text-left py-2 px-4 rounded-lg font-semibold ${currentView === 'explorer' ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-white/5'}`}>歷史交易</button>
-                    <div className="pt-2 border-t border-white/5">
-                        <div className="flex items-center bg-white/10 rounded-md px-3 py-1.5 mt-2">
+                <div className="lg:hidden bg-brand-dark border-t border-white/5 py-4 px-4 space-y-3 animate-in fade-in slide-in-from-top duration-200">
+                    <div className="pb-2 border-b border-white/5 mb-2">
+                        <div className="flex items-center bg-white/10 rounded-lg px-4 py-2.5">
                             <input
                                 type="text"
-                                placeholder="搜尋股票..."
-                                className="bg-transparent border-none outline-none text-sm w-full text-white"
+                                placeholder="搜尋股票代號、名稱..."
+                                className="bg-transparent border-none outline-none text-sm w-full text-white placeholder-gray-500"
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
                                         window.dispatchEvent(new CustomEvent('muchstock-search', { detail: e.target.value }));
@@ -199,6 +191,16 @@ export default function Header({ currentView = 'dashboard' }) {
                             />
                             <Search className="w-4 h-4 text-gray-400" />
                         </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button onClick={() => { dispatchView('market-overview'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'market-overview' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>大盤概況</button>
+                        <button onClick={() => { dispatchView('stock-detail'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'stock-detail' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>個股資訊</button>
+                        <button onClick={() => { dispatchView('institutional'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'institutional' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>三大法人</button>
+                        <button onClick={() => { dispatchView('sentiment'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'sentiment' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>市場情緒</button>
+                        <button onClick={() => { dispatchView('screener-config'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'screener-config' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>智能選股</button>
+                        <button onClick={() => { dispatchView('news'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'news' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>財經新聞</button>
+                        <button onClick={() => { dispatchView('trading'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'trading' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>即時看盤</button>
+                        <button onClick={() => { dispatchView('explorer'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'explorer' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>歷史交易</button>
                     </div>
                 </div>
             )}

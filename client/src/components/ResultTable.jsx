@@ -378,22 +378,27 @@ export default function ResultTable({ results, loading, sortBy, sortDir, onSort,
                                         <th className="py-5 px-6 whitespace-nowrap w-12 text-center">
                                             比較
                                         </th>
-                                        {COLUMNS.map(col => (
-                                            <th
-                                                key={col.key}
-                                                className={`py-5 px-6 whitespace-nowrap cursor-pointer transition-all hover:bg-slate-100 group ${sortBy === col.key ? 'text-brand-primary bg-brand-primary/[0.02]' : ''}`}
-                                                onClick={() => col.sortable && onSort(col.key)}
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    {col.label}
-                                                    {col.sortable && (
-                                                        <div className={`transition-colors ${sortBy === col.key ? 'text-brand-primary' : 'text-slate-200 group-hover:text-slate-400'}`}>
-                                                            {sortBy === col.key ? (sortDir === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />) : <ChevronsUpDown className="w-3 h-3" />}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </th>
-                                        ))}
+                                        {COLUMNS.map(col => {
+                                            const isSecondary = ['candlestick', 'pe_ratio', 'dividend_yield', 'pb_ratio', 'foreign_net', 'trust_net', 'dealer_net', 'total_net'].includes(col.key);
+                                            return (
+                                                <th
+                                                    key={col.key}
+                                                    className={`py-5 px-6 whitespace-nowrap cursor-pointer transition-all hover:bg-slate-100 group 
+                                                        ${sortBy === col.key ? 'text-brand-primary bg-brand-primary/[0.02]' : ''}
+                                                        ${isSecondary ? 'hidden md:table-cell' : ''}`}
+                                                    onClick={() => col.sortable && onSort(col.key)}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        {col.label}
+                                                        {col.sortable && (
+                                                            <div className={`transition-colors ${sortBy === col.key ? 'text-brand-primary' : 'text-slate-200 group-hover:text-slate-400'}`}>
+                                                                {sortBy === col.key ? (sortDir === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />) : <ChevronsUpDown className="w-3 h-3" />}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </th>
+                                            );
+                                        })}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
@@ -412,11 +417,19 @@ export default function ResultTable({ results, loading, sortBy, sortDir, onSort,
                                                     className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
                                                 />
                                             </td>
-                                            {COLUMNS.map(col => (
-                                                <td key={col.key} className={`py-4 px-6 whitespace-nowrap transition-all ${sortBy === col.key ? 'bg-brand-primary/[0.01]' : ''}`}>
-                                                    {formatCell(col.key, row[col.key], row, watchedSymbols?.has(row.symbol), onToggleWatchlist)}
-                                                </td>
-                                            ))}
+                                            {COLUMNS.map(col => {
+                                                const isSecondary = ['candlestick', 'pe_ratio', 'dividend_yield', 'pb_ratio', 'foreign_net', 'trust_net', 'dealer_net', 'total_net'].includes(col.key);
+                                                return (
+                                                    <td
+                                                        key={col.key}
+                                                        className={`py-4 px-6 whitespace-nowrap transition-all 
+                                                            ${sortBy === col.key ? 'bg-brand-primary/[0.01]' : ''}
+                                                            ${isSecondary ? 'hidden md:table-cell' : ''}`}
+                                                    >
+                                                        {formatCell(col.key, row[col.key], row, watchedSymbols?.has(row.symbol), onToggleWatchlist)}
+                                                    </td>
+                                                );
+                                            })}
                                         </tr>
                                     ))}
                                 </tbody>
