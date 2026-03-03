@@ -61,13 +61,31 @@ async function fetchTWSE(dateObj) {
         }
 
         const table = json.tables.find(t => t.title && t.title.includes('每日收盤行情'));
+
+        // --- 新增：抓取大盤指數 ---
+        const indexTable = json.tables.find(t => t.title && t.title.includes('大盤統計'));
+        if (indexTable && indexTable.data) {
+            const taiexRow = indexTable.data.find(r => r[0] === '發行量加權股價指數');
+            if (taiexRow) {
+                const taiexClose = parseNumber(taiexRow[1]);
+                await ensureStock('TAIEX', '加權指數');
+                await query(
+                    `INSERT INTO daily_prices (symbol, trade_date, close_price)
+                     VALUES ($1, $2, $3)
+                     ON CONFLICT (symbol, trade_date) DO UPDATE SET close_price = EXCLUDED.close_price`,
+                    ['TAIEX', toDateHyphen(dateObj), taiexClose]
+                );
+                console.log(`[TWSE] ${dateStr} 大盤指數更新: ${taiexClose}`);
+            }
+        }
+
         if (!table) return;
 
         let count = 0;
         for (const row of table.data) {
             const symbol = row[0];
             const name = row[1];
-            if (!/^\d{4,6}$/.test(symbol)) continue;
+            if (!/^\d{4,6}$/.test(symbol) && symbol !== 'TAIEX' && symbol !== 'IX0001') continue;
 
             await ensureStock(symbol, name);
 
