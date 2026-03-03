@@ -32,10 +32,10 @@ export default function MarketStats({ stats, fallbackDate }) {
                 <div className="flex items-center gap-4 sm:gap-8">
                     <div className="flex items-center gap-1.5 group">
                         <TrendingUp className="w-4 h-4 text-rose-500" />
-                        <span className="font-semibold text-rose-500_TEXT">{upCount}</span>
+                        <span className="font-semibold text-rose-500">{upCount}</span>
                         <div className="hidden lg:flex w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                             <div
-                                className="h-full text-rose-500_BG"
+                                className="h-full text-rose-500"
                                 style={{ width: `${upRatio}%` }}
                             />
                         </div>
