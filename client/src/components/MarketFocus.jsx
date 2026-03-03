@@ -90,10 +90,10 @@ export default function MarketFocus({ market, stockTypes, onStockSelect }) {
                 </div>
 
                 {/* Stock Name */}
-                <div className="mt-3 flex flex-col items-center h-24 overflow-visible">
+                <div className="mt-3 flex flex-col items-center h-28 overflow-visible">
                     <span
-                        className={`text-[11px] font-bold text-gray-700 whitespace-nowrap group-hover:text-brand-primary ${idx === 0 ? 'bg-blue-500 text-white px-0.5 rounded-sm' : ''}`}
-                        style={{ writingMode: 'vertical-rl', textOrientation: 'upright', letterSpacing: '-1.5px', maxHeight: '80px', overflow: 'hidden' }}
+                        className={`text-xs font-bold text-gray-700 whitespace-nowrap group-hover:text-brand-primary ${idx === 0 ? 'bg-blue-500 text-white px-0.5 rounded-sm' : ''}`}
+                        style={{ writingMode: 'vertical-rl', textOrientation: 'upright', letterSpacing: '1px', maxHeight: '100px', overflow: 'hidden' }}
                     >
                         {stock.name.substring(0, 5)}
                     </span>

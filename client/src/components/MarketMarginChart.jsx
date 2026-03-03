@@ -19,8 +19,10 @@ export default function MarketMarginChart() {
                     const processed = res.data.map((d) => {
                         return {
                             ...d,
-                            margin100M: d.marginBalance ? parseFloat((d.marginBalance / 100000000).toFixed(2)) : 0,
-                            indexPrice: d.indexPrice || null
+                            margin100M: d.margin_balance ? parseFloat((d.margin_balance / 100000000).toFixed(2)) : 0,
+                            short100M: d.short_balance ? parseFloat((d.short_balance / 100000000).toFixed(2)) : 0,
+                            indexPrice: d.index_price || null,
+                            date: d.trade_date ? new Date(d.trade_date).toLocaleDateString() : ''
                         };
                     });
                     setData(processed);
@@ -38,7 +40,7 @@ export default function MarketMarginChart() {
         return (
             <div className="flex flex-col items-center justify-center h-80 bg-white/50 rounded-2xl border border-gray-100 animate-pulse mb-6">
                 <Activity className="w-8 h-8 text-brand-primary mb-2 opacity-50" />
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">載入融資餘額...</span>
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">載入融資融券餘額...</span>
             </div>
         );
     }
@@ -52,7 +54,7 @@ export default function MarketMarginChart() {
                     <p className="text-sm font-bold text-gray-800 mb-2">{label}</p>
                     {payload.map((entry, idx) => (
                         <p key={idx} className="text-xs font-semibold" style={{ color: entry.color }}>
-                            {entry.name}: {entry.name === '融資餘額(億)' ? `${entry.value}億` : Math.round(entry.value)}
+                            {entry.name}: {entry.name.includes('餘額') ? `${entry.value}億` : Math.round(entry.value)}
                         </p>
                     ))}
                 </div>
@@ -70,9 +72,10 @@ export default function MarketMarginChart() {
                     <div className="group relative flex items-center">
                         <AlertCircle className="w-4 h-4 text-gray-400 cursor-help hover:text-brand-primary transition-colors" />
                         <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-72 p-3 bg-slate-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl text-left font-normal leading-relaxed pointer-events-none">
-                            <span className="font-bold text-amber-400 block mb-1">💡 什麼是融資餘額？</span>
-                            融資餘額代表投資人向券商借錢買進股票的總金額。<br /><br />
-                            當融資餘額持續攀升，意味著市場散戶看多且願意開槓桿，但也代表未來潛在的賣壓增加；若融資餘額位處高檔且大盤反轉向下，可能引發多殺多的斷頭風險。
+                            <span className="font-bold text-amber-400 block mb-1">💡 什麼是融資融券？</span>
+                            <span className="font-bold">融資：</span>向券商借錢買股，看多。<br />
+                            <span className="font-bold">融券：</span>向券商借股賣出，看空。<br /><br />
+                            當融資持續增加，代表散戶信心強，但也隱含未來賣壓；融券增加則代表看空力道增強，但也可能引發軋空行情。
                             <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-[6px] border-x-transparent border-t-[6px] border-t-slate-900"></div>
                         </div>
                     </div>
@@ -105,7 +108,7 @@ export default function MarketMarginChart() {
                             dx={-5}
                             tickFormatter={(v) => Math.round(v)}
                         />
-                        {/* 右 Y 軸：融資餘額 */}
+                        {/* 右 Y 軸：融資融券餘額 */}
                         <YAxis
                             yAxisId="right"
                             orientation="right"
@@ -118,14 +121,22 @@ export default function MarketMarginChart() {
                             tickFormatter={(v) => `${Math.round(v)}`}
                         />
                         <RechartsTooltip content={<CustomTooltip />} />
-                        <Legend wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '10px' }} />
+                        <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 600, paddingTop: '10px' }} />
 
                         <Bar
                             yAxisId="right"
                             dataKey="margin100M"
                             name="融資餘額(億)"
                             fill="#3b82f6"
-                            barSize={12}
+                            barSize={8}
+                            radius={[2, 2, 0, 0]}
+                        />
+                        <Bar
+                            yAxisId="right"
+                            dataKey="short100M"
+                            name="融券餘額(億)"
+                            fill="#10b981"
+                            barSize={8}
                             radius={[2, 2, 0, 0]}
                         />
                         <Line

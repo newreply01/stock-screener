@@ -1143,29 +1143,34 @@ router.get('/market-focus', async (req, res) => {
 // GET /api/market-margin - 大盤融資融券餘額 (WantGoo style)
 router.get('/market-margin', async (req, res) => {
     try {
-        // 從資料庫撈取最後60筆融資餘額與真實大盤指數
+        // 從資料庫撈取最後60筆融資餘額、融券餘額與真實大盤指數
+        // 台灣大盤指數代號通常為 'TSE' 或 'IX0001'，偵測中顯示 TAIEX 可能不存在
         const marginSql = `
             SELECT 
                 m.date as trade_date, 
-                m.margin_purchase_today_balance as balance,
+                MAX(CASE WHEN m.name = 'MarginPurchaseMoney' THEN m.margin_purchase_today_balance ELSE 0 END) as margin_balance,
+                MAX(CASE WHEN m.name = 'MarginShortMoney' THEN m.margin_purchase_today_balance ELSE 0 END) as short_balance,
                 p.close_price as index_price
             FROM fm_total_margin m
             LEFT JOIN daily_prices p 
-                ON m.date = p.trade_date AND p.symbol = 'TAIEX'
-            WHERE m.name = 'MarginPurchaseMoney'
+                ON m.date = p.trade_date AND (p.symbol = 'TSE' OR p.symbol = 'TAIEX')
+            WHERE m.name IN ('MarginPurchaseMoney', 'MarginShortMoney')
+            GROUP BY m.date, p.close_price
             ORDER BY m.date DESC
             LIMIT 60
         `;
         const marginRes = await query(marginSql);
 
         if (marginRes.rows.length === 0) {
-            return res.json({ success: false, message: '無大盤融資資料' });
+            return res.json({ success: false, message: '無大盤融資融券資料' });
         }
 
+        // 映射資料結構以符合前端 MarketMarginChart.jsx 的 processed 邏輯
         const chartData = marginRes.rows.reverse().map(row => ({
-            date: formatLocalDate(row.trade_date),
-            marginBalance: row.balance, // 應為數值(元)，前端轉為億
-            indexPrice: row.index_price ? parseFloat(row.index_price) : null
+            trade_date: row.trade_date,
+            margin_balance: row.margin_balance,
+            short_balance: row.short_balance,
+            index_price: row.index_price // 前端預期 index_price
         }));
 
         res.json({

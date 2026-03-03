@@ -91,10 +91,20 @@ const TradingDashboard = () => {
                             <div
                                 key={sym}
                                 onClick={() => setSelectedSymbol(sym)}
-                                className={`p-3 border-b border-gray-700 cursor-pointer hover:bg-gray-700 flex justify-between ${selectedSymbol === sym ? 'bg-gray-700 border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'}`}
+                                className={`p-3 border-b border-gray-700 cursor-pointer hover:bg-gray-700 flex flex-col gap-1 ${selectedSymbol === sym ? 'bg-gray-700 border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'}`}
                             >
-                                <span className="font-bold">{sym}</span>
-                                <span className={`${colorClass} font-bold animate-pulse`}>{priceStr}</span>
+                                <div className="flex justify-between items-center">
+                                    <span className="font-bold text-lg">{sym}</span>
+                                    <span className={`${colorClass} font-bold text-xl animate-pulse`}>{priceStr}</span>
+                                </div>
+                                {tick && (
+                                    <div className="flex justify-between items-center text-xs text-gray-400">
+                                        <span className="truncate max-w-[100px]">{tick.name || '---'}</span>
+                                        <span className="bg-gray-900 px-1.5 py-0.5 rounded text-[10px] border border-gray-700">
+                                            {tick.industry || '一般'}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         );
                     })}
@@ -114,7 +124,13 @@ const TradingDashboard = () => {
                         {/* Top Header - Super Large Price */}
                         <div className="p-8 border-b border-gray-800 flex items-end justify-between">
                             <div>
-                                <h1 className="text-4xl font-bold text-gray-400 mb-2">{selectedSymbol}</h1>
+                                <div className="flex items-center gap-4 mb-2">
+                                    <h1 className="text-4xl font-bold text-gray-400">{selectedSymbol}</h1>
+                                    <span className="text-3xl font-bold text-white">{currentTick.name}</span>
+                                    <span className="bg-blue-900/50 text-blue-300 px-3 py-1 rounded-full text-sm border border-blue-700/50">
+                                        {currentTick.industry}
+                                    </span>
+                                </div>
                                 <div className="flex items-baseline gap-6">
                                     <span className={`text-[6rem] font-black leading-none ${getColor(currentTick.price, currentTick.open_price)} drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]`}>
                                         {formatPrice(currentTick.price)}

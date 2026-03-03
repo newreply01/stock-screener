@@ -41,11 +41,13 @@ router.get('/realtime', async (req, res) => {
             const sql = `
                 WITH LatestTicks AS (
                     SELECT 
-                        symbol, trade_time, price, open_price, high_price, low_price, 
-                        volume, trade_volume, buy_intensity, sell_intensity, five_levels,
-                        ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY trade_time DESC) as rn
-                    FROM realtime_ticks
-                    WHERE symbol = ANY($1::varchar[])
+                        t.symbol, t.trade_time, t.price, t.open_price, t.high_price, t.low_price, 
+                        t.volume, t.trade_volume, t.buy_intensity, t.sell_intensity, t.five_levels,
+                        s.name, s.industry,
+                        ROW_NUMBER() OVER (PARTITION BY t.symbol ORDER BY t.trade_time DESC) as rn
+                    FROM realtime_ticks t
+                    LEFT JOIN stocks s ON t.symbol = s.symbol
+                    WHERE t.symbol = ANY($1::varchar[])
                 )
                 SELECT * FROM LatestTicks WHERE rn = 1;
             `;
