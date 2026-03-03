@@ -170,7 +170,12 @@ async function bulkUpsert(client, table, columns, conflictKeys, rows) {
 
 // ========== Get All Stock Symbols ==========
 async function getAllStockSymbols() {
-    const res = await pool.query(`SELECT symbol FROM stocks WHERE symbol ~ '^[0-9]{4}$' ORDER BY symbol ASC`);
+    const res = await pool.query(`
+        SELECT symbol FROM stocks 
+        WHERE symbol ~ '^[0-9]{4}$' 
+        OR symbol IN ('TAIEX', 'TSE', 'OTC') 
+        ORDER BY symbol ASC
+    `);
     return res.rows.map(r => r.symbol);
 }
 
