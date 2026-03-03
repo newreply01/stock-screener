@@ -97,50 +97,61 @@ export default function MarketMarginChart() {
                             tickLine={false}
                             minTickGap={30}
                         />
-                        {/* 左 Y 軸：大盤指數 */}
+                        {/* 左 Y 軸：融券餘額 (綠色) */}
                         <YAxis
-                            yAxisId="left"
+                            yAxisId="y-short"
+                            orientation="left"
+                            domain={['auto', 'auto']}
+                            tick={{ fill: '#10b981', fontSize: 10, fontWeight: 700 }}
+                            axisLine={false}
+                            tickLine={false}
+                            width={40}
+                            tickFormatter={(v) => `${v}`}
+                        />
+                        {/* 右 Y 軸 1：融資餘額 (藍色) */}
+                        <YAxis
+                            yAxisId="y-margin"
+                            orientation="right"
+                            domain={['auto', 'auto']}
+                            tick={{ fill: '#3b82f6', fontSize: 10, fontWeight: 700 }}
+                            axisLine={false}
+                            tickLine={false}
+                            width={45}
+                            tickFormatter={(v) => `${Math.round(v)}`}
+                        />
+                        {/* 右 Y 軸 2：大盤指數 (紅色，偏移) */}
+                        <YAxis
+                            yAxisId="y-index"
+                            orientation="right"
                             domain={['auto', 'auto']}
                             tick={{ fill: '#ef4444', fontSize: 10, fontWeight: 700 }}
                             axisLine={false}
                             tickLine={false}
                             width={50}
-                            dx={-5}
+                            dx={10}
                             tickFormatter={(v) => Math.round(v)}
-                        />
-                        {/* 右 Y 軸：融資融券餘額 */}
-                        <YAxis
-                            yAxisId="right"
-                            orientation="right"
-                            domain={['auto', 'auto']}
-                            tick={{ fill: '#1e40af', fontSize: 10, fontWeight: 700 }}
-                            axisLine={false}
-                            tickLine={false}
-                            width={50}
-                            dx={5}
-                            tickFormatter={(v) => `${Math.round(v)}`}
                         />
                         <RechartsTooltip content={<CustomTooltip />} />
                         <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 600, paddingTop: '10px' }} />
 
                         <Bar
-                            yAxisId="right"
+                            yAxisId="y-margin"
                             dataKey="margin100M"
                             name="融資餘額(億)"
                             fill="#3b82f6"
-                            barSize={8}
+                            barSize={10}
                             radius={[2, 2, 0, 0]}
                         />
                         <Bar
-                            yAxisId="right"
+                            yAxisId="y-short"
                             dataKey="short100M"
                             name="融券餘額(億)"
                             fill="#10b981"
-                            barSize={8}
+                            barSize={10}
                             radius={[2, 2, 0, 0]}
                         />
                         <Line
-                            yAxisId="left"
+                            yAxisId="y-index"
                             type="monotone"
                             dataKey="indexPrice"
                             name="大盤指數"
