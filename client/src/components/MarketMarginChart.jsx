@@ -21,7 +21,7 @@ export default function MarketMarginChart() {
                             ...d,
                             margin100M: d.margin_balance ? parseFloat((d.margin_balance / 100000000).toFixed(2)) : 0,
                             short100M: d.short_balance ? parseFloat((d.short_balance / 100000000).toFixed(2)) : 0,
-                            indexPrice: d.index_price || null,
+                            indexPrice: d.index_price ? parseFloat(d.index_price) : null,
                             date: d.trade_date ? new Date(d.trade_date).toLocaleDateString() : ''
                         };
                     });
