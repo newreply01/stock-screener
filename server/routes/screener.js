@@ -1065,10 +1065,23 @@ router.get('/market-focus', async (req, res) => {
     try {
         const { market = 'all', stock_types = 'stock' } = req.query;
 
-        // 1. 取得最新交易日與前三個交易日
-        const datesRes = await query('SELECT DISTINCT trade_date FROM daily_prices ORDER BY trade_date DESC LIMIT 3');
+        // 1. 取得最新有足夠資料的交易日 (至少 1500 筆個股) 與前三個交易日
+        const dateDetectionSql = `
+            SELECT trade_date, count(*) as count
+            FROM daily_prices
+            WHERE symbol ~ '^[0-9]{4}$'
+            GROUP BY trade_date
+            HAVING count(*) > 1500
+            ORDER BY trade_date DESC
+            LIMIT 3
+        `;
+        const datesRes = await query(dateDetectionSql);
+
         if (datesRes.rows.length === 0) {
-            return res.json({ success: false, message: '無資料' });
+            // Fallback to absolute latest if no "full" day found
+            const fallbackRes = await query('SELECT DISTINCT trade_date FROM daily_prices ORDER BY trade_date DESC LIMIT 3');
+            if (fallbackRes.rows.length === 0) return res.json({ success: false, message: '無資料' });
+            datesRes.rows = fallbackRes.rows;
         }
 
         const latestDate = datesRes.rows[0].trade_date;
