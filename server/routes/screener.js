@@ -738,7 +738,7 @@ END,
     s.symbol ASC
             LIMIT $4
     `;
-        const result = await query(sql, [`% ${q}% `, q, `${q}% `, parseInt(limit)]);
+        const result = await query(sql, [`%${q}%`, q, `${q}%`, parseInt(limit)]);
         res.json(result.rows);
     } catch (err) {
         console.error('Failed to search stocks:', err);
@@ -948,10 +948,12 @@ router.get('/realtime/:symbol', async (req, res) => {
             });
         }
 
-        const z = parseFloat(info.z);
+        // 處理盤中暫停交易、收盤前試算撮合所導致的 z="-" 問題，改用 pz (simulated match price)
+        const rawZ = (info.z && info.z !== '-') ? info.z : ((info.pz && info.pz !== '-') ? info.pz : null);
+        const z = rawZ ? parseFloat(rawZ) : null;
         const y = parseFloat(info.y);
-        const change = z && y ? (z - y) : 0;
-        const changePercent = z && y ? (change / y) * 100 : 0;
+        const change = (z !== null && !isNaN(y)) ? (z - y) : 0;
+        const changePercent = (z !== null && !isNaN(y) && y !== 0) ? (change / y) * 100 : 0;
 
         // 大致推算內外盤比例 (這只是粗略推估，不是精確值)
         // 假設最新價貼近買價=內盤(Sell intensity)，貼近賣價=外盤(Buy intensity)
@@ -968,14 +970,15 @@ router.get('/realtime/:symbol', async (req, res) => {
             success: true,
             symbol: info.c,
             name: info.n,
-            last_price: info.z === '-' ? null : z,
+            last_price: z,
+            previous_close: y,
             change: change,
             change_percent: changePercent,
-            volume: parseInt(info.v),
-            trade_volume: parseInt(info.tv),
-            open: parseFloat(info.o),
-            high: parseFloat(info.h),
-            low: parseFloat(info.l),
+            volume: isNaN(parseInt(info.v)) ? null : parseInt(info.v),
+            trade_volume: isNaN(parseInt(info.tv)) ? null : parseInt(info.tv),
+            open: isNaN(parseFloat(info.o)) ? null : parseFloat(info.o),
+            high: isNaN(parseFloat(info.h)) ? null : parseFloat(info.h),
+            low: isNaN(parseFloat(info.l)) ? null : parseFloat(info.l),
             latest_time: info.t,
             buy_intensity: buyIntensity,
             sell_intensity: sellIntensity,

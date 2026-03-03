@@ -51,7 +51,7 @@ export default function RealtimeView({ stock }) {
         { bid: null, bVol: null, ask: null, aVol: null },
     ];
 
-    const currentPrice = displayData.last_price || parseFloat(stock.close_price) || '--';
+    const currentPrice = displayData.last_price || displayData.previous_close || parseFloat(stock.close_price) || '--';
     const change = displayData.change_percent !== undefined ? displayData.change_percent : (parseFloat(stock.change_percent) || 0);
     const isUp = change >= 0;
 
