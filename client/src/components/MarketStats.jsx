@@ -31,19 +31,19 @@ export default function MarketStats({ stats, fallbackDate }) {
             <div className="container mx-auto px-4 flex flex-wrap justify-between items-center gap-y-2 text-[13px]">
                 <div className="flex items-center gap-4 sm:gap-8">
                     <div className="flex items-center gap-1.5 group">
-                        <TrendingUp className="w-4 h-4 text-emerald-500" />
-                        <span className="font-semibold text-emerald-600">{upCount}</span>
+                        <TrendingUp className="w-4 h-4 text-rose-500" />
+                        <span className="font-semibold text-rose-500_TEXT">{upCount}</span>
                         <div className="hidden lg:flex w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                             <div
-                                className="h-full bg-emerald-500"
+                                className="h-full text-rose-500_BG"
                                 style={{ width: `${upRatio}%` }}
                             />
                         </div>
                     </div>
 
                     <div className="flex items-center gap-1.5 group">
-                        <TrendingDown className="w-4 h-4 text-rose-500" />
-                        <span className="font-semibold text-rose-600">{downCount}</span>
+                        <TrendingDown className="w-4 h-4 text-emerald-500" />
+                        <span className="font-semibold text-emerald-600">{downCount}</span>
                     </div>
 
                     <div className="hidden md:flex items-center gap-1.5 text-gray-500">
