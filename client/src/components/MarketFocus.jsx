@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getMarketFocus } from '../utils/api';
 import { Target, AlertCircle } from 'lucide-react';
 
-export default function MarketFocus({ market, onStockSelect }) {
+export default function MarketFocus({ market, stockTypes, onStockSelect }) {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -10,7 +10,10 @@ export default function MarketFocus({ market, onStockSelect }) {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const res = await getMarketFocus({ market });
+                const res = await getMarketFocus({
+                    market,
+                    stock_types: stockTypes?.join(',')
+                });
                 if (res.success) {
                     setData(res.data);
                 }
@@ -21,7 +24,7 @@ export default function MarketFocus({ market, onStockSelect }) {
             }
         };
         fetchData();
-    }, [market]);
+    }, [market, stockTypes]);
 
     if (loading) {
         return (
@@ -89,10 +92,10 @@ export default function MarketFocus({ market, onStockSelect }) {
                 {/* Stock Name */}
                 <div className="mt-3 flex flex-col items-center h-24 overflow-visible">
                     <span
-                        className={`text-[12px] font-bold text-gray-700 whitespace-nowrap group-hover:text-brand-primary ${idx === 0 ? 'bg-blue-500 text-white px-0.5 rounded-sm' : ''}`}
-                        style={{ writingMode: 'vertical-rl', textOrientation: 'upright', letterSpacing: '-1px' }}
+                        className={`text-[11px] font-bold text-gray-700 whitespace-nowrap group-hover:text-brand-primary ${idx === 0 ? 'bg-blue-500 text-white px-0.5 rounded-sm' : ''}`}
+                        style={{ writingMode: 'vertical-rl', textOrientation: 'upright', letterSpacing: '-1.5px', maxHeight: '80px', overflow: 'hidden' }}
                     >
-                        {stock.name}
+                        {stock.name.substring(0, 5)}
                     </span>
                 </div>
             </div>
@@ -113,7 +116,7 @@ export default function MarketFocus({ market, onStockSelect }) {
                 <div className="min-w-[700px] flex">
 
                     {/* Y-Axis Labels */}
-                    <div className="flex flex-col text-[10px] font-black text-gray-400 w-8 border-r border-gray-200 relative shrink-0" style={{ height: CH_HEIGHT, marginTop: '32px' }}>
+                    <div className="flex flex-col text-xs font-black text-gray-400 w-8 border-r border-gray-200 relative shrink-0" style={{ height: CH_HEIGHT, marginTop: '32px' }}>
                         <span className="absolute right-2" style={{ top: '10%', transform: 'translateY(-50%)' }}>8%</span>
                         <span className="absolute right-2" style={{ top: '30%', transform: 'translateY(-50%)' }}>4%</span>
                         <span className="absolute right-2" style={{ top: '50%', transform: 'translateY(-50%)' }}>0%</span>
@@ -135,7 +138,7 @@ export default function MarketFocus({ market, onStockSelect }) {
                         {/* Chart Categories */}
                         {categories.map((cat, i) => (
                             <div key={cat.key} className="flex-1 flex flex-col items-center relative z-10 px-1 border-r border-gray-50 last:border-0">
-                                <div className="text-xs font-bold text-gray-400 mb-4 absolute -top-8 text-center w-full">
+                                <div className="text-sm font-bold text-gray-400 mb-4 absolute -top-8 text-center w-full">
                                     {cat.title}
                                 </div>
                                 <div className="flex justify-between w-full relative">

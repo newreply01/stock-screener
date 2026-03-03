@@ -4,6 +4,8 @@ import { getRealtimeTicks, getRealtimeActive } from '../utils/api';
 
 const RealtimeExplorer = ({ onStockSelect }) => {
     const [symbol, setSymbol] = useState('2330');
+    const [stockName, setStockName] = useState('');
+    const [industry, setIndustry] = useState('');
     const [date, setDate] = useState('');
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -27,6 +29,8 @@ const RealtimeExplorer = ({ onStockSelect }) => {
             if (res.success) {
                 setData(res.data || []);
                 setCurrentDate(res.date);
+                setStockName(res.name || '');
+                setIndustry(res.industry || '');
                 if (!dt && res.date) setDate(res.date);
 
                 // If data is empty, load suggestions
@@ -69,9 +73,23 @@ const RealtimeExplorer = ({ onStockSelect }) => {
                     <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                         🕰️ 盤中分時資料查詢 (1 分K)
                     </h2>
-                    <p className="text-sm text-slate-500 mt-1">
-                        查詢高頻資料庫中記錄的歷史或即時 1 分鐘級別市場快照
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                        {stockName && (
+                            <span className="text-sm font-black text-brand-primary bg-brand-primary/5 px-2 py-0.5 rounded border border-brand-primary/10">
+                                {stockName} ({symbol})
+                            </span>
+                        )}
+                        {industry && (
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                                {industry}
+                            </span>
+                        )}
+                        {!stockName && (
+                            <p className="text-sm text-slate-500">
+                                查詢高頻資料庫中記錄的歷史或即時 1 分鐘級別市場快照
+                            </p>
+                        )}
+                    </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="flex gap-2">

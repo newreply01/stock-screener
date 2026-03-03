@@ -105,30 +105,30 @@ export default function RealtimeView({ stock }) {
 
                 {/* Real-time Stats */}
                 <div className="space-y-4">
-                    <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-xl shadow-slate-200 relative overflow-hidden group">
-                        {/* Shimmer effect for live feel */}
-                        <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/5 to-transparent group-hover:animate-[shimmer_2s_infinite] transition-all"></div>
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm relative overflow-hidden group">
+                        {/* Subtle highlight effect */}
+                        <div className="absolute top-0 left-0 w-1 h-full bg-brand-primary"></div>
 
                         <div className="flex items-center gap-2 mb-4">
                             <Clock className="w-4 h-4 text-slate-400" />
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Transaction Summary</span>
                             {displayData.latest_time && (
-                                <span className="ml-auto text-[10px] font-mono font-bold text-brand-primary px-2 py-0.5 bg-brand-primary/10 rounded">{displayData.latest_time}</span>
+                                <span className="ml-auto text-[10px] font-mono font-bold text-brand-primary px-2 py-0.5 bg-brand-primary/10 rounded border border-brand-primary/20">{displayData.latest_time}</span>
                             )}
                         </div>
                         <div className="flex justify-between items-end">
                             <div>
-                                <p className={`text-4xl font-black ${isUp ? 'text-red-400' : 'text-green-400'} transition-colors duration-300`}>
+                                <p className={`text-4xl font-black ${isUp ? 'text-red-600' : 'text-green-600'} transition-colors duration-300`}>
                                     {!isNaN(parseFloat(currentPrice)) ? parseFloat(currentPrice).toFixed(2) : '--'}
                                 </p>
-                                <p className="text-xs font-bold text-slate-400 mt-1">成交價 (Last Sale)</p>
+                                <p className="text-xs font-bold text-slate-500 mt-1">成交價 (Last Sale)</p>
                             </div>
                             <div className="text-right">
-                                <p className={`text-xl font-black ${isUp ? 'text-red-400' : 'text-green-400'} flex items-center justify-end gap-1`}>
+                                <p className={`text-xl font-black ${isUp ? 'text-red-600' : 'text-green-600'} flex items-center justify-end gap-1`}>
                                     {isUp ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
                                     {!isNaN(parseFloat(change)) ? Math.abs(parseFloat(change)).toFixed(2) : '--'}%
                                 </p>
-                                <p className="text-[10px] font-bold text-slate-500">本日漲跌幅</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">本日漲跌幅</p>
                             </div>
                         </div>
                     </div>

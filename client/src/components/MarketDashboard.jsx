@@ -190,7 +190,7 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
                 </div>
             </div>
 
-            <MarketFocus market={market} onStockSelect={onStockSelect} />
+            <MarketFocus market={market} stockTypes={stockTypes} onStockSelect={onStockSelect} />
             <MarketMarginChart />
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -350,9 +350,15 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* TWSE Chart */}
                         <div>
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="w-2 h-6 bg-blue-500 rounded-full"></div>
-                                <h4 className="font-black text-gray-700">上市 (TWSE) 前 10 名</h4>
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-6 bg-blue-500 rounded-full"></div>
+                                    <h4 className="font-black text-gray-700">上市 (TWSE) 前 10 名</h4>
+                                </div>
+                                <div className="text-[10px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded-lg border border-blue-100 flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    資料日期: {data?.marketDates?.twse || data?.latestDate || '--'}
+                                </div>
                             </div>
                             <div className="h-48 md:h-64 w-full">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -396,9 +402,15 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
 
                         {/* TPEX Chart */}
                         <div>
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="w-2 h-6 bg-orange-500 rounded-full"></div>
-                                <h4 className="font-black text-gray-700">上櫃 (TPEX) 前 10 名</h4>
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-6 bg-orange-500 rounded-full"></div>
+                                    <h4 className="font-black text-gray-700">上櫃 (TPEX) 前 10 名</h4>
+                                </div>
+                                <div className="text-[10px] font-black bg-orange-50 text-orange-600 px-2 py-1 rounded-lg border border-orange-100 flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    資料日期: {data?.marketDates?.tpex || data?.latestDate || '--'}
+                                </div>
                             </div>
                             <div className="h-48 md:h-64 w-full">
                                 <ResponsiveContainer width="100%" height="100%">

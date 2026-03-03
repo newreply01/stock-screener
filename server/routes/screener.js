@@ -2,6 +2,21 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
 
+// 日期格式化助手 (解決時區偏移問題)
+const formatLocalDate = (date) => {
+    if (!date) return null;
+    if (!(date instanceof Date)) {
+        // 如果已經是字串，嘗試解析一下確保格式一致 (YYYY-MM-DD)
+        const d = new Date(date);
+        if (isNaN(d.getTime())) return date;
+        date = d;
+    }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 // GET /api/screen - 篩選股票 (支持分頁與篩選)
 router.get('/screen', async (req, res) => {
     try {
@@ -36,52 +51,45 @@ router.get('/screen', async (req, res) => {
         } = req.query;
         const offset = (parseInt(page) - 1) * parseInt(limit);
 
-        // 1. 為了效能，先找出最近 5 個有交易資料的日期，再逐一檢查其資料量是否大於 1500
-        const recentDatesRes = await query(
-            'SELECT DISTINCT trade_date FROM daily_prices ORDER BY trade_date DESC LIMIT 5'
-        );
+        // 1. 為了效能，找出最近有完整交易資料的日期 (優化為單次查詢)
+        const dateDetectionSql = `
+            SELECT trade_date, count(*) as count
+            FROM daily_prices
+            WHERE trade_date IN (
+                SELECT DISTINCT trade_date FROM daily_prices ORDER BY trade_date DESC LIMIT 5
+            )
+            AND symbol ~ '^[0-9]{4}$'
+            GROUP BY trade_date
+            ORDER BY trade_date DESC
+        `;
+        const detectedDatesRes = await query(dateDetectionSql);
 
         let latestDateRaw = null;
-        for (const r of recentDatesRes.rows) {
-            const cntRes = await query(
-                `SELECT count(*) FROM daily_prices WHERE trade_date = $1 AND symbol ~ '^[0-9]{4}$'`,
-                [r.trade_date]
-            );
-            if (parseInt(cntRes.rows[0].count) > 1500) {
+        for (const r of detectedDatesRes.rows) {
+            if (parseInt(r.count) > 1500) {
                 latestDateRaw = r.trade_date;
                 break;
             }
         }
 
+        if (!latestDateRaw && detectedDatesRes.rows.length > 0) {
+            latestDateRaw = detectedDatesRes.rows[0].trade_date;
+        }
+
         if (!latestDateRaw) {
-            // 如果最近 5 天都沒有完整的，才退而求其次找全局最新
-            if (recentDatesRes.rows.length > 0) {
-                latestDateRaw = recentDatesRes.rows[0].trade_date;
-            } else {
-                return res.json({ success: true, data: [], total: 0, page: parseInt(page), totalPages: 0, latestDate: null });
-            }
+            return res.json({ success: true, data: [], total: 0, page: parseInt(page), totalPages: 0, latestDate: null });
         }
 
         // 如果使用者有指定日期，則以指定日期為基準
         if (date) {
             const requestedDate = new Date(date);
-            if (!isNaN(requestedDate)) {
-                latestDateRaw = requestedDate;
-            }
+            if (!isNaN(requestedDate)) latestDateRaw = requestedDate;
         }
 
-        // 2. 找出小於等於基準日期的「實際」完整交易日 (同樣優化查詢效能)
         let actualDate = latestDateRaw;
-        const validDatesRes = await query(
-            'SELECT DISTINCT trade_date FROM daily_prices WHERE trade_date <= $1 ORDER BY trade_date DESC LIMIT 5',
-            [latestDateRaw]
-        );
-        for (const r of validDatesRes.rows) {
-            const cntRes = await query(
-                `SELECT count(*) FROM daily_prices WHERE trade_date = $1 AND symbol ~ '^[0-9]{4}$'`,
-                [r.trade_date]
-            );
-            if (parseInt(cntRes.rows[0].count) > 1500) {
+        // 如果基準日期的資料量不夠，再往前找最近一個完整的 (同樣利用已偵測的資料)
+        for (const r of detectedDatesRes.rows) {
+            if (r.trade_date <= latestDateRaw && parseInt(r.count) > 1500) {
                 actualDate = r.trade_date;
                 break;
             }
@@ -171,6 +179,30 @@ router.get('/screen', async (req, res) => {
                 case 'inst_buy': // 法人連買
                     whereClause += ` AND inst.foreign_net > 0 AND inst.trust_net > 0`;
                     break;
+                case 'kenneth_fisher': // 肯尼斯·費雪 - 低 PE 成長
+                    whereClause += ` AND f.pe_ratio > 0 AND f.pe_ratio < 15 AND p.change_percent > 0`;
+                    break;
+                case 'michael_price': // 麥克·喜偉 - 價值發現
+                    whereClause += ` AND f.pb_ratio > 0 AND f.pb_ratio < 1.2 AND f.dividend_yield > 3`;
+                    break;
+                case 'warren_buffett': // 華倫·巴菲特 - 企業價值
+                    whereClause += ` AND f.pe_ratio > 0 AND f.pe_ratio < 20 AND f.pb_ratio < 1.5 AND f.dividend_yield > 2`;
+                    break;
+                case 'benjamin_graham': // 班哲明·格拉罕 - 安全邊際
+                    whereClause += ` AND f.pe_ratio > 0 AND f.pb_ratio > 0 AND (f.pe_ratio * f.pb_ratio) < 22.5`;
+                    break;
+                case 'peter_lynch': // 彼得·林區 - 盈餘增長 (以低PE+均線替代)
+                    whereClause += ` AND f.pe_ratio > 0 AND f.pe_ratio < 12 AND p.close_price > i.ma_20`;
+                    break;
+                case 'michael_murphy': // 麥克·墨菲 - 科技成長 (強勢排列)
+                    whereClause += ` AND i.ma_5 > i.ma_10 AND i.ma_10 > i.ma_20`;
+                    break;
+                case 'safe_dividend': // 安心存股 - 高殖利率
+                    whereClause += ` AND f.dividend_yield > 5`;
+                    break;
+                case 'financial_giant': // 財務大腕 - 法人資金追捧
+                    whereClause += ` AND inst.total_net > 1000 AND p.change_percent > 0`;
+                    break;
             }
         }
 
@@ -236,11 +268,7 @@ router.get('/screen', async (req, res) => {
         const dataResult = await query(dataSQL, params);
 
         // 返回前端預期的格式 - 使用本地日期字串避免時區偏離
-        const d = new Date(actualDate);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const displayDateStr = `${year}-${month}-${day}`;
+        const displayDateStr = formatLocalDate(actualDate);
 
         res.json({
             success: true,
@@ -278,17 +306,67 @@ router.get('/market-summary', async (req, res) => {
     try {
         const { market = 'all', stock_types = 'stock' } = req.query;
 
-        // 1. 取得最新交易日
-        const dateRes = await query("SELECT TO_CHAR(MAX(trade_date), 'YYYY-MM-DD') as max_date, MAX(trade_date) as original_date FROM daily_prices");
-        const latestDateStr = dateRes.rows[0].max_date;
-        const latestDate = dateRes.rows[0].original_date;
-        if (!latestDate) {
+        // 1. 取得偵測日期 (找出最近有完整交易資料的日期)
+        const dateDetectionSql = `
+            SELECT trade_date, count(*) as count
+            FROM daily_prices
+            WHERE trade_date IN (
+                SELECT DISTINCT trade_date FROM daily_prices ORDER BY trade_date DESC LIMIT 5
+            )
+            AND symbol ~ '^[0-9]{4}$'
+            GROUP BY trade_date
+            ORDER BY trade_date DESC
+        `;
+        const detectedDatesRes = await query(dateDetectionSql);
+
+        let latestDateRaw = null;
+        for (const r of detectedDatesRes.rows) {
+            if (parseInt(r.count) > 1500) {
+                latestDateRaw = r.trade_date;
+                break;
+            }
+        }
+
+        if (!latestDateRaw && detectedDatesRes.rows.length > 0) {
+            latestDateRaw = detectedDatesRes.rows[0].trade_date;
+        }
+
+        if (!latestDateRaw) {
             return res.json({ success: false, message: '無資料' });
         }
 
+        const latestDate = latestDateRaw;
+        const latestDateStr = formatLocalDate(latestDate);
+
+        // 取得各市場獨立的最新日期 (用於排行榜)
+        // 增加 threshold 並限制個股代號，防止權證大量成交導致日期誤跳
+        const twseDateRes = await query(`
+            SELECT p.trade_date as max_date 
+            FROM daily_prices p 
+            JOIN stocks s ON p.symbol = s.symbol 
+            WHERE s.market = 'twse' AND p.volume > 0 AND s.symbol ~ '^[0-9]{4}$'
+            GROUP BY p.trade_date
+            HAVING count(*) > 500
+            ORDER BY p.trade_date DESC LIMIT 1
+        `);
+        const tpexDateRes = await query(`
+            SELECT p.trade_date as max_date 
+            FROM daily_prices p 
+            JOIN stocks s ON p.symbol = s.symbol 
+            WHERE s.market = 'tpex' AND p.volume > 0 AND s.symbol ~ '^[0-9]{4}$'
+            GROUP BY p.trade_date
+            HAVING count(*) > 500
+            ORDER BY p.trade_date DESC LIMIT 1
+        `);
+
+        const latestTwseDate = twseDateRes.rows[0]?.max_date || latestDate;
+        const latestTpexDate = tpexDateRes.rows[0]?.max_date || latestDate;
+        const latestTwseDateStr = formatLocalDate(latestTwseDate);
+        const latestTpexDateStr = formatLocalDate(latestTpexDate);
+
         let whereClause = "WHERE p.trade_date = $1";
         const params = [latestDate];
-        let paramCount = 2; // For parameter tracking if needed
+        let paramCount = 2;
 
         if (market !== 'all') {
             whereClause += ` AND s.market = $${paramCount}`;
@@ -303,9 +381,7 @@ router.get('/market-summary', async (req, res) => {
         if (types.includes('etf')) typeConditions.push("(s.symbol ~ '^00' OR s.name ILIKE '%ETF%')");
         if (types.includes('warrant')) typeConditions.push("(s.symbol ~ '^[0-9]{6}$' AND s.symbol !~ '^00' AND s.symbol !~ '^02')");
 
-        if (typeConditions.length > 0) {
-            whereClause += ` AND (${typeConditions.join(' OR ')})`;
-        }
+        const typeFilter = typeConditions.length > 0 ? `AND (${typeConditions.join(' OR ')})` : '';
 
         // 2. 漲跌分佈統計 (Histogram data)
         const distributionSql = `
@@ -321,7 +397,7 @@ router.get('/market-summary', async (req, res) => {
                                         COUNT(*) filter(where change_percent <= -9.5) as limit_down
             FROM daily_prices p
             JOIN stocks s ON p.symbol = s.symbol
-            ${whereClause}
+            ${whereClause} ${typeFilter}
         `;
         const distResult = await query(distributionSql, params);
 
@@ -333,92 +409,73 @@ router.get('/market-summary', async (req, res) => {
             COUNT(*) as stock_count
             FROM daily_prices p
             JOIN stocks s ON p.symbol = s.symbol
-            ${whereClause} AND s.industry IS NOT NULL AND s.industry != ''
+            ${whereClause} AND s.industry IS NOT NULL AND s.industry != '' ${typeFilter}
             GROUP BY s.industry
             ORDER BY avg_change DESC
             LIMIT 20
             `;
         const industryResult = await query(industrySql, params);
 
-        // 4. 即時熱門股 (Top Volume) - TWSE
-        const twseVolumeSql = `
-        SELECT
-        s.symbol, s.name, p.close_price, p.change_percent, p.volume
-            FROM daily_prices p
-            JOIN stocks s ON p.symbol = s.symbol
-            ${whereClause} AND s.market = 'twse'
-            ORDER BY p.volume DESC
-            LIMIT 10
-            `;
-        const twseResult = await query(twseVolumeSql, params);
-
-        // 建立 TPEX 專用的 whereClause
-        let tpexWhereClause = "WHERE p.trade_date = (SELECT MAX(p2.trade_date) FROM daily_prices p2 JOIN stocks s2 ON p2.symbol = s2.symbol WHERE s2.market = 'tpex')";
-        if (typeConditions.length > 0) tpexWhereClause += ` AND (${typeConditions.join(' OR ')})`;
-
-        // 5. 即時熱門股 (Top Volume) - TPEX
-        const tpexVolumeSql = `
-        SELECT
-        s.symbol, s.name, p.close_price, p.change_percent, p.volume
-            FROM daily_prices p
-            JOIN stocks s ON p.symbol = s.symbol
-            ${tpexWhereClause} AND s.market = 'tpex'
-            ORDER BY p.volume DESC
-            LIMIT 10
-            `;
-        const tpexResult = await query(tpexVolumeSql, []);
-
-        // 6. 漲幅最高 (Top Gainers) - TWSE
-        const twseGainersSql = `
-        SELECT
-        s.symbol, s.name, p.close_price, p.change_amount, p.volume
-            FROM daily_prices p
-            JOIN stocks s ON p.symbol = s.symbol
-            ${whereClause} AND s.market = 'twse' AND p.change_amount IS NOT NULL
-            ORDER BY p.change_amount DESC
-            LIMIT 10
-            `;
-        const twseGainersResult = await query(twseGainersSql, params);
-
-        // 7. 跌幅最高 (Top Losers) - TWSE
-        const twseLosersSql = `
-        SELECT
-        s.symbol, s.name, p.close_price, p.change_amount, p.volume
-            FROM daily_prices p
-            JOIN stocks s ON p.symbol = s.symbol
-            ${whereClause} AND s.market = 'twse' AND p.change_amount IS NOT NULL
-            ORDER BY p.change_amount ASC
-            LIMIT 10
-            `;
-        const twseLosersResult = await query(twseLosersSql, params);
-
-        // 8. 漲幅最高 (Top Gainers) - TPEX
-        const tpexGainersSql = `
-        SELECT
-        s.symbol, s.name, p.close_price, p.change_amount, p.volume
-            FROM daily_prices p
-            JOIN stocks s ON p.symbol = s.symbol
-            ${tpexWhereClause} AND s.market = 'tpex' AND p.change_amount IS NOT NULL
-            ORDER BY p.change_amount DESC
-            LIMIT 10
-            `;
-        const tpexGainersResult = await query(tpexGainersSql, []);
-
-        // 9. 跌幅最高 (Top Losers) - TPEX
-        const tpexLosersSql = `
-        SELECT
-        s.symbol, s.name, p.close_price, p.change_amount, p.volume
-            FROM daily_prices p
-            JOIN stocks s ON p.symbol = s.symbol
-            ${tpexWhereClause} AND s.market = 'tpex' AND p.change_amount IS NOT NULL
-            ORDER BY p.change_amount ASC
-            LIMIT 10
-            `;
-        const tpexLosersResult = await query(tpexLosersSql, []);
+        // 4-9. 並行執行排行榜查詢 (Parallel execution)
+        const [
+            twseResult,
+            tpexResult,
+            twseGainersResult,
+            twseLosersResult,
+            tpexGainersResult,
+            tpexLosersResult
+        ] = await Promise.all([
+            query(`
+                SELECT s.symbol, s.name, p.close_price, p.change_percent, p.volume, TO_CHAR(p.trade_date, 'YYYY-MM-DD') as date
+                FROM daily_prices p
+                JOIN stocks s ON p.symbol = s.symbol
+                WHERE p.trade_date = $1 AND s.market = 'twse' ${typeFilter}
+                ORDER BY p.volume DESC LIMIT 10
+            `, [latestTwseDate]),
+            query(`
+                SELECT s.symbol, s.name, p.close_price, p.change_percent, p.volume, TO_CHAR(p.trade_date, 'YYYY-MM-DD') as date
+                FROM daily_prices p
+                JOIN stocks s ON p.symbol = s.symbol
+                WHERE p.trade_date = $1 AND s.market = 'tpex' ${typeFilter}
+                ORDER BY p.volume DESC LIMIT 10
+            `, [latestTpexDate]),
+            query(`
+                SELECT s.symbol, s.name, p.close_price, p.change_amount, p.volume
+                FROM daily_prices p
+                JOIN stocks s ON p.symbol = s.symbol
+                WHERE p.trade_date = $1 AND s.market = 'twse' AND p.change_amount IS NOT NULL ${typeFilter}
+                ORDER BY p.change_amount DESC LIMIT 10
+            `, [latestTwseDate]),
+            query(`
+                SELECT s.symbol, s.name, p.close_price, p.change_amount, p.volume
+                FROM daily_prices p
+                JOIN stocks s ON p.symbol = s.symbol
+                WHERE p.trade_date = $1 AND s.market = 'twse' AND p.change_amount IS NOT NULL ${typeFilter}
+                ORDER BY p.change_amount ASC LIMIT 10
+            `, [latestTwseDate]),
+            query(`
+                SELECT s.symbol, s.name, p.close_price, p.change_amount, p.volume
+                FROM daily_prices p
+                JOIN stocks s ON p.symbol = s.symbol
+                WHERE p.trade_date = $1 AND s.market = 'tpex' AND p.change_amount IS NOT NULL ${typeFilter}
+                ORDER BY p.change_amount DESC LIMIT 10
+            `, [latestTpexDate]),
+            query(`
+                SELECT s.symbol, s.name, p.close_price, p.change_amount, p.volume
+                FROM daily_prices p
+                JOIN stocks s ON p.symbol = s.symbol
+                WHERE p.trade_date = $1 AND s.market = 'tpex' AND p.change_amount IS NOT NULL ${typeFilter}
+                ORDER BY p.change_amount ASC LIMIT 10
+            `, [latestTpexDate])
+        ]);
 
         res.json({
             success: true,
             latestDate: latestDateStr,
+            marketDates: {
+                twse: latestTwseDateStr,
+                tpex: latestTpexDateStr
+            },
             distribution: distResult.rows[0],
             industries: industryResult.rows,
             twseVolume: twseResult.rows,
@@ -437,20 +494,23 @@ router.get('/market-summary', async (req, res) => {
 // GET /api/stats
 router.get('/stats', async (req, res) => {
     try {
+        // 先取得最新日期 (快速，利用索引)
+        const dateRes = await query("SELECT trade_date FROM daily_prices ORDER BY trade_date DESC LIMIT 1");
+        const latestDate = dateRes.rows[0]?.trade_date;
+
+        if (!latestDate) return res.json({});
+
         const sql = `
-            WITH latest AS(
-                SELECT MAX(trade_date) as m_date FROM daily_prices
-            )
         SELECT
-        COUNT(*) filter(where change_percent > 0) as up_count,
+            COUNT(*) filter(where change_percent > 0) as up_count,
             COUNT(*) filter(where change_percent < 0) as down_count,
-                COUNT(*) filter(where change_percent = 0) as flat_count,
-                    AVG(change_percent) as avg_change,
-                    TO_CHAR((SELECT m_date FROM latest), 'YYYY-MM-DD') as "latestDate"
-            FROM daily_prices
-            WHERE trade_date = (SELECT m_date FROM latest)
-`;
-        const result = await query(sql);
+            COUNT(*) filter(where change_percent = 0) as flat_count,
+            AVG(change_percent) as avg_change,
+            TO_CHAR($1::date, 'YYYY-MM-DD') as "latestDate"
+        FROM daily_prices
+        WHERE trade_date = $1
+        `;
+        const result = await query(sql, [latestDate]);
         res.json(result.rows[0]);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -609,10 +669,12 @@ router.get('/institutional-rank', async (req, res) => {
         const rangeMap = { '3d': 3, '5d': 5, '10d': 10 };
         const days = rangeMap[range] || 3;
 
-        // 取得最近的 N 個交易日
+        // 取得最近的 N 個有效交易日 (加入門檻防止髒數據)
         const datesRes = await query(`
-            SELECT DISTINCT trade_date 
+            SELECT trade_date 
             FROM institutional 
+            GROUP BY trade_date
+            HAVING count(*) > 5000
             ORDER BY trade_date DESC 
             LIMIT $1`, [days]);
 
@@ -652,18 +714,26 @@ i.symbol,
 // GET /api/market-stats - 市場統計 (用於頁首)
 router.get('/market-stats', async (req, res) => {
     try {
+        const dateRes = await query(`
+            SELECT trade_date 
+            FROM daily_prices 
+            GROUP BY trade_date
+            HAVING count(*) > 1500
+            ORDER BY trade_date DESC LIMIT 1
+        `);
+        const latestDate = dateRes.rows[0]?.trade_date;
+
+        if (!latestDate) return res.json({});
+
         const sql = `
-            WITH latest AS(
-    SELECT MAX(trade_date) as m_date FROM daily_prices
-)
-SELECT
-COUNT(*) filter(where change_percent > 0) as up_count,
-    COUNT(*) filter(where change_percent < 0) as down_count,
-        TO_CHAR((SELECT m_date FROM latest), 'YYYY-MM-DD') as latestDate
-            FROM daily_prices
-            WHERE trade_date = (SELECT m_date FROM latest)
-`;
-        const result = await query(sql);
+        SELECT
+            COUNT(*) filter(where change_percent > 0) as up_count,
+            COUNT(*) filter(where change_percent < 0) as down_count,
+            TO_CHAR($1::date, 'YYYY-MM-DD') as latestDate
+        FROM daily_prices
+        WHERE trade_date = $1
+        `;
+        const result = await query(sql, [latestDate]);
         res.json(result.rows[0]);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -993,7 +1063,7 @@ router.get('/realtime/:symbol', async (req, res) => {
 // GET /api/market-focus - 市場焦點個股 (WantGoo style)
 router.get('/market-focus', async (req, res) => {
     try {
-        const { market = 'all' } = req.query;
+        const { market = 'all', stock_types = 'stock' } = req.query;
 
         // 1. 取得最新交易日與前三個交易日
         const datesRes = await query('SELECT DISTINCT trade_date FROM daily_prices ORDER BY trade_date DESC LIMIT 3');
@@ -1004,45 +1074,48 @@ router.get('/market-focus', async (req, res) => {
         const latestDate = datesRes.rows[0].trade_date;
         const targetDates = datesRes.rows.map(r => r.trade_date);
 
-        // 1. 市場最吸金 (成交值 = 價格 * 量)
-        const turnoverSql = `
-            SELECT s.symbol, s.name, p.close_price, p.change_percent, (p.volume * p.close_price) as turnover
-            FROM daily_prices p
-            JOIN stocks s ON p.symbol = s.symbol
-            WHERE p.trade_date = $1 ${market !== 'all' ? `AND s.market = '${market}'` : ''}
-            ORDER BY turnover DESC NULLS LAST
-            LIMIT 10
-        `;
-        const turnoverRes = await query(turnoverSql, [latestDate]);
+        // 標的類型過濾條件 (與 /api/screen 保持一致)
+        const types = (stock_types || 'stock').split(',');
+        let typeConditions = [];
+        if (types.includes('stock')) typeConditions.push("(s.symbol ~ '^[0-9]{4}$' AND s.symbol !~ '^00')");
+        if (types.includes('etf')) typeConditions.push("(s.symbol ~ '^00' OR s.name ILIKE '%ETF%')");
+        if (types.includes('warrant')) typeConditions.push("(s.symbol ~ '^[0-9]{6}$' AND s.symbol !~ '^00' AND s.symbol !~ '^02')");
 
-        // 2. 當沖最熱門 (以成交量為代理指標) -- or we can use another proxy
-        const hotSql = `
-            SELECT s.symbol, s.name, p.close_price, p.change_percent, p.volume
-            FROM daily_prices p
-            JOIN stocks s ON p.symbol = s.symbol
-            WHERE p.trade_date = $1 ${market !== 'all' ? `AND s.market = '${market}'` : ''}
-            ORDER BY p.volume DESC NULLS LAST
-            LIMIT 10
-        `;
-        const hotRes = await query(hotSql, [latestDate]);
+        const typeFilter = typeConditions.length > 0 ? `AND (${typeConditions.join(' OR ')})` : '';
+        const marketFilter = market !== 'all' ? `AND s.market = '${market}'` : '';
 
-        // 3-5. 法人買三日 (外資、投信、主力)
-        // 主力 = total_net
-        const instSql = `
-            SELECT i.symbol, s.name, 
-                   MAX(p.close_price) as close_price, 
-                   MAX(p.change_percent) as change_percent,
-                   SUM(i.foreign_net) as foreign_buy,
-                   SUM(i.trust_net) as trust_buy,
-                   SUM(i.total_net) as total_buy
-            FROM institutional i
-            JOIN stocks s ON i.symbol = s.symbol
-            -- JOIN to get latest price and change
-            JOIN daily_prices p ON p.symbol = i.symbol AND p.trade_date = $1
-            WHERE i.trade_date = ANY($2) ${market !== 'all' ? `AND s.market = '${market}'` : ''}
-            GROUP BY i.symbol, s.name
-        `;
-        const instRes = await query(instSql, [latestDate, targetDates]);
+        // 並行查詢所有焦點數據
+        const [turnoverRes, hotRes, instRes] = await Promise.all([
+            query(`
+                SELECT s.symbol, s.name, p.close_price, p.change_percent, (p.volume * p.close_price) as turnover
+                FROM daily_prices p
+                JOIN stocks s ON p.symbol = s.symbol
+                WHERE p.trade_date = $1 ${marketFilter} ${typeFilter}
+                ORDER BY turnover DESC NULLS LAST
+                LIMIT 10
+            `, [latestDate]),
+            query(`
+                SELECT s.symbol, s.name, p.close_price, p.change_percent, p.volume
+                FROM daily_prices p
+                JOIN stocks s ON p.symbol = s.symbol
+                WHERE p.trade_date = $1 ${marketFilter} ${typeFilter}
+                ORDER BY p.volume DESC NULLS LAST
+                LIMIT 10
+            `, [latestDate]),
+            query(`
+                SELECT i.symbol, s.name, 
+                       MAX(p.close_price) as close_price, 
+                       MAX(p.change_percent) as change_percent,
+                       SUM(i.foreign_net) as foreign_buy,
+                       SUM(i.trust_net) as trust_buy,
+                       SUM(i.total_net) as total_buy
+                FROM institutional i
+                JOIN stocks s ON i.symbol = s.symbol
+                JOIN daily_prices p ON p.symbol = i.symbol AND p.trade_date = $1
+                WHERE i.trade_date = ANY($2) ${marketFilter} ${typeFilter}
+                GROUP BY i.symbol, s.name
+            `, [latestDate, targetDates])
+        ]);
 
         // 排序
         const foreignRes = [...instRes.rows].sort((a, b) => b.foreign_buy - a.foreign_buy).slice(0, 10);
@@ -1090,7 +1163,7 @@ router.get('/market-margin', async (req, res) => {
         }
 
         const chartData = marginRes.rows.reverse().map(row => ({
-            date: new Date(row.trade_date).toISOString().split('T')[0],
+            date: formatLocalDate(row.trade_date),
             marginBalance: row.balance, // 應為數值(元)，前端轉為億
             indexPrice: row.index_price ? parseFloat(row.index_price) : null
         }));

@@ -27,26 +27,32 @@ router.get('/realtime-ticks', async (req, res) => {
         }
 
         // Query ticks for that entire day (Taipei time)
-        // Order ascending (chronological) for charts and tables
+        // Join with stocks to get name and industry
         const sql = `
             SELECT 
-                symbol, 
-                TO_CHAR(trade_time AT TIME ZONE 'Asia/Taipei', 'HH24:MI:SS') as time_str,
-                trade_time, 
-                price, open_price, high_price, low_price, 
-                volume, trade_volume, 
-                buy_intensity, sell_intensity, five_levels
-            FROM realtime_ticks
-            WHERE symbol = $1 
-              AND TO_CHAR(trade_time AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD') = $2
-            ORDER BY trade_time ASC
+                t.symbol, s.name, s.industry,
+                TO_CHAR(t.trade_time AT TIME ZONE 'Asia/Taipei', 'HH24:MI:SS') as time_str,
+                t.trade_time, 
+                t.price, t.open_price, t.high_price, t.low_price, 
+                t.volume, t.trade_volume, 
+                t.buy_intensity, t.sell_intensity, t.five_levels
+            FROM realtime_ticks t
+            LEFT JOIN stocks s ON t.symbol = s.symbol
+            WHERE t.symbol = $1 
+              AND TO_CHAR(t.trade_time AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD') = $2
+            ORDER BY t.trade_time ASC
         `;
 
         const result = await query(sql, [symbol, targetDate]);
+        const stockInfo = result.rows.length > 0 ? {
+            name: result.rows[0].name,
+            industry: result.rows[0].industry
+        } : { name: '', industry: '' };
 
         res.json({
             success: true,
             symbol: symbol,
+            ...stockInfo,
             date: targetDate,
             data: result.rows
         });
