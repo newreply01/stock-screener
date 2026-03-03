@@ -56,6 +56,28 @@ router.get('/realtime-ticks', async (req, res) => {
     }
 });
 
+// GET /api/realtime-active
+router.get('/realtime-active', async (req, res) => {
+    try {
+        const topRes = await query(`
+            SELECT symbol, COUNT(*) as ticks_count 
+            FROM realtime_ticks 
+            WHERE DATE(trade_time AT TIME ZONE 'Asia/Taipei') = CURRENT_DATE
+               OR DATE(trade_time AT TIME ZONE 'Asia/Taipei') = (SELECT TO_CHAR(MAX(trade_time AT TIME ZONE 'Asia/Taipei'), 'YYYY-MM-DD')::date FROM realtime_ticks)
+            GROUP BY symbol 
+            ORDER BY ticks_count DESC 
+            LIMIT 10
+        `);
+
+        res.json({
+            success: true,
+            data: topRes.rows
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // GET /api/debug/audit-crawler (Internal Audit)
 router.get('/debug/audit-crawler', async (req, res) => {
     try {

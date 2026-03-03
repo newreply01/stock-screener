@@ -249,14 +249,17 @@ async function syncTaiwanStockTotalMarginPurchaseShortSale() {
         // Map API fields to DB columns
         const mapped = data.map(d => ({
             date: d.date, name: d.name || d.Name || '',
-            margin_purchase_buy: d.MarginPurchaseBuy, margin_purchase_sell: d.MarginPurchaseSell,
-            margin_purchase_cash_repayment: d.MarginPurchaseCashRepayment,
-            margin_purchase_yesterday_balance: d.MarginPurchaseYesterdayBalance,
-            margin_purchase_today_balance: d.MarginPurchaseTodayBalance,
-            short_sale_buy: d.ShortSaleBuy, short_sale_sell: d.ShortSaleSell,
-            short_sale_cash_repayment: d.ShortSaleCashRepayment,
-            short_sale_yesterday_balance: d.ShortSaleYesterdayBalance,
-            short_sale_today_balance: d.ShortSaleTodayBalance
+            margin_purchase_buy: d.buy !== undefined ? d.buy : d.MarginPurchaseBuy,
+            margin_purchase_sell: d.sell !== undefined ? d.sell : d.MarginPurchaseSell,
+            margin_purchase_cash_repayment: d.Return !== undefined ? d.Return : d.MarginPurchaseCashRepayment,
+            margin_purchase_yesterday_balance: d.YesBalance !== undefined ? d.YesBalance : d.MarginPurchaseYesterdayBalance,
+            margin_purchase_today_balance: d.TodayBalance !== undefined ? d.TodayBalance : d.MarginPurchaseTodayBalance,
+            // Keep others as fallback
+            short_sale_buy: d.ShortSaleBuy || null,
+            short_sale_sell: d.ShortSaleSell || null,
+            short_sale_cash_repayment: d.ShortSaleCashRepayment || null,
+            short_sale_yesterday_balance: d.ShortSaleYesterdayBalance || null,
+            short_sale_today_balance: d.ShortSaleTodayBalance || null
         }));
         const count = await bulkUpsert(client, 'fm_total_margin', cols, ['date', 'name'], mapped);
         console.log(`? [${ds}] ?? ${count} ?`);

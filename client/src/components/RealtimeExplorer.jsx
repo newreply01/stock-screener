@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search } from 'lucide-react';
-import { getRealtimeTicks } from '../utils/api';
+import { Search, Flame } from 'lucide-react';
+import { getRealtimeTicks, getRealtimeActive } from '../utils/api';
 
 const RealtimeExplorer = ({ onStockSelect }) => {
     const [symbol, setSymbol] = useState('2330');
@@ -8,6 +8,16 @@ const RealtimeExplorer = ({ onStockSelect }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [currentDate, setCurrentDate] = useState(null);
+    const [activeSymbols, setActiveSymbols] = useState([]);
+
+    const loadActiveSymbols = async () => {
+        try {
+            const res = await getRealtimeActive();
+            if (res.success && res.data) {
+                setActiveSymbols(res.data);
+            }
+        } catch (e) { console.error('Failed to load active symbols', e); }
+    };
 
     const fetchData = async (sym, dt) => {
         if (!sym) return;
@@ -18,6 +28,11 @@ const RealtimeExplorer = ({ onStockSelect }) => {
                 setData(res.data || []);
                 setCurrentDate(res.date);
                 if (!dt && res.date) setDate(res.date);
+
+                // If data is empty, load suggestions
+                if (!res.data || res.data.length === 0) {
+                    loadActiveSymbols();
+                }
             }
         } catch (err) {
             console.error(err);
@@ -113,7 +128,39 @@ const RealtimeExplorer = ({ onStockSelect }) => {
                             </tr>
                         ) : data.length === 0 ? (
                             <tr>
-                                <td colSpan="8" className="py-12 text-slate-400 text-center">此日期沒有找到分時資料</td>
+                                <td colSpan="8" className="py-12 bg-white text-center">
+                                    <div className="flex flex-col items-center justify-center text-slate-500 min-h-[150px]">
+                                        <Search className="w-8 h-8 text-slate-300 mb-3" />
+                                        <p className="font-bold text-base mb-1">({symbol}) 查無分時資料</p>
+                                        <p className="text-sm mb-4">這可能是因為該標的在查詢日期無交易紀錄，<br />或者是即時爬蟲尚未在此時段擷取到新的成交快照。</p>
+
+                                        {activeSymbols.length > 0 && (
+                                            <div className="mt-4 max-w-lg w-full">
+                                                <div className="flex items-center gap-2 justify-center mb-3">
+                                                    <Flame className="w-4 h-4 text-orange-500" />
+                                                    <span className="text-sm font-bold text-slate-700">您可以試試看目前最活躍的標的：</span>
+                                                </div>
+                                                <div className="flex flex-wrap justify-center gap-2">
+                                                    {activeSymbols.map(st => (
+                                                        <button
+                                                            key={st.symbol}
+                                                            onClick={() => {
+                                                                setSymbol(st.symbol);
+                                                                fetchData(st.symbol, date);
+                                                            }}
+                                                            className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 rounded-lg text-sm font-bold transition-colors flex items-center gap-1.5"
+                                                        >
+                                                            <span>{st.symbol}</span>
+                                                            <span className="text-[10px] bg-orange-200/50 px-1 rounded text-orange-800">
+                                                                筆數 {st.ticks_count}
+                                                            </span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </td>
                             </tr>
                         ) : (
                             data.map((tick, i) => (

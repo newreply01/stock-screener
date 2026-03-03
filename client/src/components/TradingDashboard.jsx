@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE } from '../utils/api';
 
 const TradingDashboard = () => {
     const defaultSymbols = ['2330', '2317', '2454']; // Taiwan Semi, Hon Hai, MediaTek
@@ -12,7 +13,7 @@ const TradingDashboard = () => {
         const symbolsStr = watchSymbols.join(',');
 
         console.log(`[SSE] Connecting to stream for: ${symbolsStr}`);
-        const eventSource = new EventSource(`http://localhost:20002/api/stream/realtime?symbols=${symbolsStr}`);
+        const eventSource = new EventSource(`${API_BASE}/stream/realtime?symbols=${symbolsStr}`);
 
         eventSource.onopen = () => {
             setIsConnected(true);

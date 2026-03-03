@@ -69,6 +69,7 @@ export default function ScreenerConfigPage({
         adx_min: '', adx_max: '',
         bb_width_min: '', bb_width_max: '',
         wpr_min: '', wpr_max: '',
+        stock_types: ['stock'], // Default to only showing stocks
         ...filters
     })
 
@@ -160,11 +161,25 @@ export default function ScreenerConfigPage({
         setLocalFilters(prev => {
             // 如果更新的是普通過濾條件，則清除智慧策略模式
             const next = { ...prev, [key]: value };
-            if (key !== 'strategy' && key !== 'market' && key !== 'date') {
+            if (key !== 'strategy' && key !== 'market' && key !== 'date' && key !== 'stock_types') {
                 next.strategy = '';
             }
             return next;
         })
+    }
+
+    const toggleStockType = (type) => {
+        setLocalFilters(prev => {
+            const current = prev.stock_types || ['stock'];
+            let nextTypes = [...current];
+            if (nextTypes.includes(type)) {
+                nextTypes = nextTypes.filter(t => t !== type);
+                if (nextTypes.length === 0) nextTypes = ['stock']; // Prevent empty selection
+            } else {
+                nextTypes.push(type);
+            }
+            return { ...prev, stock_types: nextTypes };
+        });
     }
 
     const togglePattern = (patternId) => {
@@ -355,25 +370,54 @@ export default function ScreenerConfigPage({
                 {/* Content Area */}
                 <div className="flex-1 p-8 overflow-y-auto bg-white space-y-8">
                     {/* Global Context (Market, Date) always visible at top of content area */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-8 border-b border-gray-100">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8 border-b border-gray-100">
                         <div className="space-y-3">
                             <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                                <span className="text-blue-600">⚡</span> 智能選股
+                                <span className="text-blue-600">⚡</span> 交易市場
                             </h2>
                             <div className="flex gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
                                 {['all', 'twse', 'tpex'].map((m) => (
                                     <button
                                         key={m}
                                         onClick={() => updateFilter('market', m)}
-                                        className={`flex-1 py-2 text-sm font-bold rounded-md transition-all
+                                        className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all
                                             ${localFilters.market === m
                                                 ? 'bg-white border border-gray-200 text-brand-primary shadow-sm'
                                                 : 'text-gray-500 hover:bg-gray-100 border border-transparent'}
                                         `}
                                     >
-                                        {m === 'all' ? '全部上市櫃' : (m === 'twse' ? '上市' : '上櫃')}
+                                        {m === 'all' ? '全部' : (m === 'twse' ? '上市' : '上櫃')}
                                     </button>
                                 ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <h2 className="text-[14px] font-bold text-gray-700 flex items-center gap-2">
+                                <Search className="w-4 h-4 text-gray-400" />
+                                標的類型
+                            </h2>
+                            <div className="flex gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
+                                {[
+                                    { id: 'stock', label: '個股' },
+                                    { id: 'etf', label: 'ETF' },
+                                    { id: 'warrant', label: '權證' }
+                                ].map((type) => {
+                                    const isSelected = (localFilters.stock_types || []).includes(type.id);
+                                    return (
+                                        <button
+                                            key={type.id}
+                                            onClick={() => toggleStockType(type.id)}
+                                            className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all
+                                                ${isSelected
+                                                    ? 'bg-brand-primary text-white shadow-sm'
+                                                    : 'text-gray-500 hover:bg-gray-100 border border-transparent'}
+                                            `}
+                                        >
+                                            {type.label}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 

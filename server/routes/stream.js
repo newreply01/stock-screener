@@ -45,7 +45,7 @@ router.get('/realtime', async (req, res) => {
                         volume, trade_volume, buy_intensity, sell_intensity, five_levels,
                         ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY trade_time DESC) as rn
                     FROM realtime_ticks
-                    WHERE symbol = ANY($1)
+                    WHERE symbol = ANY($1::varchar[])
                 )
                 SELECT * FROM LatestTicks WHERE rn = 1;
             `;

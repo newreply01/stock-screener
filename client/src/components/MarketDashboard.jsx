@@ -8,6 +8,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, Cartes
 
 export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggleWatchlist }) {
     const [market, setMarket] = useState('all');
+    const [stockTypes, setStockTypes] = useState(['stock']); // 預設只看個股，避免被權證和ETF淹沒
     const [rankingType, setRankingType] = useState('gainers'); // 'gainers', 'losers', 'volume'
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -26,6 +27,7 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
             const res = await screenStocks({
                 ...filters,
                 market: market === 'all' ? undefined : market,
+                stock_types: stockTypes.join(','),
                 sort_by: sortBy,
                 sort_dir: sortDir,
                 page,
@@ -37,7 +39,7 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
         } finally {
             setTableLoading(false);
         }
-    }, [filters, sortBy, sortDir, page, market]);
+    }, [filters, sortBy, sortDir, page, market, stockTypes]);
 
     useEffect(() => {
         fetchTableData();
@@ -47,7 +49,10 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
         const fetchSummary = async () => {
             setLoading(true);
             try {
-                const res = await getMarketSummary({ market });
+                const res = await getMarketSummary({
+                    market,
+                    stock_types: stockTypes.join(',')
+                });
                 if (res.success) {
                     setData(res);
                 }
@@ -58,7 +63,7 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
             }
         };
         fetchSummary();
-    }, [market]);
+    }, [market, stockTypes]);
 
     if (loading && !data) {
         return (
@@ -117,26 +122,71 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
                     </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
-                        {[
-                            { id: 'all', label: '全部' },
-                            { id: 'twse', label: '上市' },
-                            { id: 'tpex', label: '上櫃' }
-                        ].map(m => (
-                            <button
-                                key={m.id}
-                                onClick={() => setMarket(m.id)}
-                                className={`px-4 sm:px-6 py-2 rounded-lg text-sm font-black transition-all ${market === m.id ? 'bg-white text-brand-primary shadow-md' : 'text-gray-500 hover:text-gray-800'}`}
-                            >
-                                {m.label}
-                            </button>
-                        ))}
+                <div className="flex flex-col xl:flex-row items-start xl:items-center gap-6 w-full md:w-auto">
+                    {/* Market Filter */}
+                    <div className="flex items-center gap-3">
+                        <span className="text-sm font-bold text-gray-500 hidden md:block">市場</span>
+                        <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
+                            {[
+                                { id: 'all', label: '全部' },
+                                { id: 'twse', label: '上市' },
+                                { id: 'tpex', label: '上櫃' }
+                            ].map(m => (
+                                <button
+                                    key={m.id}
+                                    onClick={() => setMarket(m.id)}
+                                    className={`px-4 sm:px-6 py-2 rounded-lg text-sm font-black transition-all ${market === m.id ? 'bg-white text-brand-primary shadow-md' : 'text-gray-500 hover:text-gray-800'}`}
+                                >
+                                    {m.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2 text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-widest bg-gray-50 px-4 py-2 rounded-lg border border-gray-100">
-                        <Calendar className="w-4 h-4" />
-                        最後更新: {latestDate || '---'}
+
+                    {/* Stock Types Filter */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                        <span className="text-sm font-bold text-gray-500 flex items-center gap-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                            標的類型
+                        </span>
+                        <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-200 shadow-sm">
+                            {[
+                                { id: 'stock', label: '個股' },
+                                { id: 'etf', label: 'ETF' },
+                                { id: 'warrant', label: '權證' }
+                            ].map(type => {
+                                const isSelected = stockTypes.includes(type.id);
+                                return (
+                                    <button
+                                        key={type.id}
+                                        onClick={() => {
+                                            setStockTypes(prev => {
+                                                const current = [...prev];
+                                                if (current.includes(type.id)) {
+                                                    const next = current.filter(t => t !== type.id);
+                                                    return next.length === 0 ? ['stock'] : next; // 防止全空
+                                                } else {
+                                                    return [...current, type.id];
+                                                }
+                                            });
+                                        }}
+                                        className={`px-5 py-2 rounded-lg text-sm font-black transition-all min-w-[80px]
+                                            ${isSelected
+                                                ? 'bg-[#ea4335] text-white shadow-md border border-red-600/20 hover:bg-[#d33426]'
+                                                : 'text-slate-600 hover:bg-slate-200 border border-transparent'}
+                                        `}
+                                    >
+                                        {type.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-widest bg-gray-50 px-4 py-2 rounded-lg border border-gray-100 self-end md:self-auto shrink-0 mt-4 md:mt-0">
+                    <Calendar className="w-4 h-4" />
+                    最後更新: {latestDate || '---'}
                 </div>
             </div>
 

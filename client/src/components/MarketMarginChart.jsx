@@ -16,16 +16,11 @@ export default function MarketMarginChart() {
             try {
                 const res = await getMarketMargin();
                 if (res.success && res.data) {
-                    // Process data: convert margin to hundred-millions (億)
-                    const processed = res.data.map((d, i) => {
-                        // Mock an index price since we lack historical TAIEX data currently.
-                        // Create a slight wave around 23000 to 24000 depending on index
-                        const mockPrice = 23000 + (Math.sin(i * 0.3) * 500) + (i * 10);
-
+                    const processed = res.data.map((d) => {
                         return {
                             ...d,
                             margin100M: d.marginBalance ? parseFloat((d.marginBalance / 100000000).toFixed(2)) : 0,
-                            mockIndex: mockPrice
+                            indexPrice: d.indexPrice || null
                         };
                     });
                     setData(processed);
@@ -72,15 +67,19 @@ export default function MarketMarginChart() {
                 <h3 className="text-lg font-black text-gray-800 flex items-center gap-2">
                     <Activity className="w-5 h-5 text-amber-500" />
                     大盤融資融券餘額
-                    <AlertCircle className="w-4 h-4 text-gray-400 cursor-help" />
+                    <div className="group relative flex items-center">
+                        <AlertCircle className="w-4 h-4 text-gray-400 cursor-help hover:text-brand-primary transition-colors" />
+                        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-72 p-3 bg-slate-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl text-left font-normal leading-relaxed pointer-events-none">
+                            <span className="font-bold text-amber-400 block mb-1">💡 什麼是融資餘額？</span>
+                            融資餘額代表投資人向券商借錢買進股票的總金額。<br /><br />
+                            當融資餘額持續攀升，意味著市場散戶看多且願意開槓桿，但也代表未來潛在的賣壓增加；若融資餘額位處高檔且大盤反轉向下，可能引發多殺多的斷頭風險。
+                            <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-[6px] border-x-transparent border-t-[6px] border-t-slate-900"></div>
+                        </div>
+                    </div>
                 </h3>
             </div>
 
             <div className="h-64 md:h-80 w-full relative group">
-                {/* 加上一個說明浮水印因為是大盤模擬價格 */}
-                <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[10px] text-gray-300 pointer-events-none font-bold select-none z-10">
-                    * 註: 大盤指數曲線目前為展圖目的之模擬數值
-                </div>
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart
                         data={data}
@@ -132,7 +131,7 @@ export default function MarketMarginChart() {
                         <Line
                             yAxisId="left"
                             type="monotone"
-                            dataKey="mockIndex"
+                            dataKey="indexPrice"
                             name="大盤指數"
                             stroke="#ef4444"
                             strokeWidth={2}

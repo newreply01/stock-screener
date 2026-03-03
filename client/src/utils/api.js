@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+export const API_BASE = import.meta.env.VITE_API_URL || '/api';
 import { authFetch } from './auth';
 
 export async function screenStocks(params = {}) {
@@ -187,5 +187,11 @@ export async function getRealtimeTicks(symbol, date) {
     const dateParam = date ? `&date=${date}` : '';
     const res = await fetch(`${API_BASE}/realtime-ticks?symbol=${symbol}${dateParam}`);
     if (!res.ok) throw new Error('獲取盤中分時資料失敗');
+    return res.json();
+}
+
+export async function getRealtimeActive() {
+    const res = await fetch(`${API_BASE}/realtime-active`);
+    if (!res.ok) throw new Error('獲取即時熱門標的失敗');
     return res.json();
 }

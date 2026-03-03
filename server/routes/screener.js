@@ -31,16 +31,35 @@ router.get('/screen', async (req, res) => {
             total_net_min, total_net_max,
             date,
             market,
-            strategy
+            strategy,
+            stock_types = 'stock' // 預設只顯示個股
         } = req.query;
         const offset = (parseInt(page) - 1) * parseInt(limit);
 
-        // 1. 先獲取資料庫最新日期 (全局最新)
-        const latestInfoResult = await query('SELECT MAX(trade_date) as max_date FROM daily_prices');
-        let latestDateRaw = latestInfoResult.rows[0].max_date;
+        // 1. 為了效能，先找出最近 5 個有交易資料的日期，再逐一檢查其資料量是否大於 1500
+        const recentDatesRes = await query(
+            'SELECT DISTINCT trade_date FROM daily_prices ORDER BY trade_date DESC LIMIT 5'
+        );
+
+        let latestDateRaw = null;
+        for (const r of recentDatesRes.rows) {
+            const cntRes = await query(
+                `SELECT count(*) FROM daily_prices WHERE trade_date = $1 AND symbol ~ '^[0-9]{4}$'`,
+                [r.trade_date]
+            );
+            if (parseInt(cntRes.rows[0].count) > 1500) {
+                latestDateRaw = r.trade_date;
+                break;
+            }
+        }
 
         if (!latestDateRaw) {
-            return res.json({ success: true, data: [], total: 0, page: parseInt(page), totalPages: 0, latestDate: null });
+            // 如果最近 5 天都沒有完整的，才退而求其次找全局最新
+            if (recentDatesRes.rows.length > 0) {
+                latestDateRaw = recentDatesRes.rows[0].trade_date;
+            } else {
+                return res.json({ success: true, data: [], total: 0, page: parseInt(page), totalPages: 0, latestDate: null });
+            }
         }
 
         // 如果使用者有指定日期，則以指定日期為基準
@@ -51,12 +70,22 @@ router.get('/screen', async (req, res) => {
             }
         }
 
-        // 2. 找出小於等於指定日期的「實際」最新交易日，這才是篩選基準
-        const actualDateResult = await query(
-            'SELECT MAX(trade_date) as actual_date FROM daily_prices WHERE trade_date <= $1',
+        // 2. 找出小於等於基準日期的「實際」完整交易日 (同樣優化查詢效能)
+        let actualDate = latestDateRaw;
+        const validDatesRes = await query(
+            'SELECT DISTINCT trade_date FROM daily_prices WHERE trade_date <= $1 ORDER BY trade_date DESC LIMIT 5',
             [latestDateRaw]
         );
-        const actualDate = actualDateResult.rows[0].actual_date || latestDateRaw;
+        for (const r of validDatesRes.rows) {
+            const cntRes = await query(
+                `SELECT count(*) FROM daily_prices WHERE trade_date = $1 AND symbol ~ '^[0-9]{4}$'`,
+                [r.trade_date]
+            );
+            if (parseInt(cntRes.rows[0].count) > 1500) {
+                actualDate = r.trade_date;
+                break;
+            }
+        }
 
         const params = [actualDate];
         let paramCount = 2;
@@ -78,6 +107,17 @@ router.get('/screen', async (req, res) => {
             whereClause += ` AND s.market = $${paramCount}`;
             params.push(market);
             paramCount++;
+        }
+
+        // 標的類型過濾
+        const types = (stock_types || 'stock').split(',');
+        let typeConditions = [];
+        if (types.includes('stock')) typeConditions.push("(s.symbol ~ '^[0-9]{4}$' AND s.symbol !~ '^00')");
+        if (types.includes('etf')) typeConditions.push("(s.symbol ~ '^00' OR s.name ILIKE '%ETF%')");
+        if (types.includes('warrant')) typeConditions.push("(s.symbol ~ '^[0-9]{6}$' AND s.symbol !~ '^00' AND s.symbol !~ '^02')");
+
+        if (typeConditions.length > 0) {
+            whereClause += ` AND (${typeConditions.join(' OR ')})`;
         }
 
         // 數字區間過濾函式
@@ -236,7 +276,7 @@ router.get('/stocks/industries', async (req, res) => {
 // GET /api/market-summary - 獲取大盤分佈、產業排行與熱門股
 router.get('/market-summary', async (req, res) => {
     try {
-        const { market = 'all' } = req.query;
+        const { market = 'all', stock_types = 'stock' } = req.query;
 
         // 1. 取得最新交易日
         const dateRes = await query("SELECT TO_CHAR(MAX(trade_date), 'YYYY-MM-DD') as max_date, MAX(trade_date) as original_date FROM daily_prices");
@@ -248,10 +288,23 @@ router.get('/market-summary', async (req, res) => {
 
         let whereClause = "WHERE p.trade_date = $1";
         const params = [latestDate];
+        let paramCount = 2; // For parameter tracking if needed
 
         if (market !== 'all') {
-            whereClause += " AND s.market = $2";
+            whereClause += ` AND s.market = $${paramCount}`;
             params.push(market);
+            paramCount++;
+        }
+
+        // 標的類型過濾
+        const types = (stock_types || 'stock').split(',');
+        let typeConditions = [];
+        if (types.includes('stock')) typeConditions.push("(s.symbol ~ '^[0-9]{4}$' AND s.symbol !~ '^00')");
+        if (types.includes('etf')) typeConditions.push("(s.symbol ~ '^00' OR s.name ILIKE '%ETF%')");
+        if (types.includes('warrant')) typeConditions.push("(s.symbol ~ '^[0-9]{6}$' AND s.symbol !~ '^00' AND s.symbol !~ '^02')");
+
+        if (typeConditions.length > 0) {
+            whereClause += ` AND (${typeConditions.join(' OR ')})`;
         }
 
         // 2. 漲跌分佈統計 (Histogram data)
@@ -299,13 +352,17 @@ router.get('/market-summary', async (req, res) => {
             `;
         const twseResult = await query(twseVolumeSql, params);
 
+        // 建立 TPEX 專用的 whereClause
+        let tpexWhereClause = "WHERE p.trade_date = (SELECT MAX(p2.trade_date) FROM daily_prices p2 JOIN stocks s2 ON p2.symbol = s2.symbol WHERE s2.market = 'tpex')";
+        if (typeConditions.length > 0) tpexWhereClause += ` AND (${typeConditions.join(' OR ')})`;
+
         // 5. 即時熱門股 (Top Volume) - TPEX
         const tpexVolumeSql = `
         SELECT
         s.symbol, s.name, p.close_price, p.change_percent, p.volume
             FROM daily_prices p
             JOIN stocks s ON p.symbol = s.symbol
-            WHERE p.trade_date = (SELECT MAX(p2.trade_date) FROM daily_prices p2 JOIN stocks s2 ON p2.symbol = s2.symbol WHERE s2.market = 'tpex') AND s.market = 'tpex'
+            ${tpexWhereClause} AND s.market = 'tpex'
             ORDER BY p.volume DESC
             LIMIT 10
             `;
@@ -341,7 +398,7 @@ router.get('/market-summary', async (req, res) => {
         s.symbol, s.name, p.close_price, p.change_amount, p.volume
             FROM daily_prices p
             JOIN stocks s ON p.symbol = s.symbol
-            WHERE p.trade_date = (SELECT MAX(p2.trade_date) FROM daily_prices p2 JOIN stocks s2 ON p2.symbol = s2.symbol WHERE s2.market = 'tpex') AND s.market = 'tpex' AND p.change_amount IS NOT NULL
+            ${tpexWhereClause} AND s.market = 'tpex' AND p.change_amount IS NOT NULL
             ORDER BY p.change_amount DESC
             LIMIT 10
             `;
@@ -353,7 +410,7 @@ router.get('/market-summary', async (req, res) => {
         s.symbol, s.name, p.close_price, p.change_amount, p.volume
             FROM daily_prices p
             JOIN stocks s ON p.symbol = s.symbol
-            WHERE p.trade_date = (SELECT MAX(p2.trade_date) FROM daily_prices p2 JOIN stocks s2 ON p2.symbol = s2.symbol WHERE s2.market = 'tpex') AND s.market = 'tpex' AND p.change_amount IS NOT NULL
+            ${tpexWhereClause} AND s.market = 'tpex' AND p.change_amount IS NOT NULL
             ORDER BY p.change_amount ASC
             LIMIT 10
             `;
@@ -575,7 +632,7 @@ i.symbol,
     SUM(i.${field}:: numeric / 1000.0) as net_buy
             FROM institutional i
             JOIN stocks s ON i.symbol = s.symbol
-            WHERE i.trade_date = ANY($1)
+            WHERE i.trade_date = ANY($1::date[])
             GROUP BY i.symbol, s.name, s.industry, s.market
             HAVING SUM(i.${field}) ${isSell ? '< 0' : '> 0'}
             ORDER BY net_buy ${isSell ? 'ASC' : 'DESC'}
@@ -1010,12 +1067,17 @@ router.get('/market-focus', async (req, res) => {
 // GET /api/market-margin - 大盤融資融券餘額 (WantGoo style)
 router.get('/market-margin', async (req, res) => {
     try {
-        // 從資料庫撈取最後60筆融資餘額資料
+        // 從資料庫撈取最後60筆融資餘額與真實大盤指數
         const marginSql = `
-            SELECT date as trade_date, margin_purchase_today_balance as balance
-            FROM fm_total_margin
-            WHERE name = 'MarginPurchaseMoney'
-            ORDER BY date DESC
+            SELECT 
+                m.date as trade_date, 
+                m.margin_purchase_today_balance as balance,
+                p.close_price as index_price
+            FROM fm_total_margin m
+            LEFT JOIN daily_prices p 
+                ON m.date = p.trade_date AND p.symbol = 'TAIEX'
+            WHERE m.name = 'MarginPurchaseMoney'
+            ORDER BY m.date DESC
             LIMIT 60
         `;
         const marginRes = await query(marginSql);
@@ -1024,12 +1086,10 @@ router.get('/market-margin', async (req, res) => {
             return res.json({ success: false, message: '無大盤融資資料' });
         }
 
-        // 我們目前沒有大盤指數每日價格表，所以嘗試在每天配上一個模擬的走勢或留空
-        // 在前端如果沒有價格，圖表可以直接略過或我們用平滑走勢模擬
-        // 先建立 base 資料結構
         const chartData = marginRes.rows.reverse().map(row => ({
             date: new Date(row.trade_date).toISOString().split('T')[0],
-            marginBalance: row.balance // 應為數值(元)，前端可轉為億
+            marginBalance: row.balance, // 應為數值(元)，前端轉為億
+            indexPrice: row.index_price ? parseFloat(row.index_price) : null
         }));
 
         res.json({

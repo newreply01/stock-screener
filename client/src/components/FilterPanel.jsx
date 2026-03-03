@@ -26,6 +26,9 @@ export default function FilterPanel({ onFilter, onClear, filters }) {
         trust_net_min: '', trust_net_max: '',
         dealer_net_min: '', dealer_net_max: '',
         total_net_min: '', total_net_max: '',
+        type_stock: true,
+        type_etf: false,
+        type_warrant: false,
         ...filters
     })
 
@@ -45,18 +48,40 @@ export default function FilterPanel({ onFilter, onClear, filters }) {
     const handleSubmit = () => {
         const cleaned = {}
         Object.entries(localFilters).forEach(([k, v]) => {
+            if (k.startsWith('type_')) return; // Skip internal booleans
             if (v !== '' && v !== null && v !== undefined && v !== 'all') {
                 cleaned[k] = v
             }
         })
+
+        // Construct stock_types string
+        const types = [];
+        if (localFilters.type_stock) types.push('stock');
+        if (localFilters.type_etf) types.push('etf');
+        if (localFilters.type_warrant) types.push('warrant');
+        if (types.length > 0) cleaned.stock_types = types.join(',');
+
         onFilter(cleaned)
     }
 
     const handleClear = () => {
-        const empty = {}
-        Object.keys(localFilters).forEach(k => {
-            empty[k] = k === 'market' ? 'all' : ''
-        })
+        const empty = {
+            market: 'all',
+            industry: '',
+            price_min: '', price_max: '',
+            change_min: '', change_max: '',
+            volume_min: '', volume_max: '',
+            pe_min: '', pe_max: '',
+            yield_min: '', yield_max: '',
+            pb_min: '', pb_max: '',
+            foreign_net_min: '', foreign_net_max: '',
+            trust_net_min: '', trust_net_max: '',
+            dealer_net_min: '', dealer_net_max: '',
+            total_net_min: '', total_net_max: '',
+            type_stock: true,
+            type_etf: false,
+            type_warrant: false,
+        }
         setLocalFilters(empty)
         onClear()
     }
@@ -121,6 +146,31 @@ export default function FilterPanel({ onFilter, onClear, filters }) {
                                     `}
                                 >
                                     {m === 'all' ? '全部' : (m === 'twse' ? '上市' : '上櫃')}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5 uppercase">
+                            <span className="w-1 h-1 bg-brand-primary rounded-full"></span> 標的類型
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {[
+                                { id: 'type_stock', label: '個股' },
+                                { id: 'type_etf', label: 'ETF' },
+                                { id: 'type_warrant', label: '權證' }
+                            ].map((t) => (
+                                <button
+                                    key={t.id}
+                                    onClick={() => updateFilter(t.id, !localFilters[t.id])}
+                                    className={`py-2 text-[11px] font-bold border rounded transition-all
+                                        ${localFilters[t.id]
+                                            ? 'bg-brand-primary border-brand-primary text-white'
+                                            : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300'}
+                                    `}
+                                >
+                                    {t.label}
                                 </button>
                             ))}
                         </div>
