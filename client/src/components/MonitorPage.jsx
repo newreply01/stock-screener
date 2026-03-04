@@ -84,6 +84,8 @@ export default function MonitorPage() {
         'TaiwanStockMonthRevenue': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
         'TaiwanStockDividend': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
         'TaiwanStockInfo': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
+        'TaiwanStockTotalReturnIndex': { script: 'fetcher.js', color: 'bg-green-100 text-green-800' },
+        'TaiwanStockTradingDate': { script: 'fetcher.js', color: 'bg-green-100 text-green-800' },
         'TaiwanStockDelisting': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
     };
 
