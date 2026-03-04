@@ -16,9 +16,10 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/monitor', require('./routes/monitor'));
 app.use('/api', screenerRoutes);
 app.use('/api/stream', streamRoutes);
-app.use('/api', realtimeQueryRoutes);
+app.use('/api/realtime', realtimeQueryRoutes);
 
 // Serve static files from React app
 const distPath = path.join(__dirname, '..', 'client', 'dist');

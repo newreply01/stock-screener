@@ -77,6 +77,12 @@ export default function Header({ currentView = 'dashboard' }) {
                             智能選股
                         </button>
                         <button
+                            onClick={() => dispatchView('health-ranking')}
+                            className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'health-ranking' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
+                        >
+                            健診排行
+                        </button>
+                        <button
                             onClick={() => dispatchView('news')}
                             className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'news' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
                         >
@@ -87,6 +93,12 @@ export default function Header({ currentView = 'dashboard' }) {
                             className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'explorer' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
                         >
                             歷史交易
+                        </button>
+                        <button
+                            onClick={() => dispatchView('monitor')}
+                            className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'monitor' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
+                        >
+                            系統監控
                         </button>
                     </nav>
                 </div>
@@ -199,8 +211,10 @@ export default function Header({ currentView = 'dashboard' }) {
                         <button onClick={() => { dispatchView('institutional'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'institutional' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>三大法人</button>
                         <button onClick={() => { dispatchView('sentiment'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'sentiment' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>市場情緒</button>
                         <button onClick={() => { dispatchView('screener-config'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'screener-config' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>智能選股</button>
+                        <button onClick={() => { dispatchView('health-ranking'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'health-ranking' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>健診排行</button>
                         <button onClick={() => { dispatchView('news'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'news' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>財經新聞</button>
                         <button onClick={() => { dispatchView('explorer'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'explorer' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>歷史交易</button>
+                        <button onClick={() => { dispatchView('monitor'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'monitor' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>系統監控</button>
                     </div>
                 </div>
             )}

@@ -1,0 +1,266 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    Area, AreaChart, ReferenceLine, Legend
+} from 'recharts';
+import { Target, TrendingUp, DollarSign, AlertTriangle, BarChart3 } from 'lucide-react';
+import { API_BASE } from '../utils/api';
+
+const ZONE_STYLES = {
+    '便宜區': { bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-700', badge: 'bg-emerald-500' },
+    '偏低區': { bg: 'bg-teal-50', border: 'border-teal-300', text: 'text-teal-700', badge: 'bg-teal-500' },
+    '合理區': { bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-700', badge: 'bg-blue-500' },
+    '偏貴區': { bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700', badge: 'bg-amber-500' },
+    '昂貴區': { bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-700', badge: 'bg-red-500' }
+};
+
+export default function ValuationRiverView({ symbol }) {
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [viewMode, setViewMode] = useState('pe'); // 'pe' | 'pb' | 'yield'
+
+    useEffect(() => {
+        if (!symbol) return;
+        setLoading(true);
+        setError(null);
+        fetch(`${API_BASE}/stock/${symbol}/valuation-history?years=5`)
+            .then(r => r.json())
+            .then(d => { setData(d); setLoading(false); })
+            .catch(e => { setError(e.message); setLoading(false); });
+    }, [symbol]);
+
+    const chartData = useMemo(() => {
+        if (!data?.history) return [];
+        const { peBands, pbBands } = data;
+
+        // Sample every Nth point to keep chart performant
+        const step = Math.max(1, Math.floor(data.history.length / 200));
+        return data.history.filter((_, i) => i % step === 0).map(h => {
+            const d = new Date(h.date);
+            return {
+                date: `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}`,
+                pe: h.pe,
+                pb: h.pb,
+                dy: h.dy,
+                // PE bands
+                pe_veryExpensive: peBands?.veryExpensive,
+                pe_expensive: peBands?.expensive,
+                pe_fair: peBands?.fair,
+                pe_cheap: peBands?.cheap,
+                pe_veryCheap: peBands?.veryCheap,
+                // PB bands
+                pb_expensive: pbBands?.expensive,
+                pb_fair: pbBands?.fair,
+                pb_cheap: pbBands?.cheap,
+            };
+        });
+    }, [data]);
+
+    if (loading) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 min-h-[400px]">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary mb-4"></div>
+                <p className="font-bold tracking-widest text-sm uppercase">讀取估價歷史...</p>
+            </div>
+        );
+    }
+
+    if (error || !data?.success || !data.history?.length) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 min-h-[400px]">
+                <AlertTriangle className="w-12 h-12 text-amber-400 mb-4" />
+                <p className="font-bold text-slate-600">估價歷史載入失敗</p>
+                <p className="text-sm text-slate-400 mt-1">{error || '無歷史PE/PB數據'}</p>
+            </div>
+        );
+    }
+
+    const { currentPrice, currentPe, zone, peBands, pbBands, yieldValuation, stats } = data;
+    const zoneStyle = ZONE_STYLES[zone] || ZONE_STYLES['合理區'];
+
+    return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-2">
+                <div className="bg-violet-100 p-2.5 rounded-xl border border-violet-200">
+                    <Target className="w-6 h-6 text-violet-600" />
+                </div>
+                <div>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tighter">個股估價模型</h2>
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Valuation Model & River Chart</p>
+                </div>
+            </div>
+
+            {/* Current Valuation Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <div className="text-xs font-bold text-slate-500 mb-1">當前股價</div>
+                    <div className="text-3xl font-black text-slate-800 tabular-nums">{currentPrice?.toFixed(2)}</div>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <div className="text-xs font-bold text-slate-500 mb-1">當前 PE</div>
+                    <div className="text-3xl font-black text-slate-800 tabular-nums">{currentPe?.toFixed(2)}</div>
+                    <div className="text-[10px] text-slate-400 font-medium mt-1">歷史平均: {stats?.peAvg}</div>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <div className="text-xs font-bold text-slate-500 mb-1">歷史 PB 均值</div>
+                    <div className="text-3xl font-black text-slate-800 tabular-nums">{stats?.pbAvg}</div>
+                </div>
+                <div className={`p-5 rounded-2xl border-2 ${zoneStyle.border} ${zoneStyle.bg} shadow-sm`}>
+                    <div className={`text-xs font-bold ${zoneStyle.text} mb-1 flex items-center gap-1`}>
+                        <AlertTriangle className="w-3 h-3" /> 估值位階
+                    </div>
+                    <div className={`text-2xl font-black ${zoneStyle.text}`}>{zone}</div>
+                    <div className={`text-[10px] font-bold text-white ${zoneStyle.badge} px-2 py-0.5 rounded-full inline-block mt-1`}>
+                        PE {currentPe?.toFixed(1)} vs 均值 {stats?.peAvg}
+                    </div>
+                </div>
+            </div>
+
+            {/* View Mode Tabs */}
+            <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm w-fit">
+                {[
+                    { id: 'pe', label: '本益比河流圖' },
+                    { id: 'pb', label: '淨值比河流圖' }
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setViewMode(tab.id)}
+                        className={`px-5 py-2 rounded-md text-sm font-bold transition-colors ${viewMode === tab.id ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* River Chart */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 className="text-slate-800 font-bold mb-4 flex items-center gap-2 text-sm">
+                    <BarChart3 className="w-4 h-4 text-violet-600" />
+                    {viewMode === 'pe' ? '本益比 (PE) 河流圖 — 近五年' : '淨值比 (PB) 河流圖 — 近五年'}
+                </h3>
+                <div className="h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                        {viewMode === 'pe' ? (
+                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="redZone" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#ef4444" stopOpacity={0.15} />
+                                        <stop offset="100%" stopColor="#ef4444" stopOpacity={0.05} />
+                                    </linearGradient>
+                                    <linearGradient id="greenZone" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.15} />
+                                        <stop offset="100%" stopColor="#10b981" stopOpacity={0.05} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                                <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#fff', borderColor: '#e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }}
+                                    formatter={(v, name) => {
+                                        const labels = { pe: '當前PE', pe_veryExpensive: '昂貴(+2σ)', pe_expensive: '偏貴(+1σ)', pe_fair: '合理(均值)', pe_cheap: '偏低(-1σ)', pe_veryCheap: '便宜(-2σ)' };
+                                        return [typeof v === 'number' ? v.toFixed(2) : v, labels[name] || name];
+                                    }}
+                                />
+                                <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 700 }} />
+                                <ReferenceLine y={peBands?.fair} stroke="#3b82f6" strokeDasharray="5 5" label={{ value: '均值', position: 'right', fontSize: 10, fill: '#3b82f6' }} />
+                                <Area type="monotone" dataKey="pe_veryExpensive" stroke="#ef4444" fill="none" strokeDasharray="3 3" strokeWidth={1} name="昂貴(+2σ)" dot={false} />
+                                <Area type="monotone" dataKey="pe_expensive" stroke="#f59e0b" fill="none" strokeDasharray="3 3" strokeWidth={1} name="偏貴(+1σ)" dot={false} />
+                                <Area type="monotone" dataKey="pe_cheap" stroke="#14b8a6" fill="none" strokeDasharray="3 3" strokeWidth={1} name="偏低(-1σ)" dot={false} />
+                                <Area type="monotone" dataKey="pe_veryCheap" stroke="#10b981" fill="none" strokeDasharray="3 3" strokeWidth={1} name="便宜(-2σ)" dot={false} />
+                                <Line type="monotone" dataKey="pe" stroke="#7c3aed" strokeWidth={2.5} dot={false} name="當前PE" activeDot={{ r: 5, strokeWidth: 0 }} />
+                            </AreaChart>
+                        ) : (
+                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                                <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#fff', borderColor: '#e2e8f0', borderRadius: '8px', fontWeight: 'bold' }}
+                                    formatter={(v, name) => {
+                                        const labels = { pb: '當前PB', pb_expensive: '偏貴(+1σ)', pb_fair: '合理(均值)', pb_cheap: '偏低(-1σ)' };
+                                        return [typeof v === 'number' ? v.toFixed(2) : v, labels[name] || name];
+                                    }}
+                                />
+                                <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 700 }} />
+                                <ReferenceLine y={pbBands?.fair} stroke="#3b82f6" strokeDasharray="5 5" />
+                                <Area type="monotone" dataKey="pb_expensive" stroke="#f59e0b" fill="none" strokeDasharray="3 3" strokeWidth={1} name="偏貴(+1σ)" dot={false} />
+                                <Area type="monotone" dataKey="pb_cheap" stroke="#14b8a6" fill="none" strokeDasharray="3 3" strokeWidth={1} name="偏低(-1σ)" dot={false} />
+                                <Line type="monotone" dataKey="pb" stroke="#7c3aed" strokeWidth={2.5} dot={false} name="當前PB" activeDot={{ r: 5, strokeWidth: 0 }} />
+                            </AreaChart>
+                        )}
+                    </ResponsiveContainer>
+                </div>
+            </div>
+
+            {/* Fair Price Calculator */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* PE-Based Bands */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 className="text-slate-800 font-bold mb-4 flex items-center gap-2 text-sm">
+                        <TrendingUp className="w-4 h-4 text-violet-600" /> 本益比估價區間
+                    </h3>
+                    <div className="space-y-3">
+                        {[
+                            { label: '昂貴區 (+2σ)', value: peBands?.veryExpensive, color: 'text-red-500', bg: 'bg-red-50' },
+                            { label: '偏貴區 (+1σ)', value: peBands?.expensive, color: 'text-amber-500', bg: 'bg-amber-50' },
+                            { label: '合理區 (均值)', value: peBands?.fair, color: 'text-blue-600', bg: 'bg-blue-50' },
+                            { label: '偏低區 (-1σ)', value: peBands?.cheap, color: 'text-teal-600', bg: 'bg-teal-50' },
+                            { label: '便宜區 (-2σ)', value: peBands?.veryCheap, color: 'text-emerald-600', bg: 'bg-emerald-50' }
+                        ].map((band, i) => (
+                            <div key={i} className={`flex items-center justify-between p-3 ${band.bg} rounded-lg`}>
+                                <span className={`text-sm font-bold ${band.color}`}>{band.label}</span>
+                                <span className={`text-lg font-black tabular-nums ${band.color}`}>PE {band.value?.toFixed(1)}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Yield-Based Valuation */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 className="text-slate-800 font-bold mb-4 flex items-center gap-2 text-sm">
+                        <DollarSign className="w-4 h-4 text-emerald-600" /> 殖利率估價法
+                    </h3>
+                    {yieldValuation ? (
+                        <div className="space-y-3">
+                            <div className="text-xs text-slate-500 font-medium mb-2">
+                                基於近年平均現金股利 <span className="font-black text-slate-800">{stats?.avgCashDiv} 元</span> 推算
+                            </div>
+                            {[
+                                { label: '便宜價 (6%殖利率)', value: yieldValuation.cheap, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                                { label: '合理價 (5%殖利率)', value: yieldValuation.fair, color: 'text-blue-600', bg: 'bg-blue-50' },
+                                { label: '昂貴價 (4%殖利率)', value: yieldValuation.expensive, color: 'text-red-500', bg: 'bg-red-50' }
+                            ].map((band, i) => (
+                                <div key={i} className={`flex items-center justify-between p-4 ${band.bg} rounded-lg`}>
+                                    <span className={`text-sm font-bold ${band.color}`}>{band.label}</span>
+                                    <div className="text-right">
+                                        <span className={`text-2xl font-black tabular-nums ${band.color}`}>{band.value}</span>
+                                        <span className="text-xs text-slate-400 ml-1">元</span>
+                                    </div>
+                                </div>
+                            ))}
+                            <div className={`mt-2 p-3 rounded-lg ${currentPrice <= parseFloat(yieldValuation.cheap) ? 'bg-emerald-50 border border-emerald-200' : currentPrice >= parseFloat(yieldValuation.expensive) ? 'bg-red-50 border border-red-200' : 'bg-blue-50 border border-blue-200'}`}>
+                                <div className="text-xs font-bold text-slate-600">
+                                    目前股價 <span className="text-lg font-black text-slate-800">{currentPrice?.toFixed(2)}</span> 元
+                                    {currentPrice <= parseFloat(yieldValuation.cheap) && <span className="text-emerald-600 ml-2">→ 低於便宜價 ✓</span>}
+                                    {currentPrice >= parseFloat(yieldValuation.expensive) && <span className="text-red-500 ml-2">→ 高於昂貴價 ⚠</span>}
+                                    {currentPrice > parseFloat(yieldValuation.cheap) && currentPrice < parseFloat(yieldValuation.expensive) && <span className="text-blue-600 ml-2">→ 合理價區間</span>}
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-center h-[200px] text-slate-400 text-sm italic">
+                            無現金股利資料無法進行殖利率估價
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-500 leading-relaxed font-medium">
+                註：河流圖基於歷史 PE/PB 的標準差 (σ) 分佈繪製。昂貴/便宜區間用往分位數推算，殖利率估價法以近年平均現金股利的不同殖利率目標反推合理價。所有估價僅供參考，不構成投資建議。
+            </div>
+        </div>
+    );
+}

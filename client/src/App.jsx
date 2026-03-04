@@ -16,6 +16,7 @@ import MarketDashboard from './components/MarketDashboard'
 import TradingDashboard from './components/TradingDashboard'
 import RealtimeExplorer from './components/RealtimeExplorer'
 import HealthCheckRanking from './components/HealthCheckRanking'
+import MonitorPage from './components/MonitorPage'
 import { screenStocks, getStats, getWatchlists, addStockToWatchlist, removeStockFromWatchlist } from './utils/api'
 import { useAuth } from './context/AuthContext'
 import { useGlobalFilters } from './context/GlobalFilterContext'
@@ -192,6 +193,8 @@ function App() {
           <RealtimeExplorer onStockSelect={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }} />
         ) : currentView === 'health-ranking' ? (
           <HealthCheckRanking onSelectStock={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }} />
+        ) : currentView === 'monitor' ? (
+          <MonitorPage />
         ) : currentView === 'stock-detail' ? (
           <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
             <StockDetail stock={mainStock} isInline={true} />
