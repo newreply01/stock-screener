@@ -62,6 +62,40 @@ export default function MonitorPage() {
         });
     };
 
+    // ─── Static definitions (no backend needed) ────────────────────────────────
+    // Maps FinMind dataset name → script name + badge colour
+    const DATASET_SCRIPT_MAP = {
+        'TaiwanStockPrice': { script: 'fetcher.js', color: 'bg-green-100 text-green-800' },
+        'TaiwanStockDayTrading': { script: 'fetcher.js', color: 'bg-green-100 text-green-800' },
+        'TaiwanStockMarginPurchaseShortSale': { script: 'fetcher.js', color: 'bg-green-100 text-green-800' },
+        'TaiwanStockInstitutionalInvestorsBuySell': { script: 'fetcher.js', color: 'bg-green-100 text-green-800' },
+        'TaiwanStockTotalInstitutionalInvestors': { script: 'fetcher.js', color: 'bg-green-100 text-green-800' },
+        'TaiwanStockTotalMarginPurchaseShortSale': { script: 'fetcher.js', color: 'bg-green-100 text-green-800' },
+        'TaiwanFuturesDaily': { script: 'fetcher.js', color: 'bg-green-100 text-green-800' },
+        'TaiwanOptionDaily': { script: 'fetcher.js', color: 'bg-green-100 text-green-800' },
+        'TaiwanFutOptDailyInfo': { script: 'fetcher.js', color: 'bg-green-100 text-green-800' },
+        'TaiwanSecuritiesTraderInfo': { script: 'fetcher.js', color: 'bg-green-100 text-green-800' },
+        'TaiwanFuturesInstitutionalInvestors': { script: 'fetcher.js', color: 'bg-green-100 text-green-800' },
+        'TaiwanOptionInstitutionalInvestors': { script: 'fetcher.js', color: 'bg-green-100 text-green-800' },
+        'TaiwanStockNews': { script: 'news_fetcher.js', color: 'bg-orange-100 text-orange-800' },
+        'TaiwanStockFinancialStatements': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
+        'TaiwanStockBalanceSheet': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
+        'TaiwanStockCashFlowsStatement': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
+        'TaiwanStockMonthRevenue': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
+        'TaiwanStockDividend': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
+        'TaiwanStockInfo': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
+        'TaiwanStockDelisting': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
+    };
+
+    // Known background scripts — names/descriptions always shown; status from API
+    const KNOWN_SCRIPTS = [
+        { script: 'fetcher.js', desc: '每日盤後資料 (收盤價、當沖、法人、融資券)', schedule: '每交易日 15:30' },
+        { script: 'news_fetcher.js', desc: '財經新聞同步', schedule: '每小時' },
+        { script: 'finmind_fetcher.js', desc: '財報基本面資料 (損益表、資產負債表、月營收…)', schedule: '每週六 04:00' },
+        { script: 'calc_health_scores.js', desc: '全股健診排行計算', schedule: '每交易日 16:00' },
+    ];
+    // ──────────────────────────────────────────────────────────────────────────
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 fade-in-20">
             {/* Header section */}
@@ -233,21 +267,15 @@ export default function MonitorPage() {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {statusData?.sync_progress?.map((item, idx) => {
-                                // 判斷是否太久沒更新 (例如超過 3 天)
                                 const isStale = new Date() - new Date(item.last_updated) > 3 * 24 * 60 * 60 * 1000;
-
-                                // 不同程式用不同顏色
-                                let scriptColor = 'bg-gray-100 text-gray-700';
-                                if (item.script === 'fetcher.js') scriptColor = 'bg-green-100 text-green-800';
-                                if (item.script === 'news_fetcher.js') scriptColor = 'bg-orange-100 text-orange-800';
-                                if (item.script === 'finmind_fetcher.js') scriptColor = 'bg-indigo-100 text-indigo-800';
+                                const scriptInfo = DATASET_SCRIPT_MAP[item.dataset] || { script: '未知', color: 'bg-gray-100 text-gray-600' };
 
                                 return (
                                     <tr key={idx} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-5 py-3.5 font-medium text-gray-900">{item.dataset}</td>
                                         <td className="px-5 py-3.5">
-                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${scriptColor}`}>
-                                                {item.script || '未知'}
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${scriptInfo.color}`}>
+                                                {scriptInfo.script}
                                             </span>
                                         </td>
                                         <td className="px-5 py-3.5 text-blue-600 font-medium">{item.description}</td>
@@ -294,40 +322,35 @@ export default function MonitorPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {statusData?.script_status?.map((item, idx) => {
-                                // Maps to determine descriptions
-                                const scriptDescriptions = {
-                                    'fetcher.js': '每日盤後資料 (收盤價、當沖、法人、融資券)',
-                                    'news_fetcher.js': '財經新聞同步 (每小時更新)',
-                                    'finmind_fetcher.js': '財報基本面資料 (每週六更新)',
-                                    'calc_health_scores.js': '全股健診排行計算 (每日盤後計算)'
-                                };
+                            {KNOWN_SCRIPTS.map((def, idx) => {
+                                // Look up dynamic status from API
+                                const apiItem = statusData?.script_status?.find(s => s.script === def.script);
+                                const status = apiItem?.status || 'UNKNOWN';
+                                const message = apiItem?.message || '尚無執行紀錄';
+                                const lastRun = apiItem?.last_run || null;
 
                                 let statusColor = 'bg-gray-100 text-gray-800';
-                                if (item.status === 'SUCCESS') statusColor = 'bg-green-100 text-green-800';
-                                if (item.status === 'RUNNING') statusColor = 'bg-blue-100 text-blue-800';
-                                if (item.status === 'FAILED') statusColor = 'bg-red-100 text-red-800';
-                                if (item.status === 'UNKNOWN') statusColor = 'bg-yellow-100 text-yellow-800';
+                                if (status === 'SUCCESS') statusColor = 'bg-green-100 text-green-800';
+                                if (status === 'RUNNING') statusColor = 'bg-blue-100 text-blue-800';
+                                if (status === 'FAILED') statusColor = 'bg-red-100 text-red-800';
 
                                 return (
                                     <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-5 py-3.5 font-bold text-gray-900">{item.script}</td>
-                                        <td className="px-5 py-3.5 text-indigo-600 font-medium">{scriptDescriptions[item.script] || '其他程式'}</td>
-                                        <td className="px-5 py-3.5 flex items-center gap-2">
-                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider ${statusColor}`}>
-                                                {item.status}
-                                            </span>
-                                            <span className="text-xs text-gray-500 line-clamp-1 max-w-xs" title={item.message}>{item.message}</span>
+                                        <td className="px-5 py-3.5 font-bold text-gray-900">{def.script}</td>
+                                        <td className="px-5 py-3.5 text-indigo-600 font-medium">{def.desc}</td>
+                                        <td className="px-5 py-3.5 text-gray-500 text-xs">{def.schedule}</td>
+                                        <td className="px-5 py-3.5">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider ${statusColor}`}>
+                                                    {status}
+                                                </span>
+                                                <span className="text-xs text-gray-500 line-clamp-1 max-w-xs" title={message}>{message}</span>
+                                            </div>
                                         </td>
-                                        <td className="px-5 py-3.5 text-right font-mono text-xs">{formatDate(item.last_run)}</td>
+                                        <td className="px-5 py-3.5 text-right font-mono text-xs">{formatDate(lastRun)}</td>
                                     </tr>
                                 );
                             })}
-                            {!statusData?.script_status?.length && !loading && (
-                                <tr>
-                                    <td colSpan="4" className="px-5 py-8 text-center text-gray-500">尚無 .js 程式執行紀錄</td>
-                                </tr>
-                            )}
                         </tbody>
                     </table>
                 </div>
