@@ -225,6 +225,7 @@ export default function MonitorPage() {
                         <thead className="bg-gray-50 border-b border-gray-200 text-gray-700">
                             <tr>
                                 <th className="px-5 py-3 font-semibold">資料集 (Dataset)</th>
+                                <th className="px-5 py-3 font-semibold">擷取程式 (.js)</th>
                                 <th className="px-5 py-3 font-semibold">排程說明</th>
                                 <th className="px-5 py-3 font-semibold">資料庫最後更新時間</th>
                                 <th className="px-5 py-3 font-semibold text-right">狀態</th>
@@ -235,9 +236,20 @@ export default function MonitorPage() {
                                 // 判斷是否太久沒更新 (例如超過 3 天)
                                 const isStale = new Date() - new Date(item.last_updated) > 3 * 24 * 60 * 60 * 1000;
 
+                                // 不同程式用不同顏色
+                                let scriptColor = 'bg-gray-100 text-gray-700';
+                                if (item.script === 'fetcher.js') scriptColor = 'bg-green-100 text-green-800';
+                                if (item.script === 'news_fetcher.js') scriptColor = 'bg-orange-100 text-orange-800';
+                                if (item.script === 'finmind_fetcher.js') scriptColor = 'bg-indigo-100 text-indigo-800';
+
                                 return (
                                     <tr key={idx} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-5 py-3.5 font-medium text-gray-900">{item.dataset}</td>
+                                        <td className="px-5 py-3.5">
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${scriptColor}`}>
+                                                {item.script || '未知'}
+                                            </span>
+                                        </td>
                                         <td className="px-5 py-3.5 text-blue-600 font-medium">{item.description}</td>
                                         <td className="px-5 py-3.5">{formatDate(item.last_updated)}</td>
                                         <td className="px-5 py-3.5 text-right">
@@ -256,7 +268,7 @@ export default function MonitorPage() {
                             })}
                             {!statusData?.sync_progress?.length && !loading && (
                                 <tr>
-                                    <td colSpan="4" className="px-5 py-8 text-center text-gray-500">尚無同步紀錄</td>
+                                    <td colSpan="5" className="px-5 py-8 text-center text-gray-500">尚無同步紀錄</td>
                                 </tr>
                             )}
                         </tbody>

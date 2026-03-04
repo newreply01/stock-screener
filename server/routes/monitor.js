@@ -82,6 +82,7 @@ router.get('/status', async (req, res) => {
         // 將資料轉成前端好用的格式，並加上排程說明
         const syncDetails = progressRes.rows.map(row => {
             let description = '';
+            let script = '';
             // 對應 FinMind 資料集名稱設定說明 (可依實際狀況調整)
             switch (row.dataset) {
                 // 盤後行情 / 籌碼 / 期貨
@@ -97,11 +98,13 @@ router.get('/status', async (req, res) => {
                 case 'TaiwanSecuritiesTraderInfo':
                 case 'TaiwanFuturesInstitutionalInvestors':
                 case 'TaiwanOptionInstitutionalInvestors':
-                    description = '[fetcher.js] 每交易日 15:30 更新';
+                    script = 'fetcher.js';
+                    description = '每交易日 15:30 更新';
                     break;
                 // 新聞
                 case 'TaiwanStockNews':
-                    description = '[news_fetcher.js] 每小時更新';
+                    script = 'news_fetcher.js';
+                    description = '每小時更新';
                     break;
                 // 基本面 / 靜態資訊
                 case 'TaiwanStockFinancialStatements':
@@ -111,15 +114,18 @@ router.get('/status', async (req, res) => {
                 case 'TaiwanStockDividend':
                 case 'TaiwanStockInfo':
                 case 'TaiwanStockDelisting':
-                    description = '[finmind_fetcher.js] 每週六 04:00 更新';
+                    script = 'finmind_fetcher.js';
+                    description = '每週六 04:00 更新';
                     break;
                 default:
-                    description = '[未知程式] 定期檢查更新';
+                    script = '未知';
+                    description = '定期檢查更新';
             }
 
             return {
                 dataset: row.dataset,
                 last_updated: row.last_updated,
+                script: script,
                 description: description
             };
         });
