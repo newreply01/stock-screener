@@ -114,20 +114,20 @@ router.get('/ingestion-stats', async (req, res) => {
 
         // 1. 收盤價資料筆數
         const priceStatsRes = await pool.query(`
-            SELECT date as trade_date, COUNT(*) as count 
-            FROM fm_stock_price 
-            WHERE date >= CURRENT_DATE - INTERVAL '${days} days'
-            GROUP BY date 
-            ORDER BY date ASC
+            SELECT trade_date, COUNT(*) as count 
+            FROM daily_prices 
+            WHERE trade_date >= CURRENT_DATE - INTERVAL '${days} days'
+            GROUP BY trade_date 
+            ORDER BY trade_date ASC
         `);
 
         // 2. 三大法人買賣資料筆數
         const instStatsRes = await pool.query(`
-            SELECT date as trade_date, COUNT(*) as count 
-            FROM fm_institutional 
-            WHERE date >= CURRENT_DATE - INTERVAL '${days} days'
-            GROUP BY date 
-            ORDER BY date ASC
+            SELECT trade_date, COUNT(*) as count 
+            FROM institutional 
+            WHERE trade_date >= CURRENT_DATE - INTERVAL '${days} days'
+            GROUP BY trade_date 
+            ORDER BY trade_date ASC
         `);
 
         // 3. 融資券資料筆數
