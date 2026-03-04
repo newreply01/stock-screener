@@ -62,11 +62,10 @@ const TradingDashboard = () => {
 
     const currentTick = tickData[selectedSymbol] || null;
 
-    // Helper functions for coloring
-    const getColor = (price, open) => {
-        if (!price || !open) return 'text-white';
-        if (price > open) return 'text-red-500';
-        if (price < open) return 'text-green-500';
+    const getColor = (price, prevClose) => {
+        if (!price || !prevClose) return 'text-white';
+        if (price > prevClose) return 'text-red-500';
+        if (price < prevClose) return 'text-green-500';
         return 'text-yellow-400';
     };
 
@@ -85,7 +84,7 @@ const TradingDashboard = () => {
                     {watchSymbols.map(sym => {
                         const tick = tickData[sym];
                         const priceStr = tick ? formatPrice(tick.price) : '---';
-                        const colorClass = tick ? getColor(tick.price, tick.open_price) : '';
+                        const colorClass = tick ? getColor(tick.price, tick.previous_close) : '';
 
                         return (
                             <div
@@ -98,11 +97,24 @@ const TradingDashboard = () => {
                                     <span className={`${colorClass} font-bold text-xl animate-pulse`}>{priceStr}</span>
                                 </div>
                                 {tick && (
-                                    <div className="flex justify-between items-center text-xs text-gray-400">
-                                        <span className="truncate max-w-[100px]">{tick.name || '---'}</span>
-                                        <span className="bg-gray-900 px-1.5 py-0.5 rounded text-[10px] border border-gray-700">
-                                            {tick.industry || '一般'}
-                                        </span>
+                                    <div className="flex justify-between items-start text-xs text-gray-400 mt-1">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="truncate max-w-[100px] text-gray-300">{tick.name || '---'}</span>
+                                            <span className="bg-gray-900 px-1.5 py-0.5 rounded text-[10px] border border-gray-700 w-fit">
+                                                {tick.industry || '一般'}
+                                            </span>
+                                        </div>
+                                        {tick.price && tick.previous_close && (
+                                            <div className={`text-right font-bold ${colorClass}`}>
+                                                <div>
+                                                    {tick.price > tick.previous_close ? '▲' : (tick.price < tick.previous_close ? '▼' : '')}
+                                                    {Math.abs(tick.price - tick.previous_close).toFixed(2)}
+                                                </div>
+                                                <div>
+                                                    {((tick.price - tick.previous_close) / tick.previous_close * 100).toFixed(2)}%
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -132,17 +144,17 @@ const TradingDashboard = () => {
                                     </span>
                                 </div>
                                 <div className="flex items-baseline gap-6">
-                                    <span className={`text-[6rem] font-black leading-none ${getColor(currentTick.price, currentTick.open_price)} drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]`}>
+                                    <span className={`text-[6rem] font-black leading-none ${getColor(currentTick.price, currentTick.previous_close)} drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]`}>
                                         {formatPrice(currentTick.price)}
                                     </span>
-                                    {currentTick.price && currentTick.open_price && (
+                                    {currentTick.price && currentTick.previous_close && (
                                         <div className="flex flex-col">
-                                            <span className={`text-3xl font-bold ${getColor(currentTick.price, currentTick.open_price)}`}>
-                                                {currentTick.price > currentTick.open_price ? '▲' : (currentTick.price < currentTick.open_price ? '▼' : '')}
-                                                {Math.abs(currentTick.price - currentTick.open_price).toFixed(2)}
+                                            <span className={`text-3xl font-bold ${getColor(currentTick.price, currentTick.previous_close)}`}>
+                                                {currentTick.price > currentTick.previous_close ? '▲' : (currentTick.price < currentTick.previous_close ? '▼' : '')}
+                                                {Math.abs(currentTick.price - currentTick.previous_close).toFixed(2)}
                                             </span>
-                                            <span className={`text-xl ${getColor(currentTick.price, currentTick.open_price)}`}>
-                                                {((currentTick.price - currentTick.open_price) / currentTick.open_price * 100).toFixed(2)}%
+                                            <span className={`text-xl ${getColor(currentTick.price, currentTick.previous_close)}`}>
+                                                {((currentTick.price - currentTick.previous_close) / currentTick.previous_close * 100).toFixed(2)}%
                                             </span>
                                         </div>
                                     )}
@@ -153,6 +165,7 @@ const TradingDashboard = () => {
                                 <div><span className="text-gray-500">開盤</span> <span className="font-bold text-white">{formatPrice(currentTick.open_price)}</span></div>
                                 <div><span className="text-gray-500">最高</span> <span className="font-bold text-red-400">{formatPrice(currentTick.high_price)}</span></div>
                                 <div><span className="text-gray-500">最低</span> <span className="font-bold text-green-400">{formatPrice(currentTick.low_price)}</span></div>
+                                <div><span className="text-gray-500">昨收</span> <span className="font-bold text-purple-400">{formatPrice(currentTick.previous_close)}</span></div>
                                 <div><span className="text-gray-500">總量</span> <span className="font-bold text-yellow-500">{currentTick.volume}</span></div>
                                 <div className="text-sm mt-4 text-gray-600">更新時間 {new Date(currentTick.trade_time).toLocaleTimeString()}</div>
                             </div>
