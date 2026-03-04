@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, User, Menu, Bell, Globe, LogOut } from 'lucide-react';
+import { User, Menu, Bell, Globe, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Header({ currentView = 'dashboard' }) {
@@ -104,24 +104,6 @@ export default function Header({ currentView = 'dashboard' }) {
                 </div>
 
                 <div className="flex items-center gap-5">
-                    <div className="hidden md:flex items-center bg-white/10 hover:bg-white/15 border border-white/10 rounded-md px-3 py-1.5 w-72 transition-all">
-                        <input
-                            type="text"
-                            placeholder="搜索股票代號、名稱..."
-                            className="bg-transparent border-none outline-none text-sm w-full text-white placeholder-gray-500 font-medium"
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    window.dispatchEvent(new CustomEvent('muchstock-search', { detail: e.target.value }));
-                                }
-                            }}
-                        />
-                        <button onClick={(e) => {
-                            const input = e.currentTarget.previousElementSibling;
-                            window.dispatchEvent(new CustomEvent('muchstock-search', { detail: input.value }));
-                        }}>
-                            <Search className="w-4 h-4 text-gray-400 hover:text-white transition-colors" />
-                        </button>
-                    </div>
 
                     <div className="flex items-center gap-3">
                         <button className="p-2 text-gray-400 hover:text-white transition-colors">
@@ -188,22 +170,7 @@ export default function Header({ currentView = 'dashboard' }) {
             {/* Mobile Menu */}
             {isMenuOpen && (
                 <div className="lg:hidden bg-brand-dark border-t border-white/5 py-4 px-4 space-y-3 animate-in fade-in slide-in-from-top duration-200">
-                    <div className="pb-2 border-b border-white/5 mb-2">
-                        <div className="flex items-center bg-white/10 rounded-lg px-4 py-2.5">
-                            <input
-                                type="text"
-                                placeholder="搜尋股票代號、名稱..."
-                                className="bg-transparent border-none outline-none text-sm w-full text-white placeholder-gray-500"
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        window.dispatchEvent(new CustomEvent('muchstock-search', { detail: e.target.value }));
-                                        setIsMenuOpen(false);
-                                    }
-                                }}
-                            />
-                            <Search className="w-4 h-4 text-gray-400" />
-                        </div>
-                    </div>
+
                     <div className="grid grid-cols-2 gap-2">
                         <button onClick={() => { dispatchView('trading'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'trading' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>即時看盤</button>
                         <button onClick={() => { dispatchView('market-overview'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'market-overview' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>大盤概況</button>
