@@ -66,7 +66,7 @@ router.get('/screen', async (req, res) => {
 
         let latestDateRaw = null;
         for (const r of detectedDatesRes.rows) {
-            if (parseInt(r.count) > 1500) {
+            if (parseInt(r.count) > 500) {
                 latestDateRaw = r.trade_date;
                 break;
             }
@@ -89,7 +89,7 @@ router.get('/screen', async (req, res) => {
         let actualDate = latestDateRaw;
         // 如果基準日期的資料量不夠，再往前找最近一個完整的 (同樣利用已偵測的資料)
         for (const r of detectedDatesRes.rows) {
-            if (r.trade_date <= latestDateRaw && parseInt(r.count) > 1500) {
+            if (r.trade_date <= latestDateRaw && parseInt(r.count) > 500) {
                 actualDate = r.trade_date;
                 break;
             }
@@ -321,7 +321,7 @@ router.get('/market-summary', async (req, res) => {
 
         let latestDateRaw = null;
         for (const r of detectedDatesRes.rows) {
-            if (parseInt(r.count) > 1500) {
+            if (parseInt(r.count) > 500) {
                 latestDateRaw = r.trade_date;
                 break;
             }
@@ -346,7 +346,7 @@ router.get('/market-summary', async (req, res) => {
             JOIN stocks s ON p.symbol = s.symbol 
             WHERE s.market = 'twse' AND p.volume > 0 AND s.symbol ~ '^[0-9]{4}$'
             GROUP BY p.trade_date
-            HAVING count(*) > 500
+            HAVING count(*) > 200
             ORDER BY p.trade_date DESC LIMIT 1
         `);
         const tpexDateRes = await query(`
@@ -355,7 +355,7 @@ router.get('/market-summary', async (req, res) => {
             JOIN stocks s ON p.symbol = s.symbol 
             WHERE s.market = 'tpex' AND p.volume > 0 AND s.symbol ~ '^[0-9]{4}$'
             GROUP BY p.trade_date
-            HAVING count(*) > 500
+            HAVING count(*) > 200
             ORDER BY p.trade_date DESC LIMIT 1
         `);
 
@@ -718,7 +718,7 @@ router.get('/market-stats', async (req, res) => {
             SELECT trade_date 
             FROM daily_prices 
             GROUP BY trade_date
-            HAVING count(*) > 1500
+            HAVING count(*) > 500
             ORDER BY trade_date DESC LIMIT 1
         `);
         const latestDate = dateRes.rows[0]?.trade_date;
@@ -1065,7 +1065,35 @@ router.get('/market-focus', async (req, res) => {
     try {
         const { market = 'all', stock_types = 'stock' } = req.query;
 
-        // 1. 取得最新有足夠資料的交易日 (至少 1500 筆個股) 與前三個交易日
+        // 1. 先嘗試從預先計算的資料表讀取
+        const cacheSql = `
+            SELECT trade_date, turnover, hot, foreign3d, trust3d, main3d
+            FROM market_focus_daily
+            WHERE market = $1 AND stock_types = $2
+            ORDER BY trade_date DESC LIMIT 1
+        `;
+        const cacheRes = await query(cacheSql, [market, stock_types]);
+
+        // 如果資料庫有預算資料，直接返回
+        if (cacheRes.rows.length > 0) {
+            const row = cacheRes.rows[0];
+            return res.json({
+                success: true,
+                latestDate: row.trade_date,
+                data: {
+                    turnover: row.turnover,
+                    hot: row.hot,
+                    foreign3d: row.foreign3d,
+                    trust3d: row.trust3d,
+                    main3d: row.main3d
+                }
+            });
+        }
+
+        // --- 防呆機制 (Fallback)：如果無快取或尚未預先計算，退回即時計算邏輯 ---
+        console.log(`[Market Focus API] Cache miss for market=${market} types=${stock_types}, executing live calc.`);
+
+        // 取得最新有足夠資料的交易日與前三個交易日
         const dateDetectionSql = `
             SELECT trade_date, count(*) as count
             FROM daily_prices
@@ -1078,7 +1106,6 @@ router.get('/market-focus', async (req, res) => {
         const datesRes = await query(dateDetectionSql);
 
         if (datesRes.rows.length === 0) {
-            // Fallback to absolute latest if no "full" day found
             const fallbackRes = await query('SELECT DISTINCT trade_date FROM daily_prices ORDER BY trade_date DESC LIMIT 3');
             if (fallbackRes.rows.length === 0) return res.json({ success: false, message: '無資料' });
             datesRes.rows = fallbackRes.rows;
@@ -1087,7 +1114,6 @@ router.get('/market-focus', async (req, res) => {
         const latestDate = datesRes.rows[0].trade_date;
         const targetDates = datesRes.rows.map(r => r.trade_date);
 
-        // 標的類型過濾條件 (與 /api/screen 保持一致)
         const types = (stock_types || 'stock').split(',');
         let typeConditions = [];
         if (types.includes('stock')) typeConditions.push("(s.symbol ~ '^[0-9]{4}$' AND s.symbol !~ '^00')");
@@ -1097,7 +1123,6 @@ router.get('/market-focus', async (req, res) => {
         const typeFilter = typeConditions.length > 0 ? `AND (${typeConditions.join(' OR ')})` : '';
         const marketFilter = market !== 'all' ? `AND s.market = '${market}'` : '';
 
-        // 並行查詢所有焦點數據
         const [turnoverRes, hotRes, instRes] = await Promise.all([
             query(`
                 SELECT s.symbol, s.name, p.close_price, p.change_percent, (p.volume * p.close_price) as turnover
@@ -1130,10 +1155,13 @@ router.get('/market-focus', async (req, res) => {
             `, [latestDate, targetDates])
         ]);
 
-        // 排序
         const foreignRes = [...instRes.rows].sort((a, b) => b.foreign_buy - a.foreign_buy).slice(0, 10);
         const trustRes = [...instRes.rows].sort((a, b) => b.trust_buy - a.trust_buy).slice(0, 10);
         const totalRes = [...instRes.rows].sort((a, b) => b.total_buy - a.total_buy).slice(0, 10);
+
+        // 可以在這裡選擇寫入防呆的計算結果，但目前交給每日排程處理即可
+        const { calculateMarketFocus } = require('../scripts/calc_market_focus');
+        calculateMarketFocus(market, stock_types).catch(e => console.error('Background calc failed:', e));
 
         res.json({
             success: true,
@@ -1202,6 +1230,408 @@ router.get('/market-margin', async (req, res) => {
 
     } catch (err) {
         console.error('Market margin error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// ========== Yahoo VIP-Style Features ==========
+
+// GET /api/stock/:symbol/health-check - 個股健診 (六大指標雷達圖)
+router.get('/stock/:symbol/health-check', async (req, res) => {
+    try {
+        const { symbol } = req.params;
+
+        // Parallel fetch all required data
+        const [fundamentalRes, grossProfitRes, revenueStatRes, revenueRes, epsRes, instRes, dividendRes, priceRes, equityRes] = await Promise.all([
+            query('SELECT pe_ratio, pb_ratio, dividend_yield FROM fundamentals WHERE symbol = $1 ORDER BY trade_date DESC LIMIT 1', [symbol]),
+            query(`SELECT value, date FROM fm_financial_statements WHERE stock_id = $1 AND type = 'GrossProfit' ORDER BY date DESC LIMIT 4`, [symbol]),
+            query(`SELECT value, date FROM fm_financial_statements WHERE stock_id = $1 AND type = 'Revenue' ORDER BY date DESC LIMIT 4`, [symbol]),
+            query('SELECT revenue, revenue_year, revenue_month FROM monthly_revenue WHERE symbol = $1 ORDER BY revenue_year DESC, revenue_month DESC LIMIT 24', [symbol]),
+            query("SELECT value, date FROM financial_statements WHERE symbol = $1 AND type = 'EPS' ORDER BY date DESC LIMIT 8", [symbol]),
+            query('SELECT foreign_net, trust_net, total_net FROM institutional WHERE symbol = $1 ORDER BY trade_date DESC LIMIT 10', [symbol]),
+            query('SELECT year, cash_dividend, stock_dividend FROM dividend_policy WHERE symbol = $1 ORDER BY year DESC LIMIT 5', [symbol]),
+            query('SELECT close_price, change_percent FROM daily_prices WHERE symbol = $1 ORDER BY trade_date DESC LIMIT 1', [symbol]),
+            query(`SELECT value, date FROM fm_financial_statements WHERE stock_id = $1 AND type = 'Equity' ORDER BY date DESC LIMIT 4`, [symbol])
+        ]);
+
+        const fund = fundamentalRes.rows[0] || {};
+        const pe = parseFloat(fund.pe_ratio) || 0;
+        const pb = parseFloat(fund.pb_ratio) || 0;
+        const dy = parseFloat(fund.dividend_yield) || 0;
+        const closePrice = parseFloat(priceRes.rows[0]?.close_price) || 0;
+
+        // --- 1. Profitability Score (獲利能力) ---
+        // Calculate Gross Margin from raw data
+        const grossProfit = grossProfitRes.rows.length > 0 ? parseFloat(grossProfitRes.rows[0].value) : 0;
+        const revenueStat = revenueStatRes.rows.length > 0 ? parseFloat(revenueStatRes.rows[0].value) : 0;
+        const latestGrossMargin = (revenueStat > 0 && grossProfit > 0) ? (grossProfit / revenueStat * 100) : 0;
+
+        // Calculate ROE approximation: if we have Equity and EPS data, approximate
+        const equity = equityRes.rows.length > 0 ? parseFloat(equityRes.rows[0].value) : 0;
+        // Use annualized EPS * 1000 (shares) vs equity as proxy
+        const latestEPS = epsRes.rows.length > 0 ? parseFloat(epsRes.rows[0].value) : 0;
+        // ROE proxy: if PE and PB are available, ROE ≈ PB/PE * 100
+        const latestROE = (pe > 0 && pb > 0) ? (pb / pe * 100) : 0;
+
+        let profitScore = 0;
+        if (latestROE > 20) profitScore += 50; else if (latestROE > 10) profitScore += 35; else if (latestROE > 5) profitScore += 20; else profitScore += 5;
+        if (latestGrossMargin > 40) profitScore += 50; else if (latestGrossMargin > 25) profitScore += 35; else if (latestGrossMargin > 15) profitScore += 20; else profitScore += 5;
+
+        // --- 2. Growth Score (成長能力) ---
+        const revRows = revenueRes.rows;
+        let revenueGrowth = 0;
+        if (revRows.length >= 13) {
+            const curr = parseFloat(revRows[0].revenue);
+            const prev = parseFloat(revRows[12].revenue);
+            if (prev > 0) revenueGrowth = ((curr - prev) / prev) * 100;
+        }
+        const epsRows = epsRes.rows;
+        let epsGrowth = 0;
+        if (epsRows.length >= 5) {
+            const currEps = parseFloat(epsRows[0].value);
+            const prevEps = parseFloat(epsRows[4].value);
+            if (prevEps > 0) epsGrowth = ((currEps - prevEps) / prevEps) * 100;
+        }
+        let growthScore = 0;
+        if (revenueGrowth > 20) growthScore += 50; else if (revenueGrowth > 10) growthScore += 35; else if (revenueGrowth > 0) growthScore += 20; else growthScore += 5;
+        if (epsGrowth > 20) growthScore += 50; else if (epsGrowth > 10) growthScore += 35; else if (epsGrowth > 0) growthScore += 20; else growthScore += 5;
+
+        // --- 3. Safety Score (安全性) ---
+        // Use PB as a proxy for debt level (lower = safer in general for value stocks)
+        let safetyScore = 50;
+        if (pb > 0 && pb < 1) safetyScore = 90; else if (pb < 1.5) safetyScore = 70; else if (pb < 3) safetyScore = 50; else safetyScore = 30;
+
+        // --- 4. Value Score (價值衡量) ---
+        let valueScore = 50;
+        if (pe > 0 && pe < 10) valueScore = 90; else if (pe < 15) valueScore = 75; else if (pe < 20) valueScore = 55; else if (pe < 30) valueScore = 35; else valueScore = 15;
+
+        // --- 5. Dividend Score (配息能力) ---
+        const divRows = dividendRes.rows;
+        const avgCashDividend = divRows.length > 0 ? divRows.reduce((s, d) => s + parseFloat(d.cash_dividend || 0), 0) / divRows.length : 0;
+        let dividendScore = 0;
+        if (dy > 6) dividendScore += 50; else if (dy > 4) dividendScore += 35; else if (dy > 2) dividendScore += 20; else dividendScore += 5;
+        if (avgCashDividend > 3) dividendScore += 50; else if (avgCashDividend > 1.5) dividendScore += 35; else if (avgCashDividend > 0.5) dividendScore += 20; else dividendScore += 5;
+
+        // --- 6. Chip Score (籌碼面) ---
+        const instRows = instRes.rows;
+        const totalBuy = instRows.reduce((s, r) => s + parseFloat(r.total_net || 0), 0);
+        const foreignBuy = instRows.reduce((s, r) => s + parseFloat(r.foreign_net || 0), 0);
+        let chipScore = 50;
+        if (totalBuy > 10000) chipScore = 90; else if (totalBuy > 5000) chipScore = 75; else if (totalBuy > 0) chipScore = 55; else if (totalBuy > -5000) chipScore = 35; else chipScore = 15;
+
+        // Overall
+        const overall = Math.round((profitScore + growthScore + safetyScore + valueScore + dividendScore + chipScore) / 6);
+
+        // Grade
+        let grade = '普通';
+        let gradeColor = 'neutral';
+        if (overall >= 75) { grade = '優秀'; gradeColor = 'green'; }
+        else if (overall >= 60) { grade = '良好'; gradeColor = 'blue'; }
+        else if (overall >= 45) { grade = '普通'; gradeColor = 'yellow'; }
+        else { grade = '待改善'; gradeColor = 'red'; }
+
+        res.json({
+            success: true,
+            symbol,
+            overall,
+            grade,
+            gradeColor,
+            dimensions: [
+                { name: '獲利能力', score: profitScore, detail: `ROE: ${latestROE.toFixed(1)}%, 毛利率: ${latestGrossMargin.toFixed(1)}%` },
+                { name: '成長能力', score: growthScore, detail: `營收YoY: ${revenueGrowth.toFixed(1)}%, EPS成長: ${epsGrowth.toFixed(1)}%` },
+                { name: '安全性', score: safetyScore, detail: `PB: ${pb.toFixed(2)}` },
+                { name: '價值衡量', score: valueScore, detail: `PE: ${pe.toFixed(2)}` },
+                { name: '配息能力', score: dividendScore, detail: `殖利率: ${dy.toFixed(2)}%, 平均現金股利: ${avgCashDividend.toFixed(2)}元` },
+                { name: '籌碼面', score: chipScore, detail: `近10日法人買賣超: ${(totalBuy / 1000).toFixed(0)}張` }
+            ],
+            metrics: {
+                pe, pb, dy, latestROE, latestGrossMargin, revenueGrowth, epsGrowth, avgCashDividend, totalBuy: totalBuy / 1000, closePrice
+            }
+        });
+    } catch (err) {
+        console.error('Health check error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET /api/stock/:symbol/valuation-history - 個股估價歷史 (本益比/淨值比河流圖)
+router.get('/stock/:symbol/valuation-history', async (req, res) => {
+    try {
+        const { symbol } = req.params;
+        const { years = 5 } = req.query;
+
+        // Get PE/PB history from fundamentals table (which has daily PE/PB data)
+        const perRes = await query(`
+            SELECT trade_date as date, pe_ratio, pb_ratio, dividend_yield
+            FROM fundamentals
+            WHERE symbol = $1 AND pe_ratio IS NOT NULL AND pe_ratio > 0 AND pe_ratio < 200
+            ORDER BY trade_date DESC
+            LIMIT $2
+        `, [symbol, parseInt(years) * 250]);
+
+        // Get dividend history for yield-based valuation
+        const divRes = await query(`
+            SELECT year, cash_dividend FROM dividend_policy WHERE symbol = $1 ORDER BY year DESC LIMIT 10
+        `, [symbol]);
+
+        // Get current price
+        const priceRes = await query('SELECT close_price FROM daily_prices WHERE symbol = $1 ORDER BY trade_date DESC LIMIT 1', [symbol]);
+        const currentPrice = parseFloat(priceRes.rows[0]?.close_price) || 0;
+
+        const history = perRes.rows.reverse().map(r => ({
+            date: r.date,
+            pe: parseFloat(r.pe_ratio),
+            pb: parseFloat(r.pb_ratio),
+            dy: parseFloat(r.dividend_yield) || 0
+        }));
+
+        // Calculate PE statistics
+        const peValues = history.map(h => h.pe).filter(v => v > 0 && v < 200);
+        const pbValues = history.map(h => h.pb).filter(v => v > 0);
+
+        const peAvg = peValues.length > 0 ? peValues.reduce((a, b) => a + b, 0) / peValues.length : 0;
+        const pbAvg = pbValues.length > 0 ? pbValues.reduce((a, b) => a + b, 0) / pbValues.length : 0;
+
+        const peStd = peValues.length > 1 ? Math.sqrt(peValues.reduce((s, v) => s + (v - peAvg) ** 2, 0) / (peValues.length - 1)) : 0;
+        const pbStd = pbValues.length > 1 ? Math.sqrt(pbValues.reduce((s, v) => s + (v - pbAvg) ** 2, 0) / (pbValues.length - 1)) : 0;
+
+        // PE Bands
+        const peBands = {
+            veryExpensive: peAvg + 2 * peStd,
+            expensive: peAvg + peStd,
+            fair: peAvg,
+            cheap: peAvg - peStd,
+            veryCheap: peAvg - 2 * peStd > 0 ? peAvg - 2 * peStd : 1
+        };
+
+        // Dividend-based valuation
+        const avgCashDiv = divRes.rows.length > 0
+            ? divRes.rows.reduce((s, d) => s + parseFloat(d.cash_dividend || 0), 0) / divRes.rows.length
+            : 0;
+        const yieldValuation = avgCashDiv > 0 ? {
+            cheap: (avgCashDiv / 0.06).toFixed(2),   // 6% yield = cheap
+            fair: (avgCashDiv / 0.05).toFixed(2),     // 5% yield = fair
+            expensive: (avgCashDiv / 0.04).toFixed(2) // 4% yield = expensive
+        } : null;
+
+        // Current valuation zone
+        const currentPe = peValues.length > 0 ? peValues[peValues.length - 1] : 0;
+        let zone = '合理區';
+        if (currentPe > peBands.expensive) zone = '偏貴區';
+        if (currentPe > peBands.veryExpensive) zone = '昂貴區';
+        if (currentPe < peBands.cheap) zone = '偏低區';
+        if (currentPe < peBands.veryCheap) zone = '便宜區';
+
+        res.json({
+            success: true,
+            symbol,
+            currentPrice,
+            currentPe,
+            zone,
+            history,
+            peBands,
+            pbBands: {
+                expensive: pbAvg + pbStd,
+                fair: pbAvg,
+                cheap: pbAvg - pbStd > 0 ? pbAvg - pbStd : 0.1
+            },
+            yieldValuation,
+            stats: {
+                peAvg: peAvg.toFixed(2),
+                peStd: peStd.toFixed(2),
+                pbAvg: pbAvg.toFixed(2),
+                pbStd: pbStd.toFixed(2),
+                avgCashDiv: avgCashDiv.toFixed(2)
+            }
+        });
+    } catch (err) {
+        console.error('Valuation history error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET /api/stocks/compare - 個股 PK (多股比較)
+router.get('/stocks/compare', async (req, res) => {
+    try {
+        const { symbols } = req.query;
+        if (!symbols) return res.json({ success: false, message: '請提供股票代碼' });
+
+        const symbolList = symbols.split(',').slice(0, 4); // Max 4 stocks
+
+        const results = await Promise.all(symbolList.map(async (symbol) => {
+            const sym = symbol.trim();
+            const [stockRes, priceRes, fundRes, ratiosRes, instRes, divRes, revenueRes] = await Promise.all([
+                query('SELECT symbol, name, industry, market FROM stocks WHERE symbol = $1', [sym]),
+                query('SELECT close_price, change_percent, volume, trade_date FROM daily_prices WHERE symbol = $1 ORDER BY trade_date DESC LIMIT 1', [sym]),
+                query('SELECT pe_ratio, pb_ratio, dividend_yield FROM fundamentals WHERE symbol = $1 ORDER BY trade_date DESC LIMIT 1', [sym]),
+                query(`SELECT type, value FROM fm_financial_statements WHERE stock_id = $1 AND type IN ('ROE', 'ROA', 'GrossProfitMargin', 'OperatingIncomeMargin', 'NetIncomeMargin') ORDER BY date DESC LIMIT 5`, [sym]),
+                query('SELECT foreign_net, trust_net, total_net FROM institutional WHERE symbol = $1 ORDER BY trade_date DESC LIMIT 5', [sym]),
+                query('SELECT year, cash_dividend, stock_dividend FROM dividend_policy WHERE symbol = $1 ORDER BY year DESC LIMIT 5', [sym]),
+                query('SELECT revenue, revenue_year, revenue_month FROM monthly_revenue WHERE symbol = $1 ORDER BY revenue_year DESC, revenue_month DESC LIMIT 13', [sym])
+            ]);
+
+            const stock = stockRes.rows[0] || {};
+            const price = priceRes.rows[0] || {};
+            const fund = fundRes.rows[0] || {};
+
+            // Extract latest ratios
+            const getLatestRatio = (type) => {
+                const row = ratiosRes.rows.find(r => r.type === type);
+                return row ? parseFloat(row.value) : null;
+            };
+
+            // Revenue growth
+            let revenueGrowth = null;
+            if (revenueRes.rows.length >= 13) {
+                const curr = parseFloat(revenueRes.rows[0].revenue);
+                const prev = parseFloat(revenueRes.rows[12].revenue);
+                if (prev > 0) revenueGrowth = ((curr - prev) / prev * 100);
+            }
+
+            // Inst flow
+            const totalInstBuy = instRes.rows.reduce((s, r) => s + parseFloat(r.total_net || 0), 0) / 1000;
+
+            // Avg cash dividend
+            const avgCashDiv = divRes.rows.length > 0
+                ? divRes.rows.reduce((s, d) => s + parseFloat(d.cash_dividend || 0), 0) / divRes.rows.length
+                : 0;
+
+            return {
+                symbol: sym,
+                name: stock.name || sym,
+                industry: stock.industry,
+                market: stock.market,
+                closePrice: parseFloat(price.close_price) || 0,
+                changePercent: parseFloat(price.change_percent) || 0,
+                volume: parseInt(price.volume) || 0,
+                pe: parseFloat(fund.pe_ratio) || null,
+                pb: parseFloat(fund.pb_ratio) || null,
+                dividendYield: parseFloat(fund.dividend_yield) || null,
+                roe: getLatestRatio('ROE'),
+                roa: getLatestRatio('ROA'),
+                grossMargin: getLatestRatio('GrossProfitMargin'),
+                operatingMargin: getLatestRatio('OperatingIncomeMargin'),
+                netMargin: getLatestRatio('NetIncomeMargin'),
+                revenueGrowth,
+                instNetBuy5d: totalInstBuy,
+                avgCashDividend: avgCashDiv
+            };
+        }));
+
+        res.json({ success: true, data: results });
+    } catch (err) {
+        console.error('Stock compare error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET /api/health-check-ranking - 全股健診排行
+router.get('/health-check-ranking', async (req, res) => {
+    try {
+        const {
+            sort = 'overall_score',
+            order = 'DESC',
+            industry,
+            market,
+            stock_types, // NEW: added stock types
+            grade,
+            minScore = 0,
+            maxScore = 100,
+            page = 1,
+            limit = 50,
+            search
+        } = req.query;
+
+        // Allowed sort columns
+        const allowedSorts = ['overall_score', 'profit_score', 'growth_score', 'safety_score', 'value_score', 'dividend_score', 'chip_score', 'close_price', 'change_percent', 'pe', 'pb', 'dividend_yield', 'roe', 'gross_margin', 'revenue_growth', 'symbol'];
+        const sortCol = allowedSorts.includes(sort) ? sort : 'overall_score';
+        const sortOrder = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+        // Get latest calc_date
+        const dateRes = await query('SELECT MAX(calc_date) as latest FROM stock_health_scores');
+        const latestDate = dateRes.rows[0]?.latest;
+        if (!latestDate) return res.json({ success: true, data: [], total: 0, message: '尚無健診資料，請先執行健診計算' });
+
+        // Build filters
+        let conditions = ['calc_date = $1', 'overall_score >= $2', 'overall_score <= $3'];
+        let params = [latestDate, parseInt(minScore), parseInt(maxScore)];
+        let paramIdx = 4;
+
+        if (industry) {
+            conditions.push(`industry = $${paramIdx}`);
+            params.push(industry);
+            paramIdx++;
+        }
+        if (market) {
+            conditions.push(`market = $${paramIdx}`);
+            params.push(market);
+            paramIdx++;
+        }
+
+        // Apply Stock Types Filter (same logic as main screener)
+        if (stock_types) {
+            const types = stock_types.split(',');
+            const typeConditions = [];
+            // 個股: 4碼純數字
+            if (types.includes('stock')) typeConditions.push("(symbol ~ '^[0-9]{4}$')");
+            // ETF: '00' 開頭的 6 碼數字 (移除結尾 L/R 限制，廣泛匹配)
+            if (types.includes('etf')) typeConditions.push("(symbol ~ '^00[0-9]{4}')");
+            // 權證: 6碼且不是 00 開頭
+            if (types.includes('warrant')) typeConditions.push("(symbol ~ '^[0-9]{6}$' AND symbol !~ '^00' AND symbol !~ '^02')");
+
+            if (typeConditions.length > 0) {
+                conditions.push(`(${typeConditions.join(' OR ')})`);
+            }
+        }
+
+        if (grade) {
+            conditions.push(`grade = $${paramIdx}`);
+            params.push(grade);
+            paramIdx++;
+        }
+        if (search) {
+            conditions.push(`(symbol ILIKE $${paramIdx} OR name ILIKE $${paramIdx})`);
+            params.push(`%${search}%`);
+            paramIdx++;
+        }
+
+        const whereClause = conditions.join(' AND ');
+
+        // Count
+        const countRes = await query(`SELECT COUNT(*) as cnt FROM stock_health_scores WHERE ${whereClause}`, params);
+        const total = parseInt(countRes.rows[0].cnt);
+
+        // Fetch
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+        params.push(parseInt(limit));
+        params.push(offset);
+
+        const dataRes = await query(`
+            SELECT symbol, name, industry, market, close_price, change_percent,
+                   overall_score, grade, grade_color,
+                   profit_score, growth_score, safety_score, value_score, dividend_score, chip_score,
+                   pe, pb, dividend_yield, roe, gross_margin,
+                   revenue_growth, eps_growth, avg_cash_dividend, inst_net_buy, calc_date
+            FROM stock_health_scores
+            WHERE ${whereClause}
+            ORDER BY ${sortCol} ${sortOrder} NULLS LAST
+            LIMIT $${paramIdx} OFFSET $${paramIdx + 1}
+        `, params);
+
+        // Get distinct industries for filter dropdown
+        const indRes = await query(`SELECT DISTINCT industry FROM stock_health_scores WHERE calc_date = $1 AND industry IS NOT NULL ORDER BY industry`, [latestDate]);
+
+        res.json({
+            success: true,
+            data: dataRes.rows,
+            total,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            calcDate: latestDate,
+            industries: indRes.rows.map(r => r.industry)
+        });
+    } catch (err) {
+        console.error('Health check ranking error:', err);
         res.status(500).json({ success: false, error: err.message });
     }
 });

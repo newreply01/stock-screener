@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext'
+import { GlobalFilterProvider } from './context/GlobalFilterContext'
 
 console.log("main.jsx: About to create root");
 const rootElement = document.getElementById('root');
@@ -18,7 +19,9 @@ if (!rootElement) {
     root.render(
       <StrictMode>
         <AuthProvider>
-          <App />
+          <GlobalFilterProvider>
+            <App />
+          </GlobalFilterProvider>
         </AuthProvider>
       </StrictMode>,
     );

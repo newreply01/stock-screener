@@ -15,11 +15,14 @@ import LoginModal from './components/LoginModal'
 import MarketDashboard from './components/MarketDashboard'
 import TradingDashboard from './components/TradingDashboard'
 import RealtimeExplorer from './components/RealtimeExplorer'
+import HealthCheckRanking from './components/HealthCheckRanking'
 import { screenStocks, getStats, getWatchlists, addStockToWatchlist, removeStockFromWatchlist } from './utils/api'
 import { useAuth } from './context/AuthContext'
+import { useGlobalFilters } from './context/GlobalFilterContext'
 
 function App() {
   const { requireLogin, user, showLoginModal, setShowLoginModal } = useAuth()
+  const { marketForApi, stockTypesForApi, industryForApi } = useGlobalFilters()
   const [results, setResults] = useState({ data: [], total: 0, page: 1, totalPages: 0, latestDate: null })
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -108,10 +111,20 @@ function App() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await screenStocks({ ...filters, search: searchTerm, sort_by: sortBy, sort_dir: sortDir, page, limit: 50 })
+      const data = await screenStocks({
+        ...filters,
+        market: marketForApi,
+        stock_types: stockTypesForApi,
+        industry: industryForApi,
+        search: searchTerm,
+        sort_by: sortBy,
+        sort_dir: sortDir,
+        page,
+        limit: 50
+      })
       setResults(data || { data: [], total: 0, page: 1, totalPages: 0, latestDate: null })
     } catch (err) { console.error('Screening error:', err) } finally { setLoading(false) }
-  }, [filters, sortBy, sortDir, page, searchTerm])
+  }, [filters, sortBy, sortDir, page, searchTerm, marketForApi, stockTypesForApi, industryForApi])
 
   useEffect(() => {
     if (results?.data?.length > 0 && !mainStock) setMainStock(results.data[0])
@@ -119,10 +132,15 @@ function App() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const data = await getStats(filters)
+      const data = await getStats({
+        ...filters,
+        market: marketForApi,
+        stock_types: stockTypesForApi,
+        industry: industryForApi
+      })
       setStats(data)
     } catch (err) { console.error('Stats error:', err) }
-  }, [filters])
+  }, [filters, marketForApi, stockTypesForApi, industryForApi])
 
   useEffect(() => { fetchStats(); fetchData() }, [fetchData, fetchStats])
 
@@ -172,6 +190,8 @@ function App() {
           <TradingDashboard />
         ) : currentView === 'explorer' ? (
           <RealtimeExplorer onStockSelect={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }} />
+        ) : currentView === 'health-ranking' ? (
+          <HealthCheckRanking onSelectStock={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }} />
         ) : currentView === 'stock-detail' ? (
           <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
             <StockDetail stock={mainStock} isInline={true} />

@@ -1,0 +1,110 @@
+import React, { useState, useEffect } from 'react';
+import { useGlobalFilters } from '../context/GlobalFilterContext';
+import { Search, Building2 } from 'lucide-react';
+import { getIndustries } from '../utils/api';
+
+export default function GlobalFilterBar() {
+    const { market, setMarket, hasStockType, toggleStockType, industry, setIndustry } = useGlobalFilters();
+    const [industries, setIndustries] = useState([]);
+
+    useEffect(() => {
+        const fetchIndustries = async () => {
+            try {
+                const res = await getIndustries();
+                setIndustries(res || []);
+            } catch (err) {
+                console.error('Failed to fetch industries', err);
+            }
+        };
+        fetchIndustries();
+    }, []);
+
+    return (
+        <div className="bg-white px-6 py-4 border-b border-gray-200">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 max-w-5xl mx-auto">
+
+                {/* 1. Market Filter */}
+                <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold text-gray-500 min-w-max">市場</span>
+                    <div className="flex bg-gray-50 p-1.5 rounded-xl border border-gray-200">
+                        {[
+                            { id: 'all', label: '全部' },
+                            { id: 'twse', label: '上市' },
+                            { id: 'tpex', label: '上櫃' }
+                        ].map(m => (
+                            <button
+                                key={m.id}
+                                onClick={() => setMarket(m.id)}
+                                className={`px-5 py-2 rounded-lg text-sm font-black transition-all min-w-[70px]
+                                    ${market === m.id
+                                        ? 'bg-white text-[#ea4335] shadow-sm font-black z-10 custom-market-active'
+                                        : 'text-gray-500 font-bold hover:text-gray-800 hover:bg-white/50'
+                                    }
+                                `}
+                                style={market === m.id ? { color: '#ea4335' } : {}}
+                            >
+                                {m.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Vertical Divider */}
+                <div className="hidden sm:block w-px h-8 bg-gray-200 mx-2"></div>
+
+                {/* 2. Stock Types Filter */}
+                <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold text-[#ea4335] flex items-center gap-1.5 min-w-max">
+                        <Search className="w-4 h-4" />
+                        標的類型
+                    </span>
+                    <div className="flex bg-gray-50 p-1.5 rounded-xl border border-gray-200">
+                        {[
+                            { id: 'stock', label: '股' },
+                            { id: 'etf', label: 'ETF' },
+                            { id: 'warrant', label: '權證' }
+                        ].map(type => {
+                            const isSelected = hasStockType(type.id);
+                            return (
+                                <button
+                                    key={type.id}
+                                    onClick={() => toggleStockType(type.id)}
+                                    className={`px-6 py-2 rounded-lg text-sm transition-all min-w-[70px]
+                                        ${isSelected
+                                            ? 'bg-[#ea4335] text-white font-black shadow-md border border-red-600/20 hover:bg-[#d33426]'
+                                            : 'text-gray-500 font-bold hover:bg-white hover:text-gray-800'
+                                        }
+                                    `}
+                                >
+                                    {type.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Vertical Divider */}
+                <div className="hidden sm:block w-px h-8 bg-gray-200 mx-2"></div>
+
+                {/* 3. Industry Filter */}
+                <div className="flex items-center gap-3 relative z-20">
+                    <span className="text-sm font-bold text-indigo-500 flex items-center gap-1.5 min-w-max">
+                        <Building2 className="w-4 h-4" />
+                        產業
+                    </span>
+                    <select
+                        value={industry}
+                        onChange={(e) => setIndustry(e.target.value)}
+                        className="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-brand-primary focus:border-brand-primary block w-full px-4 py-2 font-bold min-w-[140px] cursor-pointer"
+                    >
+                        <option value="all">全市場</option>
+                        {industries.map(ind => (
+                            <option key={ind} value={ind}>{ind}</option>
+                        ))}
+                    </select>
+                </div>
+
+            </div>
+        </div>
+    );
+}
