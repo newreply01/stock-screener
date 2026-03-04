@@ -59,9 +59,10 @@ const RealtimeExplorer = ({ onStockSelect }) => {
 
     // Simple logic for coloring
     const getRowColor = (tick) => {
-        if (!tick.price || !tick.open_price) return 'text-slate-700';
-        if (tick.price > tick.open_price) return 'text-red-600 bg-red-50/50';
-        if (tick.price < tick.open_price) return 'text-green-600 bg-green-50/50';
+        const basePrice = tick.previous_close || tick.open_price;
+        if (!tick.price || !basePrice) return 'text-slate-700';
+        if (tick.price > basePrice) return 'text-red-600 bg-red-50/50';
+        if (tick.price < basePrice) return 'text-green-600 bg-green-50/50';
         return 'text-yellow-600 bg-yellow-50/50';
     };
 
@@ -131,9 +132,13 @@ const RealtimeExplorer = ({ onStockSelect }) => {
                         <tr>
                             <th className="py-3 px-4 font-semibold border-b border-slate-200 w-32">時間</th>
                             <th className="py-3 px-4 font-semibold border-b border-slate-200">最新成交價</th>
+                            <th className="py-3 px-4 font-semibold border-b border-slate-200">昨收</th>
+                            <th className="py-3 px-4 font-semibold border-b border-slate-200">漲跌</th>
+                            <th className="py-3 px-4 font-semibold border-b border-slate-200">漲跌幅</th>
                             <th className="py-3 px-4 font-semibold border-b border-slate-200">開盤價</th>
                             <th className="py-3 px-4 font-semibold border-b border-slate-200">最高價</th>
                             <th className="py-3 px-4 font-semibold border-b border-slate-200">最低價</th>
+                            <th className="py-3 px-4 font-semibold border-b border-slate-200">成交張數</th>
                             <th className="py-3 px-4 font-semibold border-b border-slate-200">單分量</th>
                             <th className="py-3 px-4 font-semibold border-b border-slate-200">內盤力道</th>
                             <th className="py-3 px-4 font-semibold border-b border-slate-200">外盤力道</th>
@@ -181,22 +186,38 @@ const RealtimeExplorer = ({ onStockSelect }) => {
                                 </td>
                             </tr>
                         ) : (
-                            data.map((tick, i) => (
-                                <tr key={i} className={`hover:bg-slate-100/50 transition-colors ${getRowColor(tick)}`}>
-                                    <td className="py-2.5 px-4 font-mono text-slate-500 font-medium">
-                                        {tick.time_str}
-                                    </td>
-                                    <td className="py-2.5 px-4 font-bold">
-                                        {formatPrice(tick.price)}
-                                    </td>
-                                    <td className="py-2.5 px-4">{formatPrice(tick.open_price)}</td>
-                                    <td className="py-2.5 px-4 text-red-500">{formatPrice(tick.high_price)}</td>
-                                    <td className="py-2.5 px-4 text-green-500">{formatPrice(tick.low_price)}</td>
-                                    <td className="py-2.5 px-4 font-bold text-amber-600">{tick.volume}</td>
-                                    <td className="py-2.5 px-4 text-green-600">{tick.sell_intensity}%</td>
-                                    <td className="py-2.5 px-4 text-red-600">{tick.buy_intensity}%</td>
-                                </tr>
-                            ))
+                            data.map((tick, i) => {
+                                const basePrice = tick.previous_close || tick.open_price;
+                                const diff = tick.price && basePrice ? tick.price - basePrice : null;
+                                const diffPct = diff !== null && basePrice ? (diff / basePrice) * 100 : null;
+                                const diffColor = diff > 0 ? 'text-red-600 font-bold' : (diff < 0 ? 'text-green-600 font-bold' : 'text-slate-500 font-bold');
+                                const diffSign = diff > 0 ? '▲' : (diff < 0 ? '▼' : '');
+
+                                return (
+                                    <tr key={i} className={`hover:bg-slate-100/50 transition-colors ${getRowColor(tick)}`}>
+                                        <td className="py-2.5 px-4 font-mono text-slate-500 font-medium">
+                                            {tick.time_str}
+                                        </td>
+                                        <td className="py-2.5 px-4 font-bold">
+                                            {formatPrice(tick.price)}
+                                        </td>
+                                        <td className="py-2.5 px-4 text-purple-600 font-medium">{formatPrice(tick.previous_close)}</td>
+                                        <td className={`py-2.5 px-4 ${diffColor}`}>
+                                            {diff !== null ? `${diffSign} ${Math.abs(diff).toFixed(2)}` : '--'}
+                                        </td>
+                                        <td className={`py-2.5 px-4 ${diffColor}`}>
+                                            {diffPct !== null ? `${diffPct.toFixed(2)}%` : '--'}
+                                        </td>
+                                        <td className="py-2.5 px-4">{formatPrice(tick.open_price)}</td>
+                                        <td className="py-2.5 px-4 text-red-500">{formatPrice(tick.high_price)}</td>
+                                        <td className="py-2.5 px-4 text-green-500">{formatPrice(tick.low_price)}</td>
+                                        <td className="py-2.5 px-4 font-bold text-blue-600">{tick.trade_volume}</td>
+                                        <td className="py-2.5 px-4 font-bold text-amber-600">{tick.volume}</td>
+                                        <td className="py-2.5 px-4 text-green-600">{tick.sell_intensity}%</td>
+                                        <td className="py-2.5 px-4 text-red-600">{tick.buy_intensity}%</td>
+                                    </tr>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>
