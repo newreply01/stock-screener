@@ -195,3 +195,9 @@ export async function getRealtimeActive() {
     if (!res.ok) throw new Error('獲取即時熱門標的失敗');
     return res.json();
 }
+
+export async function getIndustries() {
+    const res = await fetch(`${API_BASE}/stocks/industries`);
+    if (!res.ok) throw new Error('獲取產業清單失敗');
+    return res.json();
+}
