@@ -154,7 +154,7 @@ export default function MarketMarginChart() {
                             yAxisId="y-index"
                             type="monotone"
                             dataKey="indexPrice"
-                            name="大盤指數"
+                            name="大盤指數 (加權)"
                             stroke="#ef4444"
                             strokeWidth={2}
                             dot={false}
