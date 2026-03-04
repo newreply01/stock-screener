@@ -264,6 +264,63 @@ export default function MonitorPage() {
                 </div>
             </div>
 
+            {/* JS Script Monitoring Table */}
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm mt-6">
+                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <Server className="w-5 h-5 text-indigo-500" />
+                    各項背景擷取程式 (Script) 執行狀態
+                </h2>
+
+                <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <table className="w-full text-left text-sm text-gray-600">
+                        <thead className="bg-gray-50 border-b border-gray-200 text-gray-700">
+                            <tr>
+                                <th className="px-5 py-3 font-semibold">程式名稱 (.js)</th>
+                                <th className="px-5 py-3 font-semibold">用途說明</th>
+                                <th className="px-5 py-3 font-semibold">狀態與執行訊息</th>
+                                <th className="px-5 py-3 font-semibold text-right">最後執行時間</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {statusData?.script_status?.map((item, idx) => {
+                                // Maps to determine descriptions
+                                const scriptDescriptions = {
+                                    'fetcher.js': '每日盤後資料 (收盤價、當沖、法人、融資券)',
+                                    'news_fetcher.js': '財經新聞同步 (每小時更新)',
+                                    'finmind_fetcher.js': '財報基本面資料 (每週六更新)',
+                                    'calc_health_scores.js': '全股健診排行計算 (每日盤後計算)'
+                                };
+
+                                let statusColor = 'bg-gray-100 text-gray-800';
+                                if (item.status === 'SUCCESS') statusColor = 'bg-green-100 text-green-800';
+                                if (item.status === 'RUNNING') statusColor = 'bg-blue-100 text-blue-800';
+                                if (item.status === 'FAILED') statusColor = 'bg-red-100 text-red-800';
+                                if (item.status === 'UNKNOWN') statusColor = 'bg-yellow-100 text-yellow-800';
+
+                                return (
+                                    <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-5 py-3.5 font-bold text-gray-900">{item.script}</td>
+                                        <td className="px-5 py-3.5 text-indigo-600 font-medium">{scriptDescriptions[item.script] || '其他程式'}</td>
+                                        <td className="px-5 py-3.5 flex items-center gap-2">
+                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider ${statusColor}`}>
+                                                {item.status}
+                                            </span>
+                                            <span className="text-xs text-gray-500 line-clamp-1 max-w-xs" title={item.message}>{item.message}</span>
+                                        </td>
+                                        <td className="px-5 py-3.5 text-right font-mono text-xs">{formatDate(item.last_run)}</td>
+                                    </tr>
+                                );
+                            })}
+                            {!statusData?.script_status?.length && !loading && (
+                                <tr>
+                                    <td colSpan="4" className="px-5 py-8 text-center text-gray-500">尚無 .js 程式執行紀錄</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
     );
 }

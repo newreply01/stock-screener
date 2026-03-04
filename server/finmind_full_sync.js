@@ -15,6 +15,7 @@ process.on('unhandledRejection', (reason) => {
 
 const { pool } = require('./db');
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+const marketFocusCalc = require('./scripts/calc_market_focus');
 
 // Periodic Activity Logger
 setInterval(() => {
@@ -886,11 +887,28 @@ async function syncAll() {
     console.log('\n?? Phase 6: ??\n');
     await safeSync(6, 'StockNews', syncStockNews);
 
+    // Phase 7: 盤後預先運算大數據排行
+    console.log('\n🌟 Phase 7: 預先運算大數據 (Market Focus)\n');
+    try {
+        await marketFocusCalc.runAll();
+    } catch (e) {
+        console.error(`❌ [MarketFocus] 預先運算失敗: ${e.message}`);
+    }
+
+    // Phase 8: 全股健診排行計算
+    console.log('\n🏥 Phase 8: 全股健診排行計算\n');
+    try {
+        const healthCalc = require('./scripts/calc_health_scores');
+        await healthCalc.runAll();
+    } catch (e) {
+        console.error(`❌ [HealthCheck] 健診排行計算失敗: ${e.message}`);
+    }
+
     const elapsed = ((Date.now() - startTime) / 1000 / 60).toFixed(1);
     console.log('');
-    console.log('???????????????????????????????????????????????????');
-    console.log(`  ? ??????????????? ${elapsed} ??`);
-    console.log('???????????????????????????????????????????????????');
+    console.log('===================================================');
+    console.log(`  ✅ 所有排程執行完畢，總耗時 ${elapsed} 分鐘`);
+    console.log('===================================================');
 }
 
 // ========== Entry Point ==========

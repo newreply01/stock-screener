@@ -6,6 +6,8 @@ import FundamentalFilters from './FundamentalFilters'
 import InstitutionalFilters from './InstitutionalFilters'
 import ResultTable from './ResultTable'
 import { useAuth } from '../context/AuthContext';
+import { useGlobalFilters } from '../context/GlobalFilterContext';
+import GlobalFilterBar from './GlobalFilterBar';
 
 const TABS = [
     { id: 'strategies', label: '智慧策略', icon: Star },
@@ -48,9 +50,10 @@ export default function ScreenerConfigPage({
     onToggleWatchlist
 }) {
     const { requireLogin } = useAuth();
+    const { marketForApi, stockTypesForApi } = useGlobalFilters();
+
     const [activeTab, setActiveTab] = useState('strategies')
     const [localFilters, setLocalFilters] = useState({
-        market: 'all',
         strategy: '',
         patterns: [],
         price_min: '', price_max: '',
@@ -69,7 +72,6 @@ export default function ScreenerConfigPage({
         adx_min: '', adx_max: '',
         bb_width_min: '', bb_width_max: '',
         wpr_min: '', wpr_max: '',
-        stock_types: ['stock'], // Default to only showing stocks
         ...filters
     })
 
@@ -77,7 +79,7 @@ export default function ScreenerConfigPage({
     const [isSaving, setIsSaving] = useState(false)
     const [newFilterName, setNewFilterName] = useState('')
 
-    const lastFiltersRef = useRef(JSON.stringify({ market: 'all', strategy: '' }))
+    const lastFiltersRef = useRef(JSON.stringify({ strategy: '' }))
 
     const getCleanedFilters = (filters) => {
         const cleaned = {}
@@ -98,18 +100,24 @@ export default function ScreenerConfigPage({
     useEffect(() => {
         const handler = setTimeout(() => {
             const cleaned = getCleanedFilters(localFilters);
-            const currentString = JSON.stringify(cleaned);
+            const combinedFilters = {
+                ...cleaned,
+                market: marketForApi,
+                stock_types: stockTypesForApi
+            };
+
+            const currentString = JSON.stringify(combinedFilters);
 
             // 只有當新生成的過濾條件與上一次不同時，才通知父組件
             if (currentString !== lastFiltersRef.current) {
                 lastFiltersRef.current = currentString;
-                console.log('ScreenerConfig: Submitting changes', cleaned);
-                onFilter(cleaned)
+                console.log('ScreenerConfig: Submitting changes', combinedFilters);
+                onFilter(combinedFilters)
             }
         }, 800);
 
         return () => clearTimeout(handler);
-    }, [localFilters, onFilter]);
+    }, [localFilters, marketForApi, stockTypesForApi, onFilter]);
 
     const fetchSavedFilters = async () => {
         try {
@@ -161,26 +169,13 @@ export default function ScreenerConfigPage({
         setLocalFilters(prev => {
             // 如果更新的是普通過濾條件，則清除智慧策略模式
             const next = { ...prev, [key]: value };
-            if (key !== 'strategy' && key !== 'market' && key !== 'date' && key !== 'stock_types') {
+            if (key !== 'strategy' && key !== 'date') {
                 next.strategy = '';
             }
             return next;
         })
     }
 
-    const toggleStockType = (type) => {
-        setLocalFilters(prev => {
-            const current = prev.stock_types || ['stock'];
-            let nextTypes = [...current];
-            if (nextTypes.includes(type)) {
-                nextTypes = nextTypes.filter(t => t !== type);
-                if (nextTypes.length === 0) nextTypes = ['stock']; // Prevent empty selection
-            } else {
-                nextTypes.push(type);
-            }
-            return { ...prev, stock_types: nextTypes };
-        });
-    }
 
     const togglePattern = (patternId) => {
         setLocalFilters(prev => {
@@ -203,9 +198,9 @@ export default function ScreenerConfigPage({
             const nextStrategy = isSelected ? '' : stratId;
 
             // 智慧策略為獨立模式，選擇時清除所有其他手動過濾條件
-            const empty = { patterns: [], strategy: nextStrategy, market: prev.market, date: prev.date };
+            const empty = { patterns: [], strategy: nextStrategy, date: prev.date };
             Object.keys(prev).forEach(k => {
-                if (!['patterns', 'strategy', 'market', 'date'].includes(k)) {
+                if (!['patterns', 'strategy', 'date'].includes(k)) {
                     empty[k] = '';
                 }
             });
@@ -220,20 +215,19 @@ export default function ScreenerConfigPage({
     }
 
     const handleSubmit = () => {
-        const cleaned = {}
-        Object.entries(localFilters).forEach(([k, v]) => {
-            if (v !== '' && v !== null && v !== undefined && v !== 'all') {
-                if (Array.isArray(v) && v.length === 0) return; // skip empty arrays
-                cleaned[k] = v
-            }
-        })
-        onFilter(cleaned)
+        const cleaned = getCleanedFilters(localFilters);
+        const combinedFilters = {
+            ...cleaned,
+            market: marketForApi,
+            stock_types: stockTypesForApi
+        };
+        onFilter(combinedFilters);
     }
 
     const handleClear = () => {
         const empty = { patterns: [], strategy: '' }
         Object.keys(localFilters).forEach(k => {
-            if (k !== 'patterns' && k !== 'strategy') empty[k] = k === 'market' ? 'all' : ''
+            if (k !== 'patterns' && k !== 'strategy') empty[k] = ''
         })
         setLocalFilters(empty)
         onClear()
@@ -369,67 +363,22 @@ export default function ScreenerConfigPage({
 
                 {/* Content Area */}
                 <div className="flex-1 p-8 overflow-y-auto bg-white space-y-8">
-                    {/* Global Context (Market, Date) always visible at top of content area */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8 border-b border-gray-100">
-                        <div className="space-y-3">
-                            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                                <span className="text-blue-600">⚡</span> 交易市場
-                            </h2>
-                            <div className="flex gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
-                                {['all', 'twse', 'tpex'].map((m) => (
-                                    <button
-                                        key={m}
-                                        onClick={() => updateFilter('market', m)}
-                                        className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all
-                                            ${localFilters.market === m
-                                                ? 'bg-white border border-gray-200 text-brand-primary shadow-sm'
-                                                : 'text-gray-500 hover:bg-gray-100 border border-transparent'}
-                                        `}
-                                    >
-                                        {m === 'all' ? '全部' : (m === 'twse' ? '上市' : '上櫃')}
-                                    </button>
-                                ))}
-                            </div>
+                    {/* Global Filter Bar aligned with Date Picker */}
+                    <div className="flex flex-col xl:flex-row gap-6 pb-8 border-b border-gray-100 xl:items-center">
+                        <div className="flex-1 overflow-x-auto rounded-2xl border border-gray-100 shadow-sm bg-white">
+                            <GlobalFilterBar />
                         </div>
 
-                        <div className="space-y-3">
-                            <h2 className="text-[14px] font-bold text-gray-700 flex items-center gap-2">
-                                <Search className="w-4 h-4 text-gray-400" />
-                                標的類型
-                            </h2>
-                            <div className="flex gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
-                                {[
-                                    { id: 'stock', label: '個股' },
-                                    { id: 'etf', label: 'ETF' },
-                                    { id: 'warrant', label: '權證' }
-                                ].map((type) => {
-                                    const isSelected = (localFilters.stock_types || []).includes(type.id);
-                                    return (
-                                        <button
-                                            key={type.id}
-                                            onClick={() => toggleStockType(type.id)}
-                                            className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all
-                                                ${isSelected
-                                                    ? 'bg-brand-primary text-white shadow-sm'
-                                                    : 'text-gray-500 hover:bg-gray-100 border border-transparent'}
-                                            `}
-                                        >
-                                            {type.label}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
+                        {/* Date Picker (Specific to Screener) */}
+                        <div className="space-y-3 shrink-0">
                             <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
                                 <Calendar className="w-4 h-4 text-gray-400" />
-                                資料基準日期
+                                目標資料日期
                             </label>
                             <div className="relative">
                                 <input
                                     type="date"
-                                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary shadow-sm transition-all hover:border-gray-400"
+                                    className="w-[200px] bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary shadow-sm transition-all hover:border-gray-400"
                                     value={localFilters.date || ''}
                                     onChange={e => updateFilter('date', e.target.value)}
                                 />

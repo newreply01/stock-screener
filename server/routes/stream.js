@@ -44,6 +44,7 @@ router.get('/realtime', async (req, res) => {
                         t.symbol, t.trade_time, t.price, t.open_price, t.high_price, t.low_price, 
                         t.volume, t.trade_volume, t.buy_intensity, t.sell_intensity, t.five_levels,
                         s.name, s.industry,
+                        (SELECT close_price FROM daily_prices dp WHERE dp.symbol = t.symbol AND dp.trade_date < DATE(t.trade_time) ORDER BY dp.trade_date DESC LIMIT 1) as previous_close,
                         ROW_NUMBER() OVER (PARTITION BY t.symbol ORDER BY t.trade_time DESC) as rn
                     FROM realtime_ticks t
                     LEFT JOIN stocks s ON t.symbol = s.symbol

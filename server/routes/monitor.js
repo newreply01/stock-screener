@@ -40,6 +40,37 @@ router.get('/status', async (req, res) => {
             // 忽略錯誤，可能是 table 還沒建好
         }
 
+        // 2.5 取得各個 JS 程式的最後執行狀態
+        const scriptNames = ['fetcher.js', 'news_fetcher.js', 'finmind_fetcher.js', 'calc_health_scores.js'];
+        const scriptStatusList = [];
+        try {
+            for (const sName of scriptNames) {
+                const sRes = await pool.query(
+                    `SELECT status, message, check_time 
+                     FROM system_status 
+                     WHERE service_name = $1 
+                     ORDER BY check_time DESC LIMIT 1`, [sName]
+                );
+                if (sRes.rows.length > 0) {
+                    scriptStatusList.push({
+                        script: sName,
+                        status: sRes.rows[0].status,
+                        message: sRes.rows[0].message,
+                        last_run: sRes.rows[0].check_time
+                    });
+                } else {
+                    scriptStatusList.push({
+                        script: sName,
+                        status: 'UNKNOWN',
+                        message: '尚無執行紀錄',
+                        last_run: null
+                    });
+                }
+            }
+        } catch (sysErr) {
+            console.error('Monitor Script Check Error:', sysErr);
+        }
+
         // 3. 各項資料最新同步進度
         const progressRes = await pool.query(`
             SELECT dataset, MAX(last_sync_date) as last_updated
@@ -59,17 +90,17 @@ router.get('/status', async (req, res) => {
                 case 'TaiwanStockInstitutionalInvestorsBuySell':
                 case 'TaiwanFuturesDaily':
                 case 'TaiwanOptionDaily':
-                    description = '每交易日 15:30 更新';
+                    description = '[fetcher.js] 每交易日 15:30 更新';
                     break;
                 case 'TaiwanStockNews':
-                    description = '每小時更新';
+                    description = '[news_fetcher.js] 每小時更新';
                     break;
                 case 'TaiwanStockFinancialStatements':
                 case 'TaiwanStockBalanceSheet':
                 case 'TaiwanStockCashFlowsStatement':
                 case 'TaiwanStockMonthRevenue':
                 case 'TaiwanStockDividend':
-                    description = '每週六 04:00 更新';
+                    description = '[finmind_fetcher.js] 每週六 04:00 更新';
                     break;
                 default:
                     description = '定期檢查更新';
@@ -90,6 +121,7 @@ router.get('/status', async (req, res) => {
                 scheduler_last_check: schedulerStatus.last_check,
                 backend: 'UP' // 能到達這裡代表後端正常
             },
+            script_status: scriptStatusList,
             sync_progress: syncDetails
         });
 
