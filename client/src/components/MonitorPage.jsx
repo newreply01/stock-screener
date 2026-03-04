@@ -225,7 +225,7 @@ export default function MonitorPage() {
                         <thead className="bg-gray-50 border-b border-gray-200 text-gray-700">
                             <tr>
                                 <th className="px-5 py-3 font-semibold">資料集 (Dataset)</th>
-                                <th className="px-5 py-3 font-semibold">擷取程式 (.js)</th>
+                                <th className="px-5 py-3 font-semibold">擷取程式</th>
                                 <th className="px-5 py-3 font-semibold">排程說明</th>
                                 <th className="px-5 py-3 font-semibold">資料庫最後更新時間</th>
                                 <th className="px-5 py-3 font-semibold text-right">狀態</th>
