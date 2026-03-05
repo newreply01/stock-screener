@@ -140,6 +140,21 @@ router.get('/status', async (req, res) => {
             };
         });
 
+        // 3.5 手動加入「即時數據」同步狀態 (因為它不在 fm_sync_progress 中)
+        try {
+            const rtRes = await pool.query('SELECT MAX(trade_time) as last_tick FROM realtime_ticks');
+            if (rtRes.rows.length > 0 && rtRes.rows[0].last_tick) {
+                syncDetails.unshift({
+                    dataset: 'Realtime行情數據',
+                    last_updated: rtRes.rows[0].last_tick,
+                    script: 'realtime_crawler.js',
+                    description: '盤中每數秒更新'
+                });
+            }
+        } catch (rtErr) {
+            console.error('Monitor Realtime Check Error:', rtErr);
+        }
+
         res.json({
             success: true,
             status: {

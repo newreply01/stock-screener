@@ -87,6 +87,7 @@ export default function MonitorPage() {
         'TaiwanStockTotalReturnIndex': { script: 'fetcher.js', color: 'bg-green-100 text-green-800' },
         'TaiwanStockTradingDate': { script: 'fetcher.js', color: 'bg-green-100 text-green-800' },
         'TaiwanStockDelisting': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
+        'Realtime行情數據': { script: 'realtime_crawler.js', color: 'bg-blue-100 text-blue-800 border border-blue-200' },
     };
 
     // Known background scripts — names/descriptions always shown; status from API
