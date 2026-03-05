@@ -15,7 +15,7 @@ router.get('/realtime-ticks', async (req, res) => {
         let targetDate = date;
         if (!targetDate) {
             const dateRes = await query(`
-                SELECT TO_CHAR(MAX(trade_time AT TIME ZONE 'Asia/Taipei'), 'YYYY-MM-DD') as max_date 
+                SELECT TO_CHAR(MAX(trade_time), 'YYYY-MM-DD') as max_date 
                 FROM realtime_ticks 
                 WHERE symbol = $1
             `, [symbol]);
@@ -31,7 +31,7 @@ router.get('/realtime-ticks', async (req, res) => {
         const sql = `
             SELECT 
                 t.symbol, s.name, s.industry,
-                TO_CHAR(t.trade_time AT TIME ZONE 'Asia/Taipei', 'HH24:MI:SS') as time_str,
+                TO_CHAR(t.trade_time, 'HH24:MI:SS') as time_str,
                 t.trade_time, 
                 t.price, t.open_price, t.high_price, t.low_price, 
                 t.volume, t.trade_volume, 
@@ -40,7 +40,7 @@ router.get('/realtime-ticks', async (req, res) => {
             FROM realtime_ticks t
             LEFT JOIN stocks s ON t.symbol = s.symbol
             WHERE t.symbol = $1 
-              AND TO_CHAR(t.trade_time AT TIME ZONE 'Asia/Taipei', 'YYYY-MM-DD') = $2
+              AND DATE(t.trade_time) = $2::date
             ORDER BY t.trade_time ASC
         `;
 
@@ -69,8 +69,8 @@ router.get('/realtime-active', async (req, res) => {
         const topRes = await query(`
             SELECT symbol, COUNT(*) as ticks_count 
             FROM realtime_ticks 
-            WHERE DATE(trade_time AT TIME ZONE 'Asia/Taipei') = CURRENT_DATE
-               OR DATE(trade_time AT TIME ZONE 'Asia/Taipei') = (SELECT TO_CHAR(MAX(trade_time AT TIME ZONE 'Asia/Taipei'), 'YYYY-MM-DD')::date FROM realtime_ticks)
+            WHERE DATE(trade_time) = CURRENT_DATE
+               OR DATE(trade_time) = (SELECT MAX(DATE(trade_time)) FROM realtime_ticks)
             GROUP BY symbol 
             ORDER BY ticks_count DESC 
             LIMIT 10
