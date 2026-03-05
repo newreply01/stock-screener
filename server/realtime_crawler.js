@@ -109,8 +109,8 @@ async function startCrawler() {
         const isWeekday = day >= 1 && day <= 5;
 
         const timeInMinutes = hours * 60 + minutes;
-        const marketOpen = 8 * 60 + 50;  // 08:50
-        const marketClose = 13 * 60 + 35; // 13:35
+        const marketOpen = 8 * 60 + 50;   // 08:50
+        const marketClose = 13 * 60 + 40;  // 13:40
 
         if (!isWeekday || timeInMinutes < marketOpen || timeInMinutes > marketClose) {
             console.log(`[Market Closed] Sleeping...`);
