@@ -50,8 +50,8 @@ function parseFiveLevels(pricesStr, volsStr) {
     })).filter(level => level.price !== null);
 }
 
-const BATCH_SIZE = 50;
-const DELAY_BETWEEN_BATCHES_MS = 2500;
+const BATCH_SIZE = 100;
+const DELAY_BETWEEN_BATCHES_MS = 1000;
 const RETRY_DELAY = 10000;
 
 async function fetchBatch(batchStr) {
@@ -193,7 +193,16 @@ async function startCrawler() {
                              volume, trade_volume, buy_intensity, sell_intensity, five_levels,
                              previous_close
                          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-                         ON CONFLICT (symbol, trade_time) DO NOTHING
+                         ON CONFLICT (symbol, trade_time) DO UPDATE SET
+                             price = EXCLUDED.price,
+                             high_price = EXCLUDED.high_price,
+                             low_price = EXCLUDED.low_price,
+                             volume = EXCLUDED.volume,
+                             trade_volume = EXCLUDED.trade_volume,
+                             buy_intensity = EXCLUDED.buy_intensity,
+                             sell_intensity = EXCLUDED.sell_intensity,
+                             five_levels = EXCLUDED.five_levels,
+                             previous_close = COALESCE(EXCLUDED.previous_close, realtime_ticks.previous_close)
                      `, [symbol, fullTimestamp, z, o, h, l, v, tv, buyIntensity, sellIntensity, JSON.stringify(bidAskData), y]);
                     totalUpserted++;
                 } catch (err) {
@@ -208,8 +217,7 @@ async function startCrawler() {
 
         console.log(`[Cycle Complete] Upserted ${totalUpserted} ticks (${fallbackCount} via fallback price).`);
         await logCrawlerStatus('SUCCESS', `擷取完成，新增 ${totalUpserted} 筆（${fallbackCount} 筆使用回退價格）`);
-        // Sleep to throttle complete cycles (wait until 1 min elapsed)
-        await sleep(10000);
+        // No extra sleep - start next cycle immediately for higher frequency
     }
 }
 
