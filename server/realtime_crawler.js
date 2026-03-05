@@ -144,6 +144,7 @@ async function startCrawler() {
                 const o = (info.o && info.o !== '-') ? parseFloat(info.o) : resolvedPrice;
                 const h = (info.h && info.h !== '-') ? parseFloat(info.h) : resolvedPrice;
                 const l = (info.l && info.l !== '-') ? parseFloat(info.l) : resolvedPrice;
+                const y = (info.y && info.y !== '-') ? parseFloat(info.y) : null;
                 const v = parseInt(info.v) || 0;
                 const tv = parseInt(info.tv) || 0;
 
@@ -189,10 +190,11 @@ async function startCrawler() {
                     await query(`
                          INSERT INTO realtime_ticks (
                              symbol, trade_time, price, open_price, high_price, low_price, 
-                             volume, trade_volume, buy_intensity, sell_intensity, five_levels
-                         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                             volume, trade_volume, buy_intensity, sell_intensity, five_levels,
+                             previous_close
+                         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                          ON CONFLICT (symbol, trade_time) DO NOTHING
-                     `, [symbol, fullTimestamp, z, o, h, l, v, tv, buyIntensity, sellIntensity, JSON.stringify(bidAskData)]);
+                     `, [symbol, fullTimestamp, z, o, h, l, v, tv, buyIntensity, sellIntensity, JSON.stringify(bidAskData), y]);
                     totalUpserted++;
                 } catch (err) {
                     console.error(`[DB Error] ${symbol}: ${err.message}`);

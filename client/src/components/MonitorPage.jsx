@@ -257,6 +257,7 @@ export default function MonitorPage() {
                     <table className="w-full text-left text-sm text-gray-600">
                         <thead className="bg-gray-50 border-b border-gray-200 text-gray-700">
                             <tr>
+                                <th className="px-5 py-3 font-semibold">日期</th>
                                 <th className="px-5 py-3 font-semibold text-right">收盤</th>
                                 <th className="px-5 py-3 font-semibold text-right">法人/融資</th>
                                 <th className="px-5 py-3 font-semibold text-right">即時行情</th>

@@ -36,7 +36,7 @@ router.get('/realtime-ticks', async (req, res) => {
                 t.price, t.open_price, t.high_price, t.low_price, 
                 t.volume, t.trade_volume, 
                 t.buy_intensity, t.sell_intensity, t.five_levels,
-                (SELECT close_price FROM daily_prices dp WHERE dp.symbol = t.symbol AND dp.trade_date < DATE($2) ORDER BY dp.trade_date DESC LIMIT 1) as previous_close
+                COALESCE(t.previous_close, (SELECT close_price FROM daily_prices dp WHERE dp.symbol = t.symbol AND dp.trade_date < $2::date ORDER BY dp.trade_date DESC LIMIT 1)) as previous_close
             FROM realtime_ticks t
             LEFT JOIN stocks s ON t.symbol = s.symbol
             WHERE t.symbol = $1 
