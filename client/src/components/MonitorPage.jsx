@@ -210,8 +210,8 @@ export default function MonitorPage() {
                                     ));
 
                                     return statsData.map((day, idx) => {
-                                        const total = d.price_count + d.inst_count + d.margin_count + (d.news_count || 0) +
-                                            (d.realtime_count || 0) + (d.stats_count || 0) + (d.health_count || 0);
+                                        const total = day.price_count + day.inst_count + day.margin_count + (day.news_count || 0) +
+                                            (day.realtime_count || 0) + (day.stats_count || 0) + (day.health_count || 0);
                                         const hTotal = (total / maxVal) * 100;
 
                                         return (
