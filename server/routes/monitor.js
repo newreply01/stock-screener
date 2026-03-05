@@ -240,15 +240,51 @@ router.get('/ingestion-stats', async (req, res) => {
                 price_count: 0,
                 inst_count: 0,
                 margin_count: 0,
-                news_count: 0
+                news_count: 0,
+                realtime_count: 0,
+                stats_count: 0,
+                health_count: 0
             };
         }
 
+        // 5. 即時行情 (筆數較大)
+        const realtimeStatsRes = await pool.query(`
+            SELECT TO_CHAR(trade_time, 'YYYY-MM-DD') as trade_date_str, COUNT(*) as count 
+            FROM realtime_ticks 
+            WHERE trade_time >= CURRENT_DATE - INTERVAL '${days} days'
+            GROUP BY trade_date_str 
+            ORDER BY trade_date_str ASC
+        `);
+
+        // 6. 全市場統計類 (整合當沖、期權、全市場統計)
+        const extraStatsRes = await pool.query(`
+            SELECT date_str, SUM(count) as total_count FROM (
+                SELECT TO_CHAR(date, 'YYYY-MM-DD') as date_str, COUNT(*) as count FROM fm_day_trading WHERE date >= CURRENT_DATE - INTERVAL '${days} days' GROUP BY date_str
+                UNION ALL
+                SELECT TO_CHAR(date, 'YYYY-MM-DD') as date_str, COUNT(*) as count FROM fm_total_institutional WHERE date >= CURRENT_DATE - INTERVAL '${days} days' GROUP BY date_str
+                UNION ALL
+                SELECT TO_CHAR(date, 'YYYY-MM-DD') as date_str, COUNT(*) as count FROM fm_total_margin WHERE date >= CURRENT_DATE - INTERVAL '${days} days' GROUP BY date_str
+                UNION ALL
+                SELECT TO_CHAR(date, 'YYYY-MM-DD') as date_str, COUNT(*) as count FROM fm_futures_daily WHERE date >= CURRENT_DATE - INTERVAL '${days} days' GROUP BY date_str
+                UNION ALL
+                SELECT TO_CHAR(date, 'YYYY-MM-DD') as date_str, COUNT(*) as count FROM fm_option_daily WHERE date >= CURRENT_DATE - INTERVAL '${days} days' GROUP BY date_str
+            ) t GROUP BY date_str
+        `);
+
+        // 7. 健診分數計算
+        const healthStatsRes = await pool.query(`
+            SELECT TO_CHAR(created_at, 'YYYY-MM-DD') as trade_date_str, COUNT(*) as count
+            FROM stock_health_scores
+            WHERE created_at >= CURRENT_DATE - INTERVAL '${days} days'
+            GROUP BY trade_date_str
+            ORDER BY trade_date_str ASC
+        `);
+
         const formatStats = (rows, field) => {
             rows.forEach(r => {
-                const dStr = r.trade_date_str;
+                const dStr = r.trade_date_str || r.date_str;
                 if (statsMap[dStr]) {
-                    statsMap[dStr][field] = parseInt(r.count, 10);
+                    statsMap[dStr][field] = parseInt(r.count || r.total_count, 10);
                 }
             });
         };
@@ -257,6 +293,9 @@ router.get('/ingestion-stats', async (req, res) => {
         formatStats(instStatsRes.rows, 'inst_count');
         formatStats(marginStatsRes.rows, 'margin_count');
         formatStats(newsStatsRes.rows, 'news_count');
+        formatStats(realtimeStatsRes.rows, 'realtime_count');
+        formatStats(extraStatsRes.rows, 'stats_count');
+        formatStats(healthStatsRes.rows, 'health_count');
 
         // 轉為陣列
         const statsArray = Object.values(statsMap).sort((a, b) => a.date.localeCompare(b.date));

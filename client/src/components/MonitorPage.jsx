@@ -204,10 +204,14 @@ export default function MonitorPage() {
                             <div className="flex items-end gap-1 h-64 relative border-b border-gray-200 pb-2 overflow-visible">
                                 {/* Find max value for scaling */}
                                 {(() => {
-                                    const maxVal = Math.max(1, ...statsData.map(d => d.price_count + d.inst_count + d.margin_count + (d.news_count || 0)));
+                                    const maxVal = Math.max(1, ...statsData.map(d =>
+                                        d.price_count + d.inst_count + d.margin_count + (d.news_count || 0) +
+                                        (d.realtime_count || 0) + (d.stats_count || 0) + (d.health_count || 0)
+                                    ));
 
                                     return statsData.map((day, idx) => {
-                                        const total = day.price_count + day.inst_count + day.margin_count + (day.news_count || 0);
+                                        const total = d.price_count + d.inst_count + d.margin_count + (d.news_count || 0) +
+                                            (d.realtime_count || 0) + (d.stats_count || 0) + (d.health_count || 0);
                                         const hTotal = (total / maxVal) * 100;
 
                                         return (
@@ -253,17 +257,18 @@ export default function MonitorPage() {
                     <table className="w-full text-left text-sm text-gray-600">
                         <thead className="bg-gray-50 border-b border-gray-200 text-gray-700">
                             <tr>
-                                <th className="px-5 py-3 font-semibold">日期</th>
-                                <th className="px-5 py-3 font-semibold text-right">收盤行情</th>
-                                <th className="px-5 py-3 font-semibold text-right">三大法人</th>
-                                <th className="px-5 py-3 font-semibold text-right">融資融券</th>
-                                <th className="px-5 py-3 font-semibold text-right">財經新聞</th>
-                                <th className="px-5 py-3 font-semibold text-right text-gray-400">總計</th>
+                                <th className="px-5 py-3 font-semibold text-right">收盤</th>
+                                <th className="px-5 py-3 font-semibold text-right">法人/融資</th>
+                                <th className="px-5 py-3 font-semibold text-right">即時行情</th>
+                                <th className="px-5 py-3 font-semibold text-right">統計/健診</th>
+                                <th className="px-5 py-3 font-semibold text-right">新聞</th>
+                                <th className="px-5 py-3 font-semibold text-right text-brand-primary">總計</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {[...statsData].reverse().map((day, idx) => {
-                                const total = day.price_count + day.inst_count + day.margin_count + (day.news_count || 0);
+                                const total = day.price_count + day.inst_count + day.margin_count + (day.news_count || 0) +
+                                    (day.realtime_count || 0) + (day.stats_count || 0) + (day.health_count || 0);
                                 const isWeekend = new Date(day.date).getDay() === 0 || new Date(day.date).getDay() === 6;
                                 return (
                                     <tr key={idx} className={`hover:bg-gray-50 transition-colors ${isWeekend ? 'bg-gray-50/50' : ''}`}>
@@ -272,10 +277,11 @@ export default function MonitorPage() {
                                             {isWeekend && <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-bold">週末</span>}
                                         </td>
                                         <td className="px-5 py-3.5 text-right font-mono text-gray-900">{day.price_count.toLocaleString()}</td>
-                                        <td className="px-5 py-3.5 text-right font-mono text-gray-900">{day.inst_count.toLocaleString()}</td>
-                                        <td className="px-5 py-3.5 text-right font-mono text-gray-900">{day.margin_count.toLocaleString()}</td>
-                                        <td className="px-5 py-3.5 text-right font-mono text-gray-900">{(day.news_count || 0).toLocaleString()}</td>
-                                        <td className="px-5 py-3.5 text-right font-mono font-bold text-gray-400">{total.toLocaleString()}</td>
+                                        <td className="px-5 py-3.5 text-right font-mono text-gray-900">{(day.inst_count + day.margin_count).toLocaleString()}</td>
+                                        <td className="px-5 py-3.5 text-right font-mono text-blue-600 font-bold">{(day.realtime_count || 0).toLocaleString()}</td>
+                                        <td className="px-5 py-3.5 text-right font-mono text-indigo-600">{((day.stats_count || 0) + (day.health_count || 0)).toLocaleString()}</td>
+                                        <td className="px-5 py-3.5 text-right font-mono text-gray-500">{(day.news_count || 0).toLocaleString()}</td>
+                                        <td className="px-5 py-3.5 text-right font-mono font-bold text-brand-primary">{total.toLocaleString()}</td>
                                     </tr>
                                 );
                             })}
