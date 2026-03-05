@@ -55,7 +55,7 @@ const DELAY_BETWEEN_BATCHES_MS = 2500;
 const RETRY_DELAY = 10000;
 
 async function fetchBatch(batchStr) {
-    const url = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${batchStr}`;
+    const url = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${batchStr}&json=1&delay=0&_=${Date.now()}`;
     try {
         const data = await fetchJson(url);
         return data?.msgArray || [];
@@ -63,6 +63,38 @@ async function fetchBatch(batchStr) {
         console.error(`Fetch API Error: ${e.message}`);
         return [];
     }
+}
+
+/**
+ * 解析成交價，當 z 為 "-" 時使用買賣價回退機制
+ * @returns {{ price: number|null, source: string }}
+ */
+function resolvePrice(info) {
+    // 1. 優先使用即時成交價 z
+    if (info.z && info.z !== '-') {
+        const p = parseFloat(info.z);
+        if (!isNaN(p) && p > 0) return { price: p, source: 'z' };
+    }
+
+    // 2. 回退：使用最佳賣價 (ask[0]) 與最佳買價 (bid[0]) 的中間價
+    const asks = info.a ? info.a.split('_').filter(Boolean) : [];
+    const bids = info.b ? info.b.split('_').filter(Boolean) : [];
+    const bestAsk = asks.length > 0 && asks[0] !== '-' ? parseFloat(asks[0]) : null;
+    const bestBid = bids.length > 0 && bids[0] !== '-' ? parseFloat(bids[0]) : null;
+
+    if (bestAsk && bestBid) {
+        return { price: parseFloat(((bestAsk + bestBid) / 2).toFixed(2)), source: 'mid' };
+    }
+    if (bestAsk) return { price: bestAsk, source: 'ask' };
+    if (bestBid) return { price: bestBid, source: 'bid' };
+
+    // 3. 最後回退：使用昨收價 y
+    if (info.y && info.y !== '-') {
+        const yp = parseFloat(info.y);
+        if (!isNaN(yp) && yp > 0) return { price: yp, source: 'y' };
+    }
+
+    return { price: null, source: 'none' };
 }
 
 async function startCrawler() {
@@ -93,6 +125,7 @@ async function startCrawler() {
         console.log(`Total symbols to fetch: ${symbols.length}`);
 
         let totalUpserted = 0;
+        let fallbackCount = 0;
 
         for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
             const batch = symbols.slice(i, i + BATCH_SIZE);
@@ -101,13 +134,16 @@ async function startCrawler() {
             const results = await fetchBatch(batchStr);
 
             for (const info of results) {
-                if (!info.z || info.z === '-') continue;
+                const { price: resolvedPrice, source: priceSource } = resolvePrice(info);
+                if (resolvedPrice === null) continue; // 所有來源都無效，跳過
+
+                if (priceSource !== 'z') fallbackCount++;
 
                 const symbol = info.c;
-                const z = parseFloat(info.z);
-                const o = parseFloat(info.o);
-                const h = parseFloat(info.h);
-                const l = parseFloat(info.l);
+                const z = resolvedPrice;
+                const o = (info.o && info.o !== '-') ? parseFloat(info.o) : resolvedPrice;
+                const h = (info.h && info.h !== '-') ? parseFloat(info.h) : resolvedPrice;
+                const l = (info.l && info.l !== '-') ? parseFloat(info.l) : resolvedPrice;
                 const v = parseInt(info.v) || 0;
                 const tv = parseInt(info.tv) || 0;
 
@@ -163,11 +199,13 @@ async function startCrawler() {
                 }
             }
 
-            await sleep(DELAY_BETWEEN_BATCHES_MS);
+            // 微小隨機延遲（降低封阻風險）
+            const jitter = Math.floor(Math.random() * 500);
+            await sleep(DELAY_BETWEEN_BATCHES_MS + jitter);
         }
 
-        console.log(`[Cycle Complete] Processed all symbols. Upserted ${totalUpserted} new ticks.`);
-        await logCrawlerStatus('SUCCESS', `當前擷取迴圈完成，新增 ${totalUpserted} 筆報價`);
+        console.log(`[Cycle Complete] Upserted ${totalUpserted} ticks (${fallbackCount} via fallback price).`);
+        await logCrawlerStatus('SUCCESS', `擷取完成，新增 ${totalUpserted} 筆（${fallbackCount} 筆使用回退價格）`);
         // Sleep to throttle complete cycles (wait until 1 min elapsed)
         await sleep(10000);
     }

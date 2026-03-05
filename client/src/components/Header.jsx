@@ -10,6 +10,8 @@ export default function Header({ currentView = 'dashboard' }) {
         window.dispatchEvent(new CustomEvent('muchstock-view', { detail: view }));
     };
 
+    const isZeabur = window.location.hostname.includes('zeabur.app') || window.location.hostname.includes('zeabur.com');
+
     return (
         <header className="bg-brand-dark text-white sticky top-0 z-50">
             {/* Top Bar for Global Info */}
@@ -94,12 +96,14 @@ export default function Header({ currentView = 'dashboard' }) {
                         >
                             歷史交易
                         </button>
-                        <button
-                            onClick={() => dispatchView('monitor')}
-                            className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'monitor' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
-                        >
-                            系統監控
-                        </button>
+                        {!isZeabur && (
+                            <button
+                                onClick={() => dispatchView('monitor')}
+                                className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'monitor' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
+                            >
+                                系統監控
+                            </button>
+                        )}
                     </nav>
                 </div>
 
@@ -181,7 +185,9 @@ export default function Header({ currentView = 'dashboard' }) {
                         <button onClick={() => { dispatchView('health-ranking'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'health-ranking' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>健診排行</button>
                         <button onClick={() => { dispatchView('news'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'news' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>財經新聞</button>
                         <button onClick={() => { dispatchView('explorer'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'explorer' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>歷史交易</button>
-                        <button onClick={() => { dispatchView('monitor'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'monitor' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>系統監控</button>
+                        {!isZeabur && (
+                            <button onClick={() => { dispatchView('monitor'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'monitor' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>系統監控</button>
+                        )}
                     </div>
                 </div>
             )}
