@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
+const { getLiveSchedulerStatus } = require('../scheduler');
 
 // --- 監控系統 API ---
 
@@ -40,28 +41,37 @@ router.get('/status', async (req, res) => {
             // 忽略錯誤，可能是 table 還沒建好
         }
 
-        // 2.5 取得各個 JS 程式的最後執行狀態
-        const scriptNames = ['fetcher.js', 'news_fetcher.js', 'finmind_fetcher.js', 'calc_health_scores.js'];
+        // 2.5 取得各個 JS 程式的最後執行狀態 + 記憶體中即時狀態
+        const liveStatusMap = getLiveSchedulerStatus ? getLiveSchedulerStatus() : {};
+        const scriptNames = ['fetcher.js', 'news_fetcher.js', 'finmind_fetcher.js', 'calc_health_scores.js', 'realtime_crawler.js'];
         const scriptStatusList = [];
+
         try {
             for (const sName of scriptNames) {
+                // 從資料庫取得該排程「歷史最後一次紀錄」
                 const sRes = await pool.query(
                     `SELECT status, message, check_time 
                      FROM system_status 
                      WHERE service_name = $1 
                      ORDER BY check_time DESC LIMIT 1`, [sName]
                 );
+
+                // 取得記憶體中，該排程此刻真實狀況
+                const liveStatus = liveStatusMap[sName] || 'UNKNOWN';
+
                 if (sRes.rows.length > 0) {
                     scriptStatusList.push({
                         script: sName,
-                        status: sRes.rows[0].status,
+                        live_status: liveStatus,
+                        db_last_status: sRes.rows[0].status,
                         message: sRes.rows[0].message,
                         last_run: sRes.rows[0].check_time
                     });
                 } else {
                     scriptStatusList.push({
                         script: sName,
-                        status: 'UNKNOWN',
+                        live_status: liveStatus,
+                        db_last_status: 'UNKNOWN',
                         message: '尚無執行紀錄',
                         last_run: null
                     });
@@ -163,46 +173,65 @@ router.get('/ingestion-stats', async (req, res) => {
 
         // 1. 收盤價資料筆數
         const priceStatsRes = await pool.query(`
-            SELECT trade_date, COUNT(*) as count 
+            SELECT TO_CHAR(trade_date, 'YYYY-MM-DD') as trade_date_str, COUNT(*) as count 
             FROM daily_prices 
             WHERE trade_date >= CURRENT_DATE - INTERVAL '${days} days'
-            GROUP BY trade_date 
-            ORDER BY trade_date ASC
+            GROUP BY trade_date_str 
+            ORDER BY trade_date_str ASC
         `);
 
         // 2. 三大法人買賣資料筆數
         const instStatsRes = await pool.query(`
-            SELECT trade_date, COUNT(*) as count 
+            SELECT TO_CHAR(trade_date, 'YYYY-MM-DD') as trade_date_str, COUNT(*) as count 
             FROM institutional 
             WHERE trade_date >= CURRENT_DATE - INTERVAL '${days} days'
-            GROUP BY trade_date 
-            ORDER BY trade_date ASC
+            GROUP BY trade_date_str 
+            ORDER BY trade_date_str ASC
         `);
 
         // 3. 融資券資料筆數
         const marginStatsRes = await pool.query(`
-            SELECT date as trade_date, COUNT(*) as count 
+            SELECT TO_CHAR(date, 'YYYY-MM-DD') as trade_date_str, COUNT(*) as count 
             FROM fm_margin_trading 
             WHERE date >= CURRENT_DATE - INTERVAL '${days} days'
-            GROUP BY date 
-            ORDER BY date ASC
+            GROUP BY trade_date_str 
+            ORDER BY trade_date_str ASC
+        `);
+
+        // 4. 財經新聞
+        const newsStatsRes = await pool.query(`
+            SELECT TO_CHAR(publish_at, 'YYYY-MM-DD') as trade_date_str, COUNT(*) as count
+            FROM news
+            WHERE publish_at >= CURRENT_DATE - INTERVAL '${days} days'
+            GROUP BY trade_date_str
+            ORDER BY trade_date_str ASC
         `);
 
         // 整合資料，以日期為 key
         const statsMap = {};
 
-        // 初始化近 N 天的日期
+        // 初始化近 N 天的日期 (盡量避免時區問題，手動建立字串)
         for (let i = days - 1; i >= 0; i--) {
             const d = new Date();
+            // 在 JS 中減去天數
             d.setDate(d.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
-            statsMap[dateStr] = { date: dateStr, price_count: 0, inst_count: 0, margin_count: 0 };
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const dateStr = `${yyyy}-${mm}-${dd}`;
+
+            statsMap[dateStr] = {
+                date: dateStr,
+                price_count: 0,
+                inst_count: 0,
+                margin_count: 0,
+                news_count: 0
+            };
         }
 
         const formatStats = (rows, field) => {
             rows.forEach(r => {
-                // 將 Date 物件轉為 YYYY-MM-DD 字串 (如果 db 吐回來的是 Date)
-                const dStr = r.trade_date instanceof Date ? r.trade_date.toISOString().split('T')[0] : String(r.trade_date).substring(0, 10);
+                const dStr = r.trade_date_str;
                 if (statsMap[dStr]) {
                     statsMap[dStr][field] = parseInt(r.count, 10);
                 }
@@ -212,6 +241,7 @@ router.get('/ingestion-stats', async (req, res) => {
         formatStats(priceStatsRes.rows, 'price_count');
         formatStats(instStatsRes.rows, 'inst_count');
         formatStats(marginStatsRes.rows, 'margin_count');
+        formatStats(newsStatsRes.rows, 'news_count');
 
         // 轉為陣列
         const statsArray = Object.values(statsMap).sort((a, b) => a.date.localeCompare(b.date));

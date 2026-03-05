@@ -91,6 +91,7 @@ export default function MonitorPage() {
 
     // Known background scripts — names/descriptions always shown; status from API
     const KNOWN_SCRIPTS = [
+        { script: 'realtime_crawler.js', desc: '即時看盤行情爬蟲 (盤中每數秒更新)', schedule: '常駐執行 (守護程式)' },
         { script: 'fetcher.js', desc: '每日盤後資料 (收盤價、當沖、法人、融資券)', schedule: '每交易日 15:30' },
         { script: 'news_fetcher.js', desc: '財經新聞同步', schedule: '每小時' },
         { script: 'finmind_fetcher.js', desc: '財報基本面資料 (損益表、資產負債表、月營收…)', schedule: '每週六 04:00' },
@@ -196,49 +197,40 @@ export default function MonitorPage() {
                 </div>
 
                 {statsData.length > 0 ? (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto pt-24 -mt-16 pb-4">
                         <div className="min-w-[800px]">
                             {/* Simple Bar Chart Implementation using divs */}
-                            <div className="flex items-end gap-1 h-64 mt-4 relative border-b border-gray-200 pb-2">
+                            <div className="flex items-end gap-1 h-64 relative border-b border-gray-200 pb-2 overflow-visible">
                                 {/* Find max value for scaling */}
                                 {(() => {
-                                    const maxVal = Math.max(1, ...statsData.map(d => d.price_count + d.inst_count + d.margin_count));
+                                    const maxVal = Math.max(1, ...statsData.map(d => d.price_count + d.inst_count + d.margin_count + (d.news_count || 0)));
 
                                     return statsData.map((day, idx) => {
-                                        const hPrice = (day.price_count / maxVal) * 100;
-                                        const hInst = (day.inst_count / maxVal) * 100;
-                                        const hMargin = (day.margin_count / maxVal) * 100;
+                                        const total = day.price_count + day.inst_count + day.margin_count + (day.news_count || 0);
+                                        const hTotal = (total / maxVal) * 100;
 
                                         return (
                                             <div key={idx} className="flex-1 flex flex-col items-center group relative h-full justify-end">
-                                                {/* Tooltip */}
-                                                <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs rounded-lg p-2 whitespace-nowrap z-10 pointer-events-none">
-                                                    <div className="font-bold border-b border-white/20 pb-1 mb-1">{day.date}</div>
-                                                    <div className="flex justify-between gap-4"><span>收盤價:</span><span>{day.price_count.toLocaleString()}</span></div>
-                                                    <div className="flex justify-between gap-4"><span>三大法人:</span><span>{day.inst_count.toLocaleString()}</span></div>
-                                                    <div className="flex justify-between gap-4 text-gray-300"><span>融資券:</span><span>{day.margin_count.toLocaleString()}</span></div>
+                                                {/* Tooltip (now with space to render) */}
+                                                <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 shadow-xl border border-gray-700 text-white text-xs rounded-lg p-2.5 whitespace-nowrap z-[100] pointer-events-none transform -translate-x-1/2 left-1/2">
+                                                    <div className="font-bold border-b border-white/20 pb-1.5 mb-1.5 text-center">{day.date}</div>
+                                                    <div className="flex justify-between gap-4">
+                                                        <span className="text-gray-300">總寫入筆數:</span>
+                                                        <span className="font-mono text-brand-primary font-bold">{total.toLocaleString()}</span>
+                                                    </div>
                                                 </div>
 
-                                                {/* Stacked Bars */}
+                                                {/* Single Bar */}
                                                 <div className="w-full max-w-[40px] flex flex-col justify-end h-full">
-                                                    <div style={{ height: `${hMargin}%` }} className="bg-purple-300 w-full rounded-t-sm transition-all duration-500"></div>
-                                                    <div style={{ height: `${hInst}%` }} className="bg-blue-400 w-full transition-all duration-500"></div>
-                                                    <div style={{ height: `${hPrice}%` }} className="bg-brand-primary w-full rounded-b-sm transition-all duration-500"></div>
+                                                    <div style={{ height: `${hTotal}%` }} className="bg-brand-primary hover:bg-red-500 w-full rounded-t-sm transition-all duration-300 shadow-sm border border-brand-primary/20"></div>
                                                 </div>
 
                                                 {/* Date Label */}
-                                                <div className="text-[10px] text-gray-500 mt-2 rotate-45 origin-left w-full h-8">{day.date.substring(5)}</div>
+                                                <div className="text-[10px] text-gray-500 mt-2 rotate-45 origin-left w-full h-8 flex-shrink-0 leading-none">{day.date.substring(5)}</div>
                                             </div>
                                         );
                                     });
                                 })()}
-                            </div>
-
-                            {/* Legend */}
-                            <div className="flex justify-center gap-6 mt-8 pt-4">
-                                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-brand-primary"></span><span className="text-xs text-gray-600">收盤價/行情</span></div>
-                                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-blue-400"></span><span className="text-xs text-gray-600">三大法人</span></div>
-                                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-purple-300"></span><span className="text-xs text-gray-600">融資融券</span></div>
                             </div>
                         </div>
                     </div>
@@ -247,6 +239,53 @@ export default function MonitorPage() {
                         {loading ? '載入中...' : '無可用資料'}
                     </div>
                 )}
+            </div>
+
+            {/* Daily Ingestion Details Table */}
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm mt-6">
+                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <Database className="w-5 h-5 text-blue-500" />
+                    每日資料擷取詳情
+                </h2>
+
+                <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <table className="w-full text-left text-sm text-gray-600">
+                        <thead className="bg-gray-50 border-b border-gray-200 text-gray-700">
+                            <tr>
+                                <th className="px-5 py-3 font-semibold">日期</th>
+                                <th className="px-5 py-3 font-semibold text-right">收盤行情</th>
+                                <th className="px-5 py-3 font-semibold text-right">三大法人</th>
+                                <th className="px-5 py-3 font-semibold text-right">融資融券</th>
+                                <th className="px-5 py-3 font-semibold text-right">財經新聞</th>
+                                <th className="px-5 py-3 font-semibold text-right text-gray-400">總計</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {[...statsData].reverse().map((day, idx) => {
+                                const total = day.price_count + day.inst_count + day.margin_count + (day.news_count || 0);
+                                const isWeekend = new Date(day.date).getDay() === 0 || new Date(day.date).getDay() === 6;
+                                return (
+                                    <tr key={idx} className={`hover:bg-gray-50 transition-colors ${isWeekend ? 'bg-gray-50/50' : ''}`}>
+                                        <td className="px-5 py-3.5 font-medium text-gray-900 flex items-center gap-2">
+                                            {day.date}
+                                            {isWeekend && <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-bold">週末</span>}
+                                        </td>
+                                        <td className="px-5 py-3.5 text-right font-mono text-gray-900">{day.price_count.toLocaleString()}</td>
+                                        <td className="px-5 py-3.5 text-right font-mono text-gray-900">{day.inst_count.toLocaleString()}</td>
+                                        <td className="px-5 py-3.5 text-right font-mono text-gray-900">{day.margin_count.toLocaleString()}</td>
+                                        <td className="px-5 py-3.5 text-right font-mono text-gray-900">{(day.news_count || 0).toLocaleString()}</td>
+                                        <td className="px-5 py-3.5 text-right font-mono font-bold text-gray-400">{total.toLocaleString()}</td>
+                                    </tr>
+                                );
+                            })}
+                            {!statsData.length && !loading && (
+                                <tr>
+                                    <td colSpan="6" className="px-5 py-8 text-center text-gray-500">尚無每日統計資料</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* Synchronization Details Table */}
@@ -327,29 +366,67 @@ export default function MonitorPage() {
                             {KNOWN_SCRIPTS.map((def, idx) => {
                                 // Look up dynamic status from API
                                 const apiItem = statusData?.script_status?.find(s => s.script === def.script);
-                                const status = apiItem?.status || 'UNKNOWN';
+                                const dbStatus = apiItem?.db_last_status || 'UNKNOWN';
+                                let liveStatus = apiItem?.live_status || 'UNKNOWN';
                                 const message = apiItem?.message || '尚無執行紀錄';
                                 const lastRun = apiItem?.last_run || null;
 
-                                let statusColor = 'bg-gray-100 text-gray-800';
-                                if (status === 'SUCCESS') statusColor = 'bg-green-100 text-green-800';
-                                if (status === 'RUNNING') statusColor = 'bg-blue-100 text-blue-800';
-                                if (status === 'FAILED') statusColor = 'bg-red-100 text-red-800';
+                                // 特別處理 realtime_crawler: 判斷資料庫最後打卡時間是否在 5 分鐘內
+                                if (def.script === 'realtime_crawler.js') {
+                                    if (lastRun && (new Date() - new Date(lastRun)) < 5 * 60 * 1000) {
+                                        liveStatus = (dbStatus === 'WAITING' || message.includes('Sleeping')) ? 'WAITING' : 'RUNNING';
+                                    } else {
+                                        liveStatus = 'NOT_SCHEDULED'; // 代表超過五分鐘沒打卡，程序已關閉
+                                    }
+                                }
+
+                                let liveBadge = (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider bg-gray-100 text-gray-500">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div> 未知狀態
+                                    </span>
+                                );
+
+                                if (liveStatus === 'WAITING') {
+                                    liveBadge = (
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-sm">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div> 排程已啟動 (待命/休市)
+                                        </span>
+                                    );
+                                } else if (liveStatus === 'RUNNING') {
+                                    liveBadge = (
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider bg-blue-50 text-blue-700 border border-blue-100 shadow-sm">
+                                            <div className="w-3 h-3 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div> 正在擷取資料中...
+                                        </span>
+                                    );
+                                } else if (liveStatus === 'NOT_SCHEDULED') {
+                                    liveBadge = (
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider bg-red-50 text-red-700">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div> {def.script === 'realtime_crawler.js' ? '服務未啟動' : '排程未載入'}
+                                        </span>
+                                    );
+                                }
+
+                                let dbStatusColor = 'text-gray-500';
+                                if (dbStatus === 'SUCCESS') dbStatusColor = 'text-green-600';
+                                if (dbStatus === 'FAILED') dbStatusColor = 'text-red-600';
 
                                 return (
                                     <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-5 py-3.5 font-bold text-gray-900">{def.script}</td>
-                                        <td className="px-5 py-3.5 text-indigo-600 font-medium">{def.desc}</td>
-                                        <td className="px-5 py-3.5 text-gray-500 text-xs">{def.schedule}</td>
-                                        <td className="px-5 py-3.5">
-                                            <div className="flex items-center gap-2">
-                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider ${statusColor}`}>
-                                                    {status}
-                                                </span>
-                                                <span className="text-xs text-gray-500 line-clamp-1 max-w-xs" title={message}>{message}</span>
+                                        <td className="px-5 py-4">
+                                            <div className="font-bold text-gray-900">{def.script}</div>
+                                            <div className="mt-2">{liveBadge}</div>
+                                        </td>
+                                        <td className="px-5 py-4 text-indigo-600 font-medium">{def.desc}</td>
+                                        <td className="px-5 py-4 text-gray-500 text-xs">{def.schedule}</td>
+                                        <td className="px-5 py-4">
+                                            <div className="flex flex-col gap-1">
+                                                <div className={`text-xs font-bold tracking-wider ${dbStatusColor}`}>
+                                                    歷史狀態: {dbStatus}
+                                                </div>
+                                                <div className="text-xs text-gray-500 line-clamp-2" title={message}>{message}</div>
                                             </div>
                                         </td>
-                                        <td className="px-5 py-3.5 text-right font-mono text-xs">{formatDate(lastRun)}</td>
+                                        <td className="px-5 py-4 text-right font-mono text-xs text-gray-600">{formatDate(lastRun)}</td>
                                     </tr>
                                 );
                             })}
@@ -358,6 +435,6 @@ export default function MonitorPage() {
                 </div>
             </div>
 
-        </div>
+        </div >
     );
 }

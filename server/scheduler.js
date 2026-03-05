@@ -16,9 +16,33 @@ async function logScriptStatus(serviceName, status, message) {
     }
 }
 
+// 追蹤排程的即時運行狀態
+const scheduledTasks = {};
+const isTaskRunning = {};
+
+function initTaskTracking(scriptName, task) {
+    scheduledTasks[scriptName] = task;
+    isTaskRunning[scriptName] = false;
+}
+
+function getLiveSchedulerStatus() {
+    const statusMap = {};
+    for (const [scriptName, task] of Object.entries(scheduledTasks)) {
+        if (!task) {
+            statusMap[scriptName] = 'NOT_SCHEDULED';
+        } else if (isTaskRunning[scriptName]) {
+            statusMap[scriptName] = 'RUNNING';
+        } else {
+            statusMap[scriptName] = 'WAITING'; // 排程已註冊，等待時間到
+        }
+    }
+    return statusMap;
+}
+
 function startScheduler() {
     // 每交易日 15:30 更新行情 (台股收盤後)
-    cron.schedule('30 15 * * 1-5', async () => {
+    const fetcherTask = cron.schedule('30 15 * * 1-5', async () => {
+        isTaskRunning['fetcher.js'] = true;
         console.log(' 定時排程開始：抓取今日行情...');
         await logScriptStatus('fetcher.js', 'RUNNING', '正在執行盤後行情抓取');
         try {
@@ -28,14 +52,18 @@ function startScheduler() {
         } catch (err) {
             console.error(' 行情抓取失敗:', err.message);
             await logScriptStatus('fetcher.js', 'FAILED', `執行失敗: ${err.message}`);
+        } finally {
+            isTaskRunning['fetcher.js'] = false;
         }
     }, {
         scheduled: true,
         timezone: 'Asia/Taipei'
     });
+    initTaskTracking('fetcher.js', fetcherTask);
 
     // 每小時更新新聞
-    cron.schedule('0 * * * *', async () => {
+    const newsTask = cron.schedule('0 * * * *', async () => {
+        isTaskRunning['news_fetcher.js'] = true;
         console.log(' 定時排程開始：更新新聞...');
         await logScriptStatus('news_fetcher.js', 'RUNNING', '正在執行每小時新聞更新');
         try {
@@ -45,14 +73,18 @@ function startScheduler() {
         } catch (err) {
             console.error(' 新聞更新失敗:', err.message);
             await logScriptStatus('news_fetcher.js', 'FAILED', `更新失敗: ${err.message}`);
+        } finally {
+            isTaskRunning['news_fetcher.js'] = false;
         }
     }, {
         scheduled: true,
         timezone: 'Asia/Taipei'
     });
+    initTaskTracking('news_fetcher.js', newsTask);
 
     // 每週六 04:00 更新基本面資料 (FinMind)
-    cron.schedule('0 4 * * 6', async () => {
+    const finmindTask = cron.schedule('0 4 * * 6', async () => {
+        isTaskRunning['finmind_fetcher.js'] = true;
         console.log(' 定時排程開始：更新基本面資料...');
         await logScriptStatus('finmind_fetcher.js', 'RUNNING', '正在執行基本面資料更新');
         try {
@@ -62,14 +94,18 @@ function startScheduler() {
         } catch (err) {
             console.error(' 基本面更新失敗:', err.message);
             await logScriptStatus('finmind_fetcher.js', 'FAILED', `基本面更新失敗: ${err.message}`);
+        } finally {
+            isTaskRunning['finmind_fetcher.js'] = false;
         }
     }, {
         scheduled: true,
         timezone: 'Asia/Taipei'
     });
+    initTaskTracking('finmind_fetcher.js', finmindTask);
 
     // 每交易日 16:00 計算全股健診排行 (catchUp 15:30 完成後)
-    cron.schedule('0 16 * * 1-5', async () => {
+    const healthTask = cron.schedule('0 16 * * 1-5', async () => {
+        isTaskRunning['calc_health_scores.js'] = true;
         console.log('🏥 定時排程開始：計算全股健診排行...');
         await logScriptStatus('calc_health_scores.js', 'RUNNING', '正在計算全股健診排行');
         try {
@@ -79,11 +115,14 @@ function startScheduler() {
         } catch (err) {
             console.error('🏥 健診排行計算失敗:', err.message);
             await logScriptStatus('calc_health_scores.js', 'FAILED', `計算失敗: ${err.message}`);
+        } finally {
+            isTaskRunning['calc_health_scores.js'] = false;
         }
     }, {
         scheduled: true,
         timezone: 'Asia/Taipei'
     });
+    initTaskTracking('calc_health_scores.js', healthTask);
 
     // 系統狀態監控 (每 5 分鐘執行一次)
     cron.schedule('*/5 * * * *', async () => {
@@ -101,4 +140,4 @@ function startScheduler() {
     console.log(' 排程系統已啟動 (時區: Asia/Taipei)');
 }
 
-module.exports = { startScheduler };
+module.exports = { startScheduler, getLiveSchedulerStatus };
