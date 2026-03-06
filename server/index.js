@@ -47,3 +47,6 @@ async function startServer() {
 }
 
 startServer();
+
+// Export app for Vercel
+module.exports = app;
