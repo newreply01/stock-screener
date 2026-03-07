@@ -201,3 +201,10 @@ export async function getIndustries() {
     if (!res.ok) throw new Error('獲取產業清單失敗');
     return res.json();
 }
+
+export async function getHealthHistory(symbol) {
+    if (!symbol) return { data: [] };
+    const res = await fetch(`${API_BASE}/stock/${symbol}/health-history`);
+    if (!res.ok) throw new Error('獲取健診歷史失敗');
+    return res.json();
+}

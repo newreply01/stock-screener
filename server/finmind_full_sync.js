@@ -14,7 +14,7 @@ process.on('unhandledRejection', (reason) => {
 });
 
 const { pool } = require('./db');
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+const fetch = require('node-fetch');
 const marketFocusCalc = require('./scripts/calc_market_focus');
 
 // Periodic Activity Logger

@@ -119,17 +119,24 @@ async function syncMarginTrading(symbol) {
             await client.query(`
                 INSERT INTO fm_margin_trading (
                     stock_id, date, 
-                    margin_purchase_buy, margin_purchase_sell, margin_purchase_cash_redemption, margin_purchase_limit, margin_purchase_today_balance, margin_purchase_yesterday_balance,
-                    short_sale_buy, short_sale_sell, short_sale_cash_redemption, short_sale_limit, short_sale_today_balance, short_sale_yesterday_balance
+                    margin_purchase_buy, margin_purchase_sell, margin_purchase_cash_repayment, margin_purchase_limit, margin_purchase_today_balance, margin_purchase_yesterday_balance,
+                    short_sale_buy, short_sale_sell, short_sale_cash_repayment, short_sale_limit, short_sale_today_balance, short_sale_yesterday_balance,
+                    offsetting_margin_short
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
                 ON CONFLICT (stock_id, date) DO UPDATE SET
                     margin_purchase_today_balance = EXCLUDED.margin_purchase_today_balance,
-                    short_sale_today_balance = EXCLUDED.short_sale_today_balance
+                    short_sale_today_balance = EXCLUDED.short_sale_today_balance,
+                    margin_purchase_buy = EXCLUDED.margin_purchase_buy,
+                    margin_purchase_sell = EXCLUDED.margin_purchase_sell,
+                    short_sale_buy = EXCLUDED.short_sale_buy,
+                    short_sale_sell = EXCLUDED.short_sale_sell,
+                    offsetting_margin_short = EXCLUDED.offsetting_margin_short
             `, [
                 item.stock_id, item.date,
-                item.MarginPurchaseBuy, item.MarginPurchaseSell, item.MarginPurchaseCashRedemption, item.MarginPurchaseLimit, item.MarginPurchaseTodayBalance, item.MarginPurchaseYesterdayBalance,
-                item.ShortSaleBuy, item.ShortSaleSell, item.ShortSaleCashRedemption, item.ShortSaleLimit, item.ShortSaleTodayBalance, item.ShortSaleYesterdayBalance
+                item.MarginPurchaseBuy, item.MarginPurchaseSell, item.MarginPurchaseCashRepayment, item.MarginPurchaseLimit, item.MarginPurchaseTodayBalance, item.MarginPurchaseYesterdayBalance,
+                item.ShortSaleBuy, item.ShortSaleSell, item.ShortSaleCashRepayment, item.ShortSaleLimit, item.ShortSaleTodayBalance, item.ShortSaleYesterdayBalance,
+                item.OffsetLoanAndShort || 0
             ]);
         }
         console.log(`✅ [FinMind] Synced margin trading for ${symbol}: ${data.length} records.`);

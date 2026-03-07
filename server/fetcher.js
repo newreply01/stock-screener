@@ -1,5 +1,5 @@
 const { query } = require('./db');
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+const fetch = globalThis.fetch || require('node-fetch');
 
 // 來源設定
 const TWSE_MI_INDEX = 'https://www.twse.com.tw/exchangeReport/MI_INDEX?response=json&type=ALLBUT0999';
@@ -262,12 +262,25 @@ async function fetchInstitutional(dateObj) {
         const res = await fetch(`${TWSE_INST_URL}&date=${dateStr}`, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36' } });
         const json = await res.json();
 
-        if (json.stat !== 'OK' || !json.data) return;
+        if (json.stat !== 'OK' || !json.data) {
+            console.log(`[Inst] ${dateStr} 無資料或狀態不符: ${json.stat}`);
+            return;
+        }
 
         let count = 0;
+        let skipCount = 0;
         for (const row of json.data) {
-            const symbol = row[0];
-            if (!/^\d{4,6}$/.test(symbol)) continue;
+            const symbol = row[0].trim();
+            // 放寬過濾條件，只要是數字開頭且長度 4-6 碼都抓
+            if (!/^\d{4,6}$/.test(symbol)) {
+                skipCount++;
+                continue;
+            }
+
+            if (row.length < 19) {
+                console.warn(`[Inst] ${dateStr} 股票 ${symbol} 資料欄位不足 (${row.length} 欄)`);
+                continue;
+            }
 
             await ensureStock(symbol);
 
@@ -290,7 +303,7 @@ async function fetchInstitutional(dateObj) {
             );
             count++;
         }
-        console.log(`[Inst] ${dateStr} 更新 ${count} 筆`);
+        console.log(`[Inst] ${dateStr} 更新 ${count} 筆 (過濾跳過 ${skipCount} 筆)`);
     } catch (e) {
         console.error(`[Inst] ${dateStr} 失敗:`, e.message);
     }
@@ -321,9 +334,13 @@ async function fetchTPExInstitutional(dateObj) {
         }
 
         let count = 0;
+        let skipCount = 0;
         for (const row of dataRows) {
-            const symbol = row[0];
-            if (!/^\d{4,6}$/.test(symbol)) continue;
+            const symbol = row[0].trim();
+            if (!/^\d{4,6}$/.test(symbol)) {
+                skipCount++;
+                continue;
+            }
 
             await ensureStock(symbol);
 
@@ -361,7 +378,7 @@ async function fetchTPExInstitutional(dateObj) {
             );
             count++;
         }
-        console.log(`[TPEx-Inst] ${rocDate} 更新 ${count} 筆`);
+        console.log(`[TPEx-Inst] ${rocDate} 更新 ${count} 筆 (過濾跳過 ${skipCount} 筆)`);
     } catch (e) {
         console.error(`[TPEx-Inst] ${rocDate} 失敗:`, e.message);
     }

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
     RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-    ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell
+    ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell,
+    AreaChart, Area
 } from 'recharts';
 import { Shield, TrendingUp, Heart, Target, Coins, Users, Award, AlertTriangle } from 'lucide-react';
-import { API_BASE } from '../utils/api';
+import { API_BASE, getHealthHistory } from '../utils/api';
 
 const DIMENSION_ICONS = {
     '獲利能力': TrendingUp,
@@ -37,8 +38,11 @@ function getScoreLabel(score) {
     return '劣';
 }
 
+// ... (GRADE_STYLES and helpers)
+
 export default function HealthCheckView({ symbol }) {
     const [data, setData] = useState(null);
+    const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -46,10 +50,28 @@ export default function HealthCheckView({ symbol }) {
         if (!symbol) return;
         setLoading(true);
         setError(null);
-        fetch(`${API_BASE}/stock/${symbol}/health-check`)
-            .then(r => r.json())
-            .then(d => { setData(d); setLoading(false); })
-            .catch(e => { setError(e.message); setLoading(false); });
+
+        Promise.all([
+            fetch(`${API_BASE}/stock/${symbol}/health-check`).then(r => r.json()),
+            getHealthHistory(symbol)
+        ])
+            .then(([healthData, historyData]) => {
+                setData(healthData);
+                if (historyData && historyData.success) {
+                    setHistory(historyData.data || []);
+                }
+                setLoading(false);
+            })
+            .catch(e => {
+                console.error('Health check fetch error:', e);
+                // Even if history fails, we still want to show the current data if it succeeded
+                if (data && data.success) {
+                    setLoading(false);
+                } else {
+                    setError(e.message);
+                    setLoading(false);
+                }
+            });
     }, [symbol]);
 
     if (loading) {
@@ -99,19 +121,62 @@ export default function HealthCheckView({ symbol }) {
                 </div>
             </div>
 
-            {/* Overall Score Card */}
             <div className={`${style.bg} ${style.border} border-2 rounded-2xl p-6 shadow-lg ${style.glow} ring-1 ${style.ring}`}>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <div className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-widest">綜合健康評分</div>
-                        <div className="flex items-baseline gap-3">
-                            <span className={`text-6xl font-black tabular-nums ${style.text}`}>{overall}</span>
-                            <span className="text-lg font-bold text-slate-400">/ 100</span>
+                <div className="flex flex-col md:flex-row gap-8 items-center">
+                    {/* Score Circle/Box */}
+                    <div className="flex items-center gap-6 border-r border-slate-200 pr-8">
+                        <div>
+                            <div className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-widest">綜合健康評分</div>
+                            <div className="flex items-baseline gap-3">
+                                <span className={`text-6xl font-black tabular-nums ${style.text}`}>{overall}</span>
+                                <span className="text-lg font-bold text-slate-400">/ 100</span>
+                            </div>
+                        </div>
+                        <div className={`${style.text} ${style.bg} border ${style.border} px-6 py-3 rounded-2xl`}>
+                            <div className="text-3xl font-black text-center">{grade}</div>
+                            <div className="text-[10px] font-bold tracking-widest uppercase text-center mt-1 opacity-70">GRADE</div>
                         </div>
                     </div>
-                    <div className={`${style.text} ${style.bg} border ${style.border} px-6 py-3 rounded-2xl`}>
-                        <div className="text-3xl font-black text-center">{grade}</div>
-                        <div className="text-[10px] font-bold tracking-widest uppercase text-center mt-1 opacity-70">GRADE</div>
+
+                    {/* Trend Chart Area (Subtle inline trend) */}
+                    <div className="flex-1 h-[100px] w-full min-w-[200px]">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">健康分數走勢 (近30日)</div>
+                        <div style={{ width: '100%', height: '70px', minHeight: '70px' }}>
+                            {history && history.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={history} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                                        <defs>
+                                            <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor={getScoreColor(overall)} stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor={getScoreColor(overall)} stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                                        <XAxis dataKey="date" hide />
+                                        <YAxis domain={[0, 100]} hide />
+                                        <Tooltip
+                                            labelClassName="text-xs font-bold"
+                                            contentStyle={{ fontSize: '10px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                            formatter={(value) => [`${value} 分`, '綜合評分']}
+                                            labelFormatter={(label) => `日期: ${label}`}
+                                        />
+                                        <Area
+                                            type="monotone"
+                                            dataKey="score"
+                                            stroke={getScoreColor(overall)}
+                                            fillOpacity={1}
+                                            fill="url(#colorScore)"
+                                            strokeWidth={3}
+                                            animationDuration={1500}
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-[10px] text-slate-300 italic">
+                                    尚無歷史趨勢資料
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

@@ -1,5 +1,5 @@
 const { pool } = require('./db');
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+const fetch = require('node-fetch');
 
 const CATEGORIES = {
     'headline': '熱門頭條',
