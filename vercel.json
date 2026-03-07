@@ -2,14 +2,5 @@
   "version": 2,
   "buildCommand": "npm install --prefix client && npm run build --prefix client",
   "outputDirectory": "client/dist",
-  "installCommand": "npm install",
-  "functions": {
-    "api/index.js": {
-      "runtime": "@vercel/node"
-    }
-  },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
-  ]
+  "installCommand": "npm install"
 }
