@@ -12,8 +12,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.get('/api/health', (req, res) => res.json({ status: 'ok', v3: true }));
-
 app.use('/api', screenerRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/monitor', monitorRoutes);

@@ -14,17 +14,13 @@ const poolConfig = dbUrl
         database: process.env.POSTGRES_DATABASE || process.env.DB_NAME,
         password: process.env.POSTGRES_PASSWORD || process.env.DB_PASSWORD,
         port: parseInt(process.env.POSTGRES_PORT || process.env.DB_PORT || '5432'),
-        ssl: (process.env.POSTGRES_HOST || '').includes('supabase.co') || (process.env.POSTGRES_HOST || '').includes('supabase.com') ? { rejectUnauthorized: false } : false
+        ssl: (process.env.POSTGRES_HOST || '').includes('supabase') ? { rejectUnauthorized: false } : false
     };
 
 const pool = new Pool(poolConfig);
 
-const query = (text, params) => {
-    return pool.query(text, params);
-};
+const query = (text, params) => pool.query(text, params);
 
-const initDatabase = async () => {
-    // In serverless, we usually do not run migrations on startup
-};
+const initDatabase = async () => {};
 
 module.exports = { pool, query, initDatabase };
