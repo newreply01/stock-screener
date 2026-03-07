@@ -16,6 +16,17 @@ app.use('/api', screenerRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/monitor', monitorRoutes);
 
+app.get('/api/debug-db', (req, res) => {
+    const { pool } = require('./db');
+    res.json({
+        has_url: !!(process.env.DATABASE_URL || process.env.POSTGRES_URL),
+        host: pool.options.host,
+        port: pool.options.port,
+        ssl: pool.options.ssl,
+        env_keys: Object.keys(process.env).filter(k => k.includes('POSTGRES') || k.includes('DB') || k.includes('DATABASE'))
+    });
+});
+
 const distPath = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(distPath));
 

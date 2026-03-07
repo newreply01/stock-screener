@@ -10,7 +10,10 @@ const poolConfig = {
     database: process.env.POSTGRES_DATABASE || process.env.DB_NAME,
     password: process.env.POSTGRES_PASSWORD || process.env.DB_PASSWORD,
     port: parseInt(process.env.POSTGRES_PORT || process.env.DB_PORT || '5432'),
-    ssl: { rejectUnauthorized: false }
+    ssl: { 
+        require: true,
+        rejectUnauthorized: false 
+    }
 };
 
 const pool = new Pool(poolConfig);
