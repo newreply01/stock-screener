@@ -16,31 +16,6 @@ app.use('/api', screenerRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/monitor', monitorRoutes);
 
-app.get('/api/debug-db', async (req, res) => {
-    const { pool } = require('./db');
-    try {
-        const dbRes = await pool.query('SELECT 1 as is_alive');
-        res.json({
-            success: true,
-            is_alive: dbRes.rows[0].is_alive,
-            has_url: !!(process.env.DATABASE_URL || process.env.POSTGRES_URL),
-            host: pool.options.host,
-            port: pool.options.port,
-            ssl: pool.options.ssl,
-            env_keys: Object.keys(process.env).filter(k => k.includes('POSTGRES') || k.includes('DB') || k.includes('DATABASE'))
-        });
-    } catch (err) {
-        res.status(500).json({
-            success: false,
-            error: err.message,
-            stack: err.stack,
-            has_url: !!(process.env.DATABASE_URL || process.env.POSTGRES_URL),
-            host: pool.options.host,
-            ssl: pool.options.ssl
-        });
-    }
-});
-
 const distPath = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(distPath));
 
