@@ -3,7 +3,13 @@ const { catchUp } = require('./fetcher');
 const { syncAllNews } = require('./news_fetcher');
 const { syncAllStocksFinancials } = require('./finmind_fetcher');
 const { runAll: runHealthCheck } = require('./scripts/calc_health_scores');
-const { syncHistoricalMinuteBatch } = require('./historical_tick_sync');
+let syncHistoricalMinuteBatch;
+try {
+    const histModule = require('./historical_tick_sync');
+    syncHistoricalMinuteBatch = histModule.syncHistoricalMinuteBatch;
+} catch (e) {
+    console.warn('Optional module historical_tick_sync not found, skipping related tasks.');
+}
 const { pool } = require('./db');
 
 async function logScriptStatus(serviceName, status, message) {
@@ -126,26 +132,28 @@ function startScheduler() {
     initTaskTracking('calc_health_scores.js', healthTask);
 
     // 每交易日 16:30 補抓今日歷史 1 分K (盤後資料完整後執行)
-    const histTickTask = cron.schedule('30 16 * * 1-5', async () => {
-        isTaskRunning['historical_tick_sync.js'] = true;
-        const today = new Date().toISOString().split('T')[0];
-        console.log(`📈 定時排程開始：補抓 ${today} 歷史 1 分K...`);
-        await logScriptStatus('historical_tick_sync.js', 'RUNNING', `正在補抓 ${today} 歷史分時資料`);
-        try {
-            await syncHistoricalMinuteBatch(today, 100); // 今日，前 100 大股票
-            console.log('📈 歷史 1 分K 補抓完成');
-            await logScriptStatus('historical_tick_sync.js', 'SUCCESS', `${today} 歷史分時補抓完成`);
-        } catch (err) {
-            console.error('📈 歷史 1 分K 補抓失敗:', err.message);
-            await logScriptStatus('historical_tick_sync.js', 'FAILED', `補抓失敗: ${err.message}`);
-        } finally {
-            isTaskRunning['historical_tick_sync.js'] = false;
-        }
-    }, {
-        scheduled: true,
-        timezone: 'Asia/Taipei'
-    });
-    initTaskTracking('historical_tick_sync.js', histTickTask);
+    if (syncHistoricalMinuteBatch) {
+        const histTickTask = cron.schedule('30 16 * * 1-5', async () => {
+            isTaskRunning['historical_tick_sync.js'] = true;
+            const today = new Date().toISOString().split('T')[0];
+            console.log(`📈 定時排程開始：補抓 ${today} 歷史 1 分K...`);
+            await logScriptStatus('historical_tick_sync.js', 'RUNNING', `正在補抓 ${today} 歷史分時資料`);
+            try {
+                await syncHistoricalMinuteBatch(today, 100); // 今日，前 100 大股票
+                console.log('📈 歷史 1 分K 補抓完成');
+                await logScriptStatus('historical_tick_sync.js', 'SUCCESS', `${today} 歷史分時補抓完成`);
+            } catch (err) {
+                console.error('📈 歷史 1 分K 補抓失敗:', err.message);
+                await logScriptStatus('historical_tick_sync.js', 'FAILED', `補抓失敗: ${err.message}`);
+            } finally {
+                isTaskRunning['historical_tick_sync.js'] = false;
+            }
+        }, {
+            scheduled: true,
+            timezone: 'Asia/Taipei'
+        });
+        initTaskTracking('historical_tick_sync.js', histTickTask);
+    }
 
     // 系統狀態監控 (每 5 分鐘執行一次)
     cron.schedule('*/5 * * * *', async () => {
