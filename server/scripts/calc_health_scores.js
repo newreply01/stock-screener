@@ -63,7 +63,14 @@ async function calcAllScores() {
 
     // Get latest trade date
     const dateRes = await query('SELECT MAX(trade_date) as latest FROM daily_prices');
-    const calcDate = dateRes.rows[0]?.latest || new Date();
+    let calcDate = dateRes.rows[0]?.latest || new Date();
+    
+    // Normalize to YYYY-MM-DD string to avoid timestamp mismatch in DELETE
+    if (calcDate instanceof Date) {
+        calcDate = calcDate.toISOString().split('T')[0];
+    } else if (typeof calcDate === 'string' && calcDate.includes('T')) {
+        calcDate = calcDate.split('T')[0];
+    }
 
     // Batch fetch: fundamentals for all stocks
     const fundRes = await query(`
@@ -160,8 +167,15 @@ async function calcAllScores() {
     let skipped = 0;
     const batchValues = [];
 
+    const processedSymbols = new Set();
     for (const stock of allStocks) {
         const sym = stock.symbol;
+        if (processedSymbols.has(sym)) {
+            console.warn(`⚠️ Skipping duplicate symbol: ${sym}`);
+            continue;
+        }
+        processedSymbols.add(sym);
+
         const fund = fundMap[sym] || {};
         const price = priceMap[sym] || {};
         const pe = parseFloat(fund.pe_ratio) || 0;
@@ -258,15 +272,46 @@ async function calcAllScores() {
 
         const flatValues = batch.flat();
 
-        await query(`
-            INSERT INTO stock_health_scores
-            (symbol, name, industry, market, close_price, change_percent,
-             overall_score, grade, grade_color,
-             profit_score, growth_score, safety_score, value_score, dividend_score, chip_score,
-             pe, pb, dividend_yield, roe, gross_margin,
-             revenue_growth, eps_growth, avg_cash_dividend, inst_net_buy, calc_date)
-            VALUES ${placeholders}
-        `, flatValues);
+        try {
+            await query(`
+                INSERT INTO stock_health_scores
+                (symbol, name, industry, market, close_price, change_percent,
+                 overall_score, grade, grade_color,
+                 profit_score, growth_score, safety_score, value_score, dividend_score, chip_score,
+                 pe, pb, dividend_yield, roe, gross_margin,
+                 revenue_growth, eps_growth, avg_cash_dividend, inst_net_buy, calc_date)
+                VALUES ${placeholders}
+                ON CONFLICT (symbol, calc_date) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    industry = EXCLUDED.industry,
+                    market = EXCLUDED.market,
+                    close_price = EXCLUDED.close_price,
+                    change_percent = EXCLUDED.change_percent,
+                    overall_score = EXCLUDED.overall_score,
+                    grade = EXCLUDED.grade,
+                    grade_color = EXCLUDED.grade_color,
+                    profit_score = EXCLUDED.profit_score,
+                    growth_score = EXCLUDED.growth_score,
+                    safety_score = EXCLUDED.safety_score,
+                    value_score = EXCLUDED.value_score,
+                    dividend_score = EXCLUDED.dividend_score,
+                    chip_score = EXCLUDED.chip_score,
+                    pe = EXCLUDED.pe,
+                    pb = EXCLUDED.pb,
+                    dividend_yield = EXCLUDED.dividend_yield,
+                    roe = EXCLUDED.roe,
+                    gross_margin = EXCLUDED.gross_margin,
+                    revenue_growth = EXCLUDED.revenue_growth,
+                    eps_growth = EXCLUDED.eps_growth,
+                    avg_cash_dividend = EXCLUDED.avg_cash_dividend,
+                    inst_net_buy = EXCLUDED.inst_net_buy,
+                    created_at = NOW()
+            `, flatValues);
+        } catch (err) {
+            console.error(`❌ Error in batch ${i}-${i + BATCH_SIZE}:`, err.message);
+            console.log('Symbols in this batch:', batch.map(b => b[0]).join(', '));
+            throw err;
+        }
 
         if ((i / BATCH_SIZE) % 5 === 0) {
             console.log(`  ...inserted ${Math.min(i + BATCH_SIZE, batchValues.length)}/${batchValues.length}`);

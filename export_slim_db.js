@@ -31,23 +31,15 @@ async function exportSlimDB() {
     let latestTickTable = '';
 
     allTables.forEach(t => {
-        // 舊法人與日K不匯出資料
-        // 舊法人與日K不匯出資料 (排除 2024 以前，保留 2025-2026)
-        if (t.match(/^institutional_(2021|2022|2023|2024)$/)) excludeDataFlags.push(`-T "${t}"`);
-        if (t.match(/^daily_prices_(2021|2022|2023|2024)$/)) excludeDataFlags.push(`-T "${t}"`);
-
-        // 舊備份不匯出結構跟資料
-        if (t.includes('_old_backup')) {
+        // 舊備份或不需要的表，完全排除結構與資料
+        if (t.includes('_old_backup') || t.match(/^institutional_(2021|2022|2023|2024)$/) || t.match(/^daily_prices_(2021|2022|2023|2024)$/) || t.startsWith('realtime_ticks_')) {
             excludeDataFlags.push(`-T "${t}"`);
         }
 
-        // Ticks 表全部不匯出資料 (用戶要求去掉 realtime_ticks)
-        if (t.startsWith('realtime_ticks_')) {
-            excludeDataFlags.push(`-T "${t}"`);
+        // fm_stock_price 需要結構，但資料我們先排除，稍後手動追加
+        if (t === 'fm_stock_price') {
+            excludeDataFlags.push(`--exclude-table-data="${t}"`);
         }
-
-        // fm_stock_price 太大，我們排除它，稍後手動匯出
-        if (t === 'fm_stock_price') excludeDataFlags.push(`-T "${t}"`);
     });
 
     const excludeString = excludeDataFlags.join(' ');
@@ -60,23 +52,48 @@ async function exportSlimDB() {
     const env = { ...process.env, PGPASSWORD: pgPass };
 
     try {
-        // Step 1: 匯出 Schema (全部結構)
+        // Step 1: 匯出 Schema + 預設資料 (排除大型表資料)
         console.log("📦 1/3 匯出資料庫結構與預設全表資料...");
-        const dumpCmd = `pg_dump -h ${pgHost} -p ${pgPort} -U ${pgUser} -d ${pgDb} ${excludeString} -f /tmp/slim_db.sql`;
+        // -O: no-owner, -x: no-privileges, --no-security-labels, --no-comments
+        const dumpCmd = `pg_dump -h ${pgHost} -p ${pgPort} -U ${pgUser} -d ${pgDb} -O -x --no-security-labels --no-privileges --no-comments ${excludeString} -f /tmp/slim_db.sql`;
         execSync(dumpCmd, { stdio: 'inherit', env });
 
-        // Step 2: 針對部分大表 (如 fm_stock_price) 補充近期資料
+        // Step 1.5: 插入 DROP 區塊
+        console.log("🛠️  插入 DROP TABLE & SEQUENCE 區塊...");
+        const dropTables = allTables
+            .filter(t => !t.match(/^(institutional|daily_prices|realtime_ticks)_.*/))
+            .filter(t => !['institutional', 'daily_prices', 'realtime_ticks'].includes(t))
+            .map(t => `DROP TABLE IF EXISTS public."${t}" CASCADE;`)
+            .join('\n');
+            
+        const dropMain = ['institutional', 'daily_prices', 'realtime_ticks', 'fm_stock_price']
+            .map(t => `DROP TABLE IF EXISTS public."${t}" CASCADE;`)
+            .join('\n');
+
+        const dropSeqs = [
+            'DROP SEQUENCE IF EXISTS public.realtime_ticks_id_seq CASCADE;',
+            'DROP SEQUENCE IF EXISTS public.users_id_seq CASCADE;',
+            'DROP SEQUENCE IF EXISTS public.watchlists_id_seq CASCADE;',
+            'DROP SEQUENCE IF EXISTS public.saved_filters_id_seq CASCADE;'
+        ].join('\n');
+
+        const originalContent = fs.readFileSync('/tmp/slim_db.sql', 'utf8');
+        const finalContent = `-- Stock Screener Slim DB Export\n-- Cleanup existing\n${dropSeqs}\n${dropTables}\n${dropMain}\n\n${originalContent}`;
+        fs.writeFileSync('/tmp/slim_db.sql', finalContent);
+
+        // Step 2: 針對 fm_stock_price 補充近期資料
         console.log("📦 2/3 手動匯出 fm_stock_price (2025~) 資料...");
-        // 將 2025-01-01 以後的資料以 INSERT 形式追加到 sql 檔案尾端
-        const copySql = `\\copy (SELECT * FROM fm_stock_price WHERE date >= '2025-01-01') TO STDOUT WITH CSV HEADER`;
+        const copySql = `COPY (SELECT * FROM fm_stock_price WHERE date >= '2025-01-01') TO STDOUT WITH CSV`;
+        // 用 CSV 格式匯出，不帶 Header，因為我們手動寫 COPY 指令
         const psqlCmd = `psql -h ${pgHost} -p ${pgPort} -U ${pgUser} -d ${pgDb} -c "${copySql}" > /tmp/fm_stock_price_data.csv`;
         execSync(psqlCmd, { env });
 
         // 追加一個 COPY 指令到 SQL 檔
-        fs.appendFileSync('/tmp/slim_db.sql', `\n\\copy fm_stock_price FROM stdin WITH CSV HEADER;\n`);
+        fs.appendFileSync('/tmp/slim_db.sql', `\n-- 手動追加 fm_stock_price 資料\nCOPY public.fm_stock_price FROM stdin WITH CSV;\n`);
         const csvData = fs.readFileSync('/tmp/fm_stock_price_data.csv');
         fs.appendFileSync('/tmp/slim_db.sql', csvData);
-        fs.appendFileSync('/tmp/slim_db.sql', `\\.\n`);
+        // 重要：\. 必須在獨立的一行
+        fs.appendFileSync('/tmp/slim_db.sql', `\n\\.\n`);
 
         console.log("✅ 瘦身版匯出成功！檔案位於 /tmp/slim_db.sql");
         const stats = fs.statSync('/tmp/slim_db.sql');

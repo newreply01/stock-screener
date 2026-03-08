@@ -31,29 +31,30 @@ export default function ValuationRiverView({ symbol }) {
     }, [symbol]);
 
     const chartData = useMemo(() => {
-        if (!data?.history) return [];
-        const { peBands, pbBands } = data;
+        if (!data?.history || !data?.peBands || !data?.pbBands) return [];
+        const { peBands, pbBands } = data; // These are now ARRAYS
 
         // Sample every Nth point to keep chart performant
         const step = Math.max(1, Math.floor(data.history.length / 200));
         return data.history.filter((_, i) => i % step === 0).map(h => {
             const d = new Date(h.date);
-            return {
+            const row = {
                 date: `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}`,
                 pe: h.pe,
                 pb: h.pb,
                 dy: h.dy,
-                // PE bands
-                pe_veryExpensive: peBands?.veryExpensive,
-                pe_expensive: peBands?.expensive,
-                pe_fair: peBands?.fair,
-                pe_cheap: peBands?.cheap,
-                pe_veryCheap: peBands?.veryCheap,
-                // PB bands
-                pb_expensive: pbBands?.expensive,
-                pb_fair: pbBands?.fair,
-                pb_cheap: pbBands?.cheap,
             };
+
+            // Map PE bands by index from the array
+            peBands.forEach((band, idx) => {
+                row[`pe_band_${idx}`] = band.multiplier;
+            });
+            // Map PB bands
+            pbBands.forEach((band, idx) => {
+                row[`pb_band_${idx}`] = band.multiplier;
+            });
+
+            return row;
         });
     }, [data]);
 
@@ -96,16 +97,16 @@ export default function ValuationRiverView({ symbol }) {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                     <div className="text-xs font-bold text-slate-500 mb-1">當前股價</div>
-                    <div className="text-3xl font-black text-slate-800 tabular-nums">{currentPrice?.toFixed(2)}</div>
+                    <div className="text-3xl font-black text-slate-800 tabular-nums">{Number(currentPrice || 0).toFixed(2)}</div>
                 </div>
                 <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                     <div className="text-xs font-bold text-slate-500 mb-1">當前 PE</div>
-                    <div className="text-3xl font-black text-slate-800 tabular-nums">{currentPe?.toFixed(2)}</div>
-                    <div className="text-[10px] text-slate-400 font-medium mt-1">歷史平均: {stats?.peAvg}</div>
+                    <div className="text-3xl font-black text-slate-800 tabular-nums">{Number(currentPe || 0).toFixed(2)}</div>
+                    <div className="text-[10px] text-slate-400 font-medium mt-1">歷史平均: {stats?.peAvg || '--'}</div>
                 </div>
                 <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                     <div className="text-xs font-bold text-slate-500 mb-1">歷史 PB 均值</div>
-                    <div className="text-3xl font-black text-slate-800 tabular-nums">{stats?.pbAvg}</div>
+                    <div className="text-3xl font-black text-slate-800 tabular-nums">{stats?.pbAvg || '--'}</div>
                 </div>
                 <div className={`p-5 rounded-2xl border-2 ${zoneStyle.border} ${zoneStyle.bg} shadow-sm`}>
                     <div className={`text-xs font-bold ${zoneStyle.text} mb-1 flex items-center gap-1`}>
@@ -113,7 +114,7 @@ export default function ValuationRiverView({ symbol }) {
                     </div>
                     <div className={`text-2xl font-black ${zoneStyle.text}`}>{zone}</div>
                     <div className={`text-[10px] font-bold text-white ${zoneStyle.badge} px-2 py-0.5 rounded-full inline-block mt-1`}>
-                        PE {currentPe?.toFixed(1)} vs 均值 {stats?.peAvg}
+                        PE {currentPe ? Number(currentPe).toFixed(1) : '--'} vs 均值 {stats?.peAvg || '--'}
                     </div>
                 </div>
             </div>
@@ -160,16 +161,23 @@ export default function ValuationRiverView({ symbol }) {
                                 <Tooltip
                                     contentStyle={{ backgroundColor: '#fff', borderColor: '#e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }}
                                     formatter={(v, name) => {
-                                        const labels = { pe: '當前PE', pe_veryExpensive: '昂貴(+2σ)', pe_expensive: '偏貴(+1σ)', pe_fair: '合理(均值)', pe_cheap: '偏低(-1σ)', pe_veryCheap: '便宜(-2σ)' };
-                                        return [typeof v === 'number' ? v.toFixed(2) : v, labels[name] || name];
+                                        return [typeof v === 'number' || typeof v === 'string' ? Number(v).toFixed(2) : v, name];
                                     }}
                                 />
                                 <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 700 }} />
-                                <ReferenceLine y={peBands?.fair} stroke="#3b82f6" strokeDasharray="5 5" label={{ value: '均值', position: 'right', fontSize: 10, fill: '#3b82f6' }} />
-                                <Area type="monotone" dataKey="pe_veryExpensive" stroke="#ef4444" fill="none" strokeDasharray="3 3" strokeWidth={1} name="昂貴(+2σ)" dot={false} />
-                                <Area type="monotone" dataKey="pe_expensive" stroke="#f59e0b" fill="none" strokeDasharray="3 3" strokeWidth={1} name="偏貴(+1σ)" dot={false} />
-                                <Area type="monotone" dataKey="pe_cheap" stroke="#14b8a6" fill="none" strokeDasharray="3 3" strokeWidth={1} name="偏低(-1σ)" dot={false} />
-                                <Area type="monotone" dataKey="pe_veryCheap" stroke="#10b981" fill="none" strokeDasharray="3 3" strokeWidth={1} name="便宜(-2σ)" dot={false} />
+                                {peBands.map((band, idx) => (
+                                    <Area 
+                                        key={idx} 
+                                        type="monotone" 
+                                        dataKey={`pe_band_${idx}`} 
+                                        stroke={idx === 0 ? "#ef4444" : idx === 4 ? "#10b981" : "#94a3b8"} 
+                                        fill="none" 
+                                        strokeDasharray="3 3" 
+                                        strokeWidth={1} 
+                                        name={band.label} 
+                                        dot={false} 
+                                    />
+                                ))}
                                 <Line type="monotone" dataKey="pe" stroke="#7c3aed" strokeWidth={2.5} dot={false} name="當前PE" activeDot={{ r: 5, strokeWidth: 0 }} />
                             </AreaChart>
                         ) : (
@@ -181,13 +189,23 @@ export default function ValuationRiverView({ symbol }) {
                                     contentStyle={{ backgroundColor: '#fff', borderColor: '#e2e8f0', borderRadius: '8px', fontWeight: 'bold' }}
                                     formatter={(v, name) => {
                                         const labels = { pb: '當前PB', pb_expensive: '偏貴(+1σ)', pb_fair: '合理(均值)', pb_cheap: '偏低(-1σ)' };
-                                        return [typeof v === 'number' ? v.toFixed(2) : v, labels[name] || name];
+                                        return [typeof v === 'number' || typeof v === 'string' ? Number(v).toFixed(2) : v, labels[name] || name];
                                     }}
                                 />
                                 <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 700 }} />
-                                <ReferenceLine y={pbBands?.fair} stroke="#3b82f6" strokeDasharray="5 5" />
-                                <Area type="monotone" dataKey="pb_expensive" stroke="#f59e0b" fill="none" strokeDasharray="3 3" strokeWidth={1} name="偏貴(+1σ)" dot={false} />
-                                <Area type="monotone" dataKey="pb_cheap" stroke="#14b8a6" fill="none" strokeDasharray="3 3" strokeWidth={1} name="偏低(-1σ)" dot={false} />
+                                {pbBands.map((band, idx) => (
+                                    <Area 
+                                        key={idx} 
+                                        type="monotone" 
+                                        dataKey={`pb_band_${idx}`} 
+                                        stroke={idx === 0 ? "#f59e0b" : idx === 2 ? "#10b981" : "#94a3b8"} 
+                                        fill="none" 
+                                        strokeDasharray="3 3" 
+                                        strokeWidth={1} 
+                                        name={band.label} 
+                                        dot={false} 
+                                    />
+                                ))}
                                 <Line type="monotone" dataKey="pb" stroke="#7c3aed" strokeWidth={2.5} dot={false} name="當前PB" activeDot={{ r: 5, strokeWidth: 0 }} />
                             </AreaChart>
                         )}
@@ -203,16 +221,10 @@ export default function ValuationRiverView({ symbol }) {
                         <TrendingUp className="w-4 h-4 text-violet-600" /> 本益比估價區間
                     </h3>
                     <div className="space-y-3">
-                        {[
-                            { label: '昂貴區 (+2σ)', value: peBands?.veryExpensive, color: 'text-red-500', bg: 'bg-red-50' },
-                            { label: '偏貴區 (+1σ)', value: peBands?.expensive, color: 'text-amber-500', bg: 'bg-amber-50' },
-                            { label: '合理區 (均值)', value: peBands?.fair, color: 'text-blue-600', bg: 'bg-blue-50' },
-                            { label: '偏低區 (-1σ)', value: peBands?.cheap, color: 'text-teal-600', bg: 'bg-teal-50' },
-                            { label: '便宜區 (-2σ)', value: peBands?.veryCheap, color: 'text-emerald-600', bg: 'bg-emerald-50' }
-                        ].map((band, i) => (
-                            <div key={i} className={`flex items-center justify-between p-3 ${band.bg} rounded-lg`}>
-                                <span className={`text-sm font-bold ${band.color}`}>{band.label}</span>
-                                <span className={`text-lg font-black tabular-nums ${band.color}`}>PE {band.value?.toFixed(1)}</span>
+                        {peBands.map((band, i) => (
+                            <div key={i} className={`flex items-center justify-between p-3 rounded-lg ${i === 2 ? 'bg-blue-50' : i < 2 ? 'bg-red-50' : 'bg-emerald-50'}`}>
+                                <span className={`text-sm font-bold ${i === 2 ? 'text-blue-600' : i < 2 ? 'text-red-500' : 'text-emerald-600'}`}>{band.label}</span>
+                                <span className={`text-lg font-black tabular-nums ${i === 2 ? 'text-blue-600' : i < 2 ? 'text-red-500' : 'text-emerald-600'}`}>PE {band.multiplier ? Number(band.multiplier).toFixed(1) : '--'}</span>
                             </div>
                         ))}
                     </div>
@@ -243,7 +255,7 @@ export default function ValuationRiverView({ symbol }) {
                             ))}
                             <div className={`mt-2 p-3 rounded-lg ${currentPrice <= parseFloat(yieldValuation.cheap) ? 'bg-emerald-50 border border-emerald-200' : currentPrice >= parseFloat(yieldValuation.expensive) ? 'bg-red-50 border border-red-200' : 'bg-blue-50 border border-blue-200'}`}>
                                 <div className="text-xs font-bold text-slate-600">
-                                    目前股價 <span className="text-lg font-black text-slate-800">{currentPrice?.toFixed(2)}</span> 元
+                                    目前股價 <span className="text-lg font-black text-slate-800">{Number(currentPrice || 0).toFixed(2)}</span> 元
                                     {currentPrice <= parseFloat(yieldValuation.cheap) && <span className="text-emerald-600 ml-2">→ 低於便宜價 ✓</span>}
                                     {currentPrice >= parseFloat(yieldValuation.expensive) && <span className="text-red-500 ml-2">→ 高於昂貴價 ⚠</span>}
                                     {currentPrice > parseFloat(yieldValuation.cheap) && currentPrice < parseFloat(yieldValuation.expensive) && <span className="text-blue-600 ml-2">→ 合理價區間</span>}

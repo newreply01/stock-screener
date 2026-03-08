@@ -792,6 +792,113 @@ router.get('/health-check-ranking', async (req, res) => {
     }
 });
 
+// GET /api/stock/:symbol/valuation-history - 獲取歷史估值與河流圖數據
+router.get('/stock/:symbol/valuation-history', async (req, res) => {
+    try {
+        const { symbol } = req.params;
+        const { years = 5 } = req.query;
+
+        // 1. 抓取歷史 PE/PB 資料
+        const historyRes = await query(`
+            SELECT TO_CHAR(date, 'YYYY-MM-DD') as date, 
+                   pe_ratio as pe, pb_ratio as pb, dividend_yield as dy
+            FROM fm_stock_per 
+            WHERE stock_id = $1 AND date >= CURRENT_DATE - INTERVAL '${years} years'
+            ORDER BY date ASC
+        `, [symbol]);
+
+        if (historyRes.rows.length === 0) {
+            return res.json({ success: false, error: '尚無歷史估值數據' });
+        }
+
+        const history = historyRes.rows.map(r => ({
+            date: r.date,
+            pe: parseFloat(r.pe),
+            pb: parseFloat(r.pb),
+            dy: parseFloat(r.dy)
+        }));
+
+        // 2. 計算統計數值 (排除離群值或 null)
+        const validPe = history.map(h => h.pe).filter(v => v !== null && v > 0 && v < 100);
+        const validPb = history.map(h => h.pb).filter(v => v !== null && v > 0 && v < 20);
+
+        const calcStats = (arr) => {
+            if (arr.length === 0) return { avg: 0, std: 0 };
+            const avg = arr.reduce((a, b) => a + b, 0) / arr.length;
+            const std = Math.sqrt(arr.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / arr.length);
+            return { avg, std };
+        };
+
+        const peStats = calcStats(validPe);
+        const pbStats = calcStats(validPb);
+
+        // 3. 獲取當前價格與配息資訊
+        const priceRes = await query('SELECT close_price FROM daily_prices WHERE symbol = $1 ORDER BY trade_date DESC LIMIT 1', [symbol]);
+        const divRes = await query('SELECT cash_dividend FROM dividend_policy WHERE symbol = $1 ORDER BY year DESC LIMIT 5', [symbol]);
+        
+        const currentPrice = priceRes.rows[0]?.close_price || 0;
+        const avgCashDiv = divRes.rows.length > 0 ? (divRes.rows.reduce((a, b) => a + parseFloat(b.cash_dividend || 0), 0) / divRes.rows.length) : 0;
+
+        // 4. 定義區間 (River Bands) - 轉換為前端預期的陣列格式
+        const peBands = [
+            { label: '極高估', multiplier: peStats.avg + 2 * peStats.std },
+            { label: '高估', multiplier: peStats.avg + 1 * peStats.std },
+            { label: '合理', multiplier: peStats.avg },
+            { label: '低估', multiplier: peStats.avg - 1 * peStats.std },
+            { label: '極低估', multiplier: peStats.avg - 2 * peStats.std }
+        ];
+
+        const pbBands = [
+            { label: '高估', multiplier: pbStats.avg + 1 * pbStats.std },
+            { label: '合理', multiplier: pbStats.avg },
+            { label: '低估', multiplier: pbStats.avg - 1 * pbStats.std }
+        ];
+
+        // 5. 判定當前位階 (Zone)
+        const currentPe = history[history.length - 1]?.pe || 0;
+        let zone = '合理區';
+        const peRef = {
+            veryExpensive: peStats.avg + 2 * peStats.std,
+            expensive: peStats.avg + 1 * peStats.std,
+            cheap: peStats.avg - 1 * peStats.std,
+            veryCheap: peStats.avg - 2 * peStats.std
+        };
+        if (currentPe > peRef.veryExpensive) zone = '昂貴區';
+        else if (currentPe > peRef.expensive) zone = '偏貴區';
+        else if (currentPe < peRef.veryCheap) zone = '便宜區';
+        else if (currentPe < peRef.cheap) zone = '偏低區';
+
+        // 6. 為歷史資料增加價格，方便前端計算 EPS
+        const historyWithPrice = history.map(h => ({
+            ...h,
+            price: h.pe > 0 ? (h.pe * (currentPrice / currentPe)) : currentPrice // 估算歷史價格，或直接再查一次 daily_prices
+        }));
+
+        res.json({
+            success: true,
+            symbol,
+            history: historyWithPrice,
+            peBands,
+            pbBands,
+            currentPrice,
+            currentPe,
+            zone,
+            stats: {
+                peAvg: peStats.avg.toFixed(2),
+                pbAvg: pbStats.avg.toFixed(2),
+                avgCashDiv: avgCashDiv.toFixed(2)
+            },
+            yieldValuation: avgCashDiv > 0 ? {
+                cheap: (avgCashDiv / 0.06).toFixed(2),
+                fair: (avgCashDiv / 0.05).toFixed(2),
+                expensive: (avgCashDiv / 0.04).toFixed(2)
+            } : null
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // GET /api/stock/:symbol/health-history - 獲取歷史健診分數
 router.get('/stock/:symbol/health-history', async (req, res) => {
     try {

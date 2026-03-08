@@ -6,15 +6,21 @@ require('dotenv').config();
 const screenerRoutes = require('./routes/screener');
 const authRoutes = require('./routes/auth');
 const monitorRoutes = require('./routes/monitor');
+const watchlistRoutes = require('./routes/watchlist');
+const realtimeRoutes = require('./routes/realtime_query');
+const filterRoutes = require('./routes/filters');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-app.use('/api', screenerRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/monitor', monitorRoutes);
+app.use('/api/watchlists', watchlistRoutes);
+app.use('/api/realtime', realtimeRoutes);
+app.use('/api/filters', filterRoutes);
+app.use('/api', screenerRoutes);
 
 const distPath = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(distPath));

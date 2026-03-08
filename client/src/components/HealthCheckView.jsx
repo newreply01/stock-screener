@@ -141,9 +141,9 @@ export default function HealthCheckView({ symbol }) {
                     {/* Trend Chart Area (Subtle inline trend) */}
                     <div className="flex-1 h-[100px] w-full min-w-[200px]">
                         <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">健康分數走勢 (近30日)</div>
-                        <div style={{ width: '100%', height: '70px', minHeight: '70px' }}>
+                        <div className="w-full h-[70px]">
                             {history && history.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ResponsiveContainer width="100%" height={70}>
                                     <AreaChart data={history} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                                         <defs>
                                             <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
@@ -152,7 +152,10 @@ export default function HealthCheckView({ symbol }) {
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                                        <XAxis dataKey="date" hide />
+                                        <XAxis 
+                                            dataKey="date" 
+                                            hide 
+                                        />
                                         <YAxis domain={[0, 100]} hide />
                                         <Tooltip
                                             labelClassName="text-xs font-bold"
@@ -279,15 +282,15 @@ export default function HealthCheckView({ symbol }) {
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
                     {[
-                        { label: 'ROE', value: `${metrics?.latestROE?.toFixed(1)}%` },
-                        { label: '毛利率', value: `${metrics?.latestGrossMargin?.toFixed(1)}%` },
-                        { label: 'PE', value: metrics?.pe?.toFixed(1) },
-                        { label: '殖利率', value: `${metrics?.dy?.toFixed(2)}%` },
-                        { label: '法人買超', value: `${metrics?.totalBuy?.toFixed(0)}張` }
+                        { label: 'ROE', value: metrics?.latestROE ? `${Number(metrics.latestROE).toFixed(1)}%` : '--' },
+                        { label: '毛利率', value: metrics?.latestGrossMargin ? `${Number(metrics.latestGrossMargin).toFixed(1)}%` : '--' },
+                        { label: 'PE', value: metrics?.pe ? Number(metrics.pe).toFixed(1) : '--' },
+                        { label: '殖利率', value: metrics?.dy ? `${Number(metrics.dy).toFixed(2)}%` : '--' },
+                        { label: '法人買超', value: metrics?.totalBuy ? `${Number(metrics.totalBuy).toFixed(0)}張` : '--' }
                     ].map((m, i) => (
                         <div key={i}>
                             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{m.label}</div>
-                            <div className="text-lg font-black text-slate-800 tabular-nums">{m.value || '--'}</div>
+                            <div className="text-lg font-black text-slate-800 tabular-nums">{m.value}</div>
                         </div>
                     ))}
                 </div>

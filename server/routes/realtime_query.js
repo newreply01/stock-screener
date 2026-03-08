@@ -113,4 +113,34 @@ router.get('/debug/audit-crawler', async (req, res) => {
     }
 });
 
+// GET /api/realtime/:symbol - 獲取個股即時快照數據
+router.get('/:symbol', async (req, res) => {
+    try {
+        const { symbol } = req.params;
+        const sql = `
+            SELECT 
+                t.*,
+                s.name,
+                TO_CHAR(t.trade_time, 'HH24:MI:SS') as time_str
+            FROM realtime_ticks t
+            LEFT JOIN stocks s ON t.symbol = s.symbol
+            WHERE t.symbol = $1
+            ORDER BY t.trade_time DESC
+            LIMIT 1
+        `;
+        const result = await query(sql, [symbol]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'No data found' });
+        }
+        
+        res.json({
+            success: true,
+            data: result.rows[0]
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 module.exports = router;
