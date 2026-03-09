@@ -174,13 +174,13 @@ export default function MarketDashboard({ onStockSelect, watchedSymbols, onToggl
                                     const getCategoryFilter = (id) => {
                                         switch (id) {
                                             case 'limit_up': return { change_min: '9.5', change_max: '' };
-                                            case 'up_5': return { change_min: '5.0', change_max: '9.49' };
-                                            case 'up_2_5': return { change_min: '2.0', change_max: '4.99' };
-                                            case 'up_0_2': return { change_min: '0.01', change_max: '1.99' };
+                                            case 'up_5': return { change_min: '5.0', change_max: '9.499' };
+                                            case 'up_2_5': return { change_min: '2.0', change_max: '4.999' };
+                                            case 'up_0_2': return { change_min: '0.0001', change_max: '1.999' };
                                             case 'flat': return { change_min: '0', change_max: '0' };
-                                            case 'down_0_2': return { change_min: '-1.99', change_max: '-0.01' };
-                                            case 'down_2_5': return { change_min: '-4.99', change_max: '-2.0' };
-                                            case 'down_5': return { change_min: '-9.49', change_max: '-5.0' };
+                                            case 'down_0_2': return { change_min: '-1.999', change_max: '-0.0001' };
+                                            case 'down_2_5': return { change_min: '-4.999', change_max: '-2.0' };
+                                            case 'down_5': return { change_min: '-9.499', change_max: '-5.0' };
                                             case 'limit_down': return { change_min: '', change_max: '-9.5' };
                                             default: return {};
                                         }

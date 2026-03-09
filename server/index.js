@@ -9,6 +9,7 @@ const monitorRoutes = require('./routes/monitor');
 const watchlistRoutes = require('./routes/watchlist');
 const realtimeRoutes = require('./routes/realtime_query');
 const filterRoutes = require('./routes/filters');
+const portfolioRoutes = require('./routes/portfolio');
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use('/api/monitor', monitorRoutes);
 app.use('/api/watchlists', watchlistRoutes);
 app.use('/api/realtime', realtimeRoutes);
 app.use('/api/filters', filterRoutes);
+app.use('/api/portfolio', portfolioRoutes);
 app.use('/api', screenerRoutes);
 
 const distPath = path.join(__dirname, '..', 'client', 'dist');
@@ -35,7 +37,7 @@ if (!process.env.VERCEL) {
         const { startScheduler } = require('./scheduler');
         startScheduler();
         const PORT = process.env.PORT || 3000;
-        app.listen(PORT, () => console.log('Server started'));
+        app.listen(PORT, () => console.log('Server started on port ' + PORT));
     } catch (e) {}
 }
 

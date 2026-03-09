@@ -1,42 +1,55 @@
 const { query } = require('./server/db');
 
-async function test() {
+async function debug() {
     try {
-        const actualDateResult = await query('SELECT MAX(trade_date) as actual_date FROM daily_prices');
-        const actualDate = actualDateResult.rows[0].actual_date;
-        console.log('Actual Date:', actualDate);
+        console.log('--- Constraints ---');
+        const constraints = await query(`
+            SELECT conname, pg_get_constraintdef(c.oid)
+            FROM pg_constraint c
+            JOIN pg_class t ON t.relname = 'stock_health_scores'
+            WHERE c.conrelid = t.oid;
+        `);
+        console.log(JSON.stringify(constraints.rows, null, 2));
 
-        // Test without filter
-        const res1 = await query('SELECT count(*) from daily_prices where trade_date = \', [actualDate]);
-        console.log('Total for date:', res1.rows[0].count);
+        console.log('\n--- Indices ---');
+        const indices = await query(`
+            SELECT indexname, indexdef
+            FROM pg_indexes
+            WHERE tablename = 'stock_health_scores';
+        `);
+        console.log(JSON.stringify(indices.rows, null, 2));
 
-        // Test with price_min = 10
-        const price_min = 10;
-        const res2 = await query('SELECT count(*) from daily_prices where trade_date = \ AND close_price >= \', [actualDate, price_min]);
-        console.log('Total with price_min=10:', res2.rows[0].count);
+        console.log('\n--- Table Structure ---');
+        const columns = await query(`
+            SELECT column_name, data_type, is_nullable
+            FROM information_schema.columns
+            WHERE table_name = 'stock_health_scores';
+        `);
+        console.log(JSON.stringify(columns.rows, null, 2));
 
-        // Test with pe_min = 10
-        const pe_min = 10;
-        const res3 = await query(            SELECT count(*) 
-            FROM stocks s
-            JOIN daily_prices p ON s.symbol = p.symbol
-            LEFT JOIN LATERAL (
-                SELECT pe_ratio
-                FROM fundamentals f_sub
-                WHERE f_sub.symbol = s.symbol AND f_sub.trade_date <=                 ORDER BY f_sub.trade_date DESC
-                LIMIT 1
-            ) f ON true
-            WHERE p.trade_date = \ AND f.pe_ratio >=         \, [actualDate, pe_min]);
-        console.log('Total with pe_min=10:', res3.rows[0].count);
+        console.log('\n--- Partitioning ---');
+        const partitions = await query(`
+            SELECT relname, relkind 
+            FROM pg_class c 
+            JOIN pg_namespace n ON n.oid = c.relnamespace 
+            WHERE relkind = 'p' AND relname = 'stock_health_scores';
+        `);
+        console.log(JSON.stringify(partitions.rows, null, 2));
 
-        // Check some data
-        const res4 = await query('SELECT symbol, close_price FROM daily_prices WHERE trade_date = \ LIMIT 5', [actualDate]);
-        console.log('Sample Data:', res4.rows);
+        console.log('\n--- Duplicate Check in Batch ---');
+        // Check if the query for stocks returns duplicates
+        const dupStocks = await query(`
+            SELECT symbol, COUNT(*) 
+            FROM stocks 
+            WHERE symbol ~ '^[0-9]{4}$'
+            GROUP BY symbol 
+            HAVING COUNT(*) > 1
+        `);
+        console.log('Duplicate symbols in stocks:', dupStocks.rows);
 
-    } catch (err) {
-        console.error('SQL Error:', err.message);
+    } catch (e) {
+        console.error(e);
     }
-    process.exit();
 }
 
-test();
+debug().then(() => process.exit(0));

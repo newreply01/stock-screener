@@ -52,6 +52,7 @@ import StockSearchAutocomplete from './StockSearchAutocomplete'
 import HealthCheckView from './HealthCheckView'
 import ValuationRiverView from './ValuationRiverView'
 import StockCompareView from './StockCompareView'
+import EventCalendar from './EventCalendar'
 
 const SIDEBAR_MENU = [
     { id: 'overview', label: '總覽' },
@@ -104,6 +105,7 @@ const SIDEBAR_MENU = [
         ]
     },
     { id: 'news', label: '新聞公告' },
+    { id: 'events', label: '重要大事' },
     { id: 'ai_report', label: 'AI分析報告' }
 ];
 
@@ -577,6 +579,8 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
                             </div>
                         ) : activeTab === 'ai_report' ? (
                             <AIReportView symbol={stock.symbol} name={stock.name} />
+                        ) : activeTab === 'events' ? (
+                            <EventCalendar symbol={stock.symbol} />
                         ) : activeTab === 'realtime' ? (
                             <RealtimeView stock={stock} />
                         ) : activeTab === 'trend' ? (

@@ -17,6 +17,7 @@ import TradingDashboard from './components/TradingDashboard'
 import RealtimeExplorer from './components/RealtimeExplorer'
 import HealthCheckRanking from './components/HealthCheckRanking'
 import MonitorPage from './components/MonitorPage'
+import PortfolioDashboard from './components/PortfolioDashboard'
 import { screenStocks, getStats, getWatchlists, addStockToWatchlist, removeStockFromWatchlist } from './utils/api'
 import { useAuth } from './context/AuthContext'
 import { useGlobalFilters } from './context/GlobalFilterContext'
@@ -87,8 +88,8 @@ function App() {
 
       console.log('App: Switching view to', targetView, 'with filters', incomingFilters);
 
-      // 未登入不可進入自選股
-      if (targetView === 'watchlist' && !requireLogin()) {
+      // 未登入不可進入自選股或投資組合
+      if (['watchlist', 'portfolio'].includes(targetView) && !requireLogin()) {
         return;
       }
 
@@ -178,6 +179,10 @@ function App() {
           />
         ) : currentView === 'profile' ? (
           <ProfilePage />
+        ) : currentView === 'portfolio' ? (
+          <PortfolioDashboard 
+            onStockClick={(s) => { setMainStock(s); setDetailStock(s); setCurrentView('stock-detail'); }}
+          />
         ) : currentView === 'institutional' ? (
           <InstitutionalRankView
             watchedSymbols={watchedSymbols}

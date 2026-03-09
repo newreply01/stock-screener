@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Users, ChevronRight, Star, Heart, Activity } from 'lucide-react';
 import { getInstitutionalRank } from '../utils/api';
+import { useGlobalFilters } from '../context/GlobalFilterContext';
 
 const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
   const [data, setData] = useState([]);
@@ -8,6 +9,7 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
   const [activeType, setActiveType] = useState('foreign'); // foreign, investment, dealer
   const [activeAction, setActiveAction] = useState('buy'); // buy, sell
   const [timeRange, setTimeRange] = useState('3d'); // 3d, 5d, 10d
+  const { marketForApi, stockTypesForApi } = useGlobalFilters();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -16,7 +18,9 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
         const res = await getInstitutionalRank({
           type: activeType,
           range: timeRange,
-          action: activeAction
+          action: activeAction,
+          market: marketForApi,
+          stock_types: stockTypesForApi
         });
         if (res.success) setData(res.data);
       } catch (e) {
@@ -26,7 +30,7 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
       }
     };
     fetchData();
-  }, [activeType, timeRange, activeAction]);
+  }, [activeType, timeRange, activeAction, marketForApi, stockTypesForApi]);
 
   const tabs = [
     { label: '外資', id: 'foreign', icon: <TrendingUp className="w-4 h-4" /> },

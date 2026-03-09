@@ -345,6 +345,30 @@ async function syncStockFinancials(symbol) {
     }
 }
 
+async function syncStockPER(symbol, date) {
+    const client = await pool.connect();
+    try {
+        const start_date = date || START_DATE;
+        console.log(`🔄 [FinMind] Syncing PE/PB history for ${symbol} starting from ${start_date}...`);
+        const data = await fetchFinMind('TaiwanStockPER', symbol, start_date);
+        for (const item of data) {
+            await client.query(`
+                INSERT INTO fm_stock_per (stock_id, date, pe_ratio, pb_ratio, dividend_yield)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (stock_id, date) DO UPDATE SET
+                    pe_ratio = EXCLUDED.pe_ratio,
+                    pb_ratio = EXCLUDED.pb_ratio,
+                    dividend_yield = EXCLUDED.dividend_yield
+            `, [symbol, item.date, item.PER, item.PBR, item.dividend_yield]);
+        }
+        console.log(`✅ [FinMind] Synced PE/PB for ${symbol}: ${data.length} records.`);
+    } catch (err) {
+        console.error(`❌ [FinMind] Failed to sync PE/PB for ${symbol}:`, err.message);
+    } finally {
+        client.release();
+    }
+}
+
 async function syncAllStocksFinancials() {
     console.log(getTokenStatus());
     const res = await pool.query(`
@@ -359,4 +383,12 @@ async function syncAllStocksFinancials() {
     }
 }
 
-module.exports = { syncStockFinancials, syncAllStocksFinancials, syncBrokerTrading, syncMarginTrading, syncFinancialRatios, syncDetailedFinancials, syncDetailedFinancials };
+module.exports = { 
+    syncStockFinancials, 
+    syncAllStocksFinancials, 
+    syncBrokerTrading, 
+    syncMarginTrading, 
+    syncFinancialRatios, 
+    syncDetailedFinancials, 
+    syncStockPER 
+};

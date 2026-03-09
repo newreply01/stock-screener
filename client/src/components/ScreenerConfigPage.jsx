@@ -475,6 +475,7 @@ export default function ScreenerConfigPage({
                                             { id: 'michael_murphy', name: '麥克墨菲', desc: '高科技與高成長，營收與淨利雙成長，重視營業利益率', color: 'bg-sky-50 text-sky-700 border-sky-200 hover:border-sky-400' },
                                             { id: 'safe_dividend', name: '安心存股', desc: '長線穩定發放股利，防禦力強的存股標的', color: 'bg-rose-50 text-rose-700 border-rose-200 hover:border-rose-400' },
                                             { id: 'financial_giant', name: '財務大腕', desc: '營收創新高且毛利明顯提升的成長股，且股價便宜', color: 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-400' },
+                                            { id: 'lynn_lin_20w_breakout', name: '林恩如 20周突破', desc: '股價由下往上突破 20 週均線，強勢起漲訊號', color: 'bg-brand-primary/10 text-brand-primary border-brand-primary/20 hover:border-brand-primary' },
                                         ].map(strat => {
                                             const isSelected = localFilters.strategy === strat.id;
                                             return (

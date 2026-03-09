@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useGlobalFilters } from '../context/GlobalFilterContext';
 import { Search, Building2 } from 'lucide-react';
 import { getIndustries } from '../utils/api';
+import SearchableSelect from './SearchableSelect';
 
 export default function GlobalFilterBar() {
     const { market, setMarket, hasStockType, toggleStockType, industry, setIndustry } = useGlobalFilters();
@@ -11,7 +12,9 @@ export default function GlobalFilterBar() {
         const fetchIndustries = async () => {
             try {
                 const res = await getIndustries();
-                setIndustries(res || []);
+                // Sort industries alphabetically (Traditional Chinese)
+                const sorted = (res || []).sort((a, b) => a.localeCompare(b, 'zh-TW'));
+                setIndustries(sorted);
             } catch (err) {
                 console.error('Failed to fetch industries', err);
             }
@@ -92,16 +95,13 @@ export default function GlobalFilterBar() {
                         <Building2 className="w-4 h-4" />
                         產業
                     </span>
-                    <select
+                    <SearchableSelect
                         value={industry}
-                        onChange={(e) => setIndustry(e.target.value)}
-                        className="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-brand-primary focus:border-brand-primary block w-full px-4 py-2 font-bold min-w-[140px] cursor-pointer"
-                    >
-                        <option value="all">全市場</option>
-                        {industries.map(ind => (
-                            <option key={ind} value={ind}>{ind}</option>
-                        ))}
-                    </select>
+                        onChange={setIndustry}
+                        options={industries}
+                        allLabel="全產業"
+                        className="w-full sm:w-[180px]"
+                    />
                 </div>
 
             </div>

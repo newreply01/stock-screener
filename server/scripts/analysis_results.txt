@@ -1,0 +1,65 @@
+--- Table Size ---
+{ total_rows: '162', distinct_dates: '54', price_rows: '1319739' }
+
+--- Index Symbols ---
+[ { symbol: 'TAIEX', name: '加權指數' } ]
+
+--- Distinct Names in fm_total_margin ---
+[
+  { name: 'ShortSale', count: '54' },
+  { name: 'MarginPurchaseMoney', count: '54' },
+  { name: 'MarginPurchase', count: '54' }
+]
+
+--- Sample for a specific date (Latest) ---
+Latest Date: 2026-03-01T16:00:00.000Z
+[
+  {
+    date: 2026-03-01T16:00:00.000Z,
+    name: 'MarginPurchase',
+    margin_purchase_buy: '550630',
+    margin_purchase_sell: '508352',
+    margin_purchase_cash_repayment: '22904',
+    margin_purchase_yesterday_balance: '8126418',
+    margin_purchase_today_balance: '8145792',
+    short_sale_buy: null,
+    short_sale_sell: null,
+    short_sale_cash_repayment: null,
+    short_sale_yesterday_balance: null,
+    short_sale_today_balance: null
+  },
+  {
+    date: 2026-03-01T16:00:00.000Z,
+    name: 'MarginPurchaseMoney',
+    margin_purchase_buy: '32079727000',
+    margin_purchase_sell: '29855187000',
+    margin_purchase_cash_repayment: '462744000',
+    margin_purchase_yesterday_balance: '389861168000',
+    margin_purchase_today_balance: '391622964000',
+    short_sale_buy: null,
+    short_sale_sell: null,
+    short_sale_cash_repayment: null,
+    short_sale_yesterday_balance: null,
+    short_sale_today_balance: null
+  },
+  {
+    date: 2026-03-01T16:00:00.000Z,
+    name: 'ShortSale',
+    margin_purchase_buy: '29474',
+    margin_purchase_sell: '26903',
+    margin_purchase_cash_repayment: '17355',
+    margin_purchase_yesterday_balance: '274755',
+    margin_purchase_today_balance: '0',
+    short_sale_buy: null,
+    short_sale_sell: null,
+    short_sale_cash_repayment: null,
+    short_sale_yesterday_balance: null,
+    short_sale_today_balance: '254829'
+  }
+]
+
+--- Check for heavy categories (might cause slowness in GROUP BY) ---
+Dates with >5 records: []
+
+--- Connection Pool Stats ---
+Total: 1 Idle: 1 Waiting: 0

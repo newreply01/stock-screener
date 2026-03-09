@@ -1,0 +1,20 @@
+--- Probing FinMind API Range (2025-12-01 onwards) ---
+Error in checkRange(TaiwanStockTotalMarginPurchaseShortSale): TypeError: fetch is not a function
+    at checkRange (/home/xg/stock-screener/server/scripts/probe_finmind.js:37:27)
+    at run (/home/xg/stock-screener/server/scripts/probe_finmind.js:51:26)
+    at Object.<anonymous> (/home/xg/stock-screener/server/scripts/probe_finmind.js:71:1)
+    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49
+Margin Total Rows: undefined | Unique Dates: undefined
+Margin Coverage: undefined to undefined
+Error in checkRange(TaiwanStockDailyPrice): TypeError: fetch is not a function
+    at checkRange (/home/xg/stock-screener/server/scripts/probe_finmind.js:37:27)
+    at run (/home/xg/stock-screener/server/scripts/probe_finmind.js:55:25)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+TAIEX Total Rows: undefined | Unique Dates: undefined
+TAIEX Coverage: undefined to undefined
+No margin dates found or error occurred.

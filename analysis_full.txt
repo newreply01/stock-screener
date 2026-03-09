@@ -1,0 +1,30 @@
+--- Deep Table Size Analysis ---
+┌─────────┬─────────────────────────────┬──────────┬───────────┐
+│ (index) │ table_name                  │ size_mb  │ row_count │
+├─────────┼─────────────────────────────┼──────────┼───────────┤
+│ 0       │ 'institutional_2024'        │ '638.98' │ '0'       │
+│ 1       │ 'institutional_2025'        │ '524.48' │ '0'       │
+│ 2       │ 'institutional_2023'        │ '387.71' │ '0'       │
+│ 3       │ 'fm_stock_price'            │ '275.70' │ '0'       │
+│ 4       │ 'realtime_ticks_2026_03_06' │ '211.93' │ '0'       │
+│ 5       │ 'fundamentals'              │ '126.84' │ '0'       │
+│ 6       │ 'fm_financial_statements'   │ '124.13' │ '0'       │
+│ 7       │ 'institutional_2026'        │ '109.00' │ '0'       │
+│ 8       │ 'daily_prices_2026'         │ '102.20' │ '516110'  │
+│ 9       │ 'realtime_ticks_2026_03_05' │ '86.20'  │ '0'       │
+│ 10      │ 'daily_prices_2025'         │ '65.61'  │ '291565'  │
+│ 11      │ 'daily_prices_2024'         │ '62.91'  │ '277484'  │
+│ 12      │ 'daily_prices_2023'         │ '53.73'  │ '234585'  │
+│ 13      │ 'fm_balance_sheet'          │ '17.88'  │ '0'       │
+│ 14      │ 'realtime_ticks_2026_03_03' │ '14.22'  │ '0'       │
+│ 15      │ 'monthly_revenue'           │ '12.02'  │ '0'       │
+│ 16      │ 'stocks'                    │ '9.75'   │ '85538'   │
+│ 17      │ 'realtime_ticks_2026_03_04' │ '8.37'   │ '0'       │
+│ 18      │ 'fm_cash_flows'             │ '5.28'   │ '0'       │
+│ 19      │ 'financial_statements'      │ '3.98'   │ '0'       │
+└─────────┴─────────────────────────────┴──────────┴───────────┘
+
+daily_prices Row Stats:
+Warrant Rows: 453675
+Total Rows: 1319744
+Ratio: 34.38%

@@ -20,7 +20,7 @@ export default function MarketMarginChart() {
                         return {
                             ...d,
                             margin100M: d.margin_balance ? parseFloat((d.margin_balance / 100000000).toFixed(2)) : 0,
-                            short100M: d.short_balance ? parseFloat((d.short_balance / 100000000).toFixed(2)) : 0,
+                            short10K: d.short_balance ? parseFloat((d.short_balance / 10000).toFixed(2)) : 0,
                             indexPrice: d.index_price ? parseFloat(d.index_price) : null,
                             date: d.trade_date ? new Date(d.trade_date).toLocaleDateString() : ''
                         };
@@ -54,7 +54,11 @@ export default function MarketMarginChart() {
                     <p className="text-sm font-bold text-gray-800 mb-2">{label}</p>
                     {payload.map((entry, idx) => (
                         <p key={idx} className="text-xs font-semibold" style={{ color: entry.color }}>
-                            {entry.name}: {entry.name.includes('餘額') ? `${entry.value}億` : Math.round(entry.value)}
+                            {entry.name}: {
+                                entry.name.includes('融資') ? `${entry.value}億` : 
+                                entry.name.includes('融券') ? `${entry.value}萬張` : 
+                                Math.round(entry.value)
+                            }
                         </p>
                     ))}
                 </div>
@@ -105,8 +109,8 @@ export default function MarketMarginChart() {
                             tick={{ fill: '#10b981', fontSize: 10, fontWeight: 700 }}
                             axisLine={false}
                             tickLine={false}
-                            width={40}
-                            tickFormatter={(v) => `${v}`}
+                            width={45}
+                            tickFormatter={(v) => `${v}萬`}
                         />
                         {/* 右 Y 軸 1：融資餘額 (藍色) */}
                         <YAxis
@@ -144,8 +148,8 @@ export default function MarketMarginChart() {
                         />
                         <Bar
                             yAxisId="y-short"
-                            dataKey="short100M"
-                            name="融券餘額(億)"
+                            dataKey="short10K"
+                            name="融券餘額(萬張)"
                             fill="#10b981"
                             barSize={10}
                             radius={[2, 2, 0, 0]}

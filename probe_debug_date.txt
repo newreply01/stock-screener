@@ -1,0 +1,69 @@
+--- Probing FinMind API for specific date (2026-03-02) ---
+2026-03-02 Margin Data: [
+  {
+    "TodayBalance": 8145792,
+    "YesBalance": 8126418,
+    "buy": 550630,
+    "date": "2026-03-02",
+    "name": "MarginPurchase",
+    "Return": 22904,
+    "sell": 508352
+  },
+  {
+    "TodayBalance": 254829,
+    "YesBalance": 274755,
+    "buy": 29474,
+    "date": "2026-03-02",
+    "name": "ShortSale",
+    "Return": 17355,
+    "sell": 26903
+  },
+  {
+    "TodayBalance": 391622964000,
+    "YesBalance": 389861168000,
+    "buy": 32079727000,
+    "date": "2026-03-02",
+    "name": "MarginPurchaseMoney",
+    "Return": 462744000,
+    "sell": 29855187000
+  },
+  {
+    "TodayBalance": 8027469,
+    "YesBalance": 8145788,
+    "buy": 606629,
+    "date": "2026-03-03",
+    "name": "MarginPurchase",
+    "Return": 14627,
+    "sell": 710321
+  },
+  {
+    "TodayBalance": 244733,
+    "YesBalance": 254829,
+    "buy": 39564,
+    "date": "2026-03-03",
+    "name": "ShortSale",
+    "Return": 2145,
+    "sell": 31613
+  },
+  {
+    "TodayBalance": 384358166000,
+    "YesBalance": 391522964000,
+    "buy": 34851885000,
+    "date": "2026-03-03",
+    "name": "MarginPurchaseMoney",
+    "Return": 496076000,
+    "sell": 41520607000
+  }
+]
+2026-03-02 TAIEX Data: [
+  {
+    "price": 79896.85,
+    "stock_id": "TAIEX",
+    "date": "2026-03-02"
+  },
+  {
+    "price": 78140.6,
+    "stock_id": "TAIEX",
+    "date": "2026-03-03"
+  }
+]

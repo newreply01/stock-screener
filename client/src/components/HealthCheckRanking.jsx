@@ -59,8 +59,7 @@ export default function HealthCheckRanking({ onSelectStock }) {
     const [order, setOrder] = useState('DESC');
     const [search, setSearch] = useState('');
     const [searchInput, setSearchInput] = useState('');
-    const [industry, setIndustry] = useState('');
-    const { marketForApi, stockTypesForApi } = useGlobalFilters();
+    const { marketForApi, stockTypesForApi, industry: globalIndustry, setIndustry: setGlobalIndustry } = useGlobalFilters();
     const [grade, setGrade] = useState('');
     const [industries, setIndustries] = useState([]);
     const [calcDate, setCalcDate] = useState(null);
@@ -71,7 +70,7 @@ export default function HealthCheckRanking({ onSelectStock }) {
             const params = new URLSearchParams({
                 sort, order, page, limit,
                 ...(search && { search }),
-                ...(industry && { industry }),
+                ...(globalIndustry && globalIndustry !== 'all' && { industry: globalIndustry }),
                 ...(marketForApi && { market: marketForApi }),
                 ...(stockTypesForApi && { stock_types: stockTypesForApi }),
                 ...(grade && { grade })
@@ -89,7 +88,7 @@ export default function HealthCheckRanking({ onSelectStock }) {
         } finally {
             setLoading(false);
         }
-    }, [sort, order, page, limit, search, industry, marketForApi, stockTypesForApi, grade]);
+    }, [sort, order, page, limit, search, globalIndustry, marketForApi, stockTypesForApi, grade]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -122,7 +121,7 @@ export default function HealthCheckRanking({ onSelectStock }) {
                         <Heart className="w-7 h-7 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-black text-slate-900 tracking-tight">全股健診排行榜</h1>
+                        <h1 className="text-2xl font-black text-slate-900 tracking-tight">個股健診排行</h1>
                         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
                             Stock Health Check Ranking · {total} 檔個股
                             {calcDate && <span className="ml-2">· 更新日期: {new Date(calcDate).toLocaleDateString('zh-TW')}</span>}
@@ -179,17 +178,6 @@ export default function HealthCheckRanking({ onSelectStock }) {
                             ))}
                         </select>
 
-                        {/* Industry Filter */}
-                        <select
-                            value={industry}
-                            onChange={e => { setIndustry(e.target.value); setPage(1); }}
-                            className="px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500/30 cursor-pointer bg-white max-w-[160px]"
-                        >
-                            <option value="">全產業</option>
-                            {industries.map(ind => (
-                                <option key={ind} value={ind}>{ind}</option>
-                            ))}
-                        </select>
 
                         {/* Sort */}
                         <select

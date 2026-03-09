@@ -62,7 +62,7 @@ export default function StockSearchAutocomplete({ onSelectStock }) {
                 <input
                     type="text"
                     className="block w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary/50 transition-all shadow-sm hover:shadow-md"
-                    placeholder="搜尋股票代號或名稱 (支援自動補全)..."
+                    placeholder="搜尋股票代號或名稱..."
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => { if (results.length > 0) setIsOpen(true) }}

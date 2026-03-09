@@ -16,6 +16,29 @@ const formatLocalDate = (date) => {
     return `${year}-${month}-${day}`;
 };
 
+// GET /api/stock/:symbol/events - 獲取個股大事記 (法說會、除權息等)
+router.get('/stock/:symbol/events', async (req, res) => {
+    try {
+        const { symbol } = req.params;
+        const sql = `
+            SELECT 'corporate' as category, event_type as type, TO_CHAR(event_date, 'YYYY-MM-DD') as date, description
+            FROM corp_events
+            WHERE symbol = $1
+            UNION ALL
+            SELECT 'dividend' as category, '除息日' as type, TO_CHAR(year::date, 'YYYY-MM-DD') as date, '配發現金股利 ' || cash_dividend || ' 元' as description
+            FROM dividend_policy
+            WHERE symbol = $1 AND year ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+            ORDER BY date DESC
+            LIMIT 20
+        `;
+        const result = await query(sql, [symbol]);
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Failed to fetch stock events:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // GET /api/screen - 篩選股票 (支持分頁與篩選)
 router.get('/screen', async (req, res) => {
     try {
@@ -148,7 +171,40 @@ router.get('/screen', async (req, res) => {
         addRangeFilter('inst.foreign_net', foreign_net_min, foreign_net_max);
         addRangeFilter('inst.trust_net', trust_net_min, trust_net_max);
         addRangeFilter('inst.dealer_net', dealer_net_min, dealer_net_max);
+        addRangeFilter('inst.dealer_net', dealer_net_min, dealer_net_max);
         addRangeFilter('inst.total_net', total_net_min, total_net_max);
+
+        let lynnJoin = '';
+        if (strategy === 'lynn_lin_20w_breakout') {
+            lynnJoin = `
+            JOIN (
+                WITH weekly_data AS (
+                    SELECT 
+                        symbol,
+                        date_trunc('week', trade_date) as week,
+                        (array_agg(close_price ORDER BY trade_date DESC))[1] as close_price
+                    FROM daily_prices
+                    WHERE trade_date <= $1::date
+                    GROUP BY symbol, week
+                ),
+                ma_calc AS (
+                    SELECT 
+                        symbol,
+                        week,
+                        close_price,
+                        AVG(close_price) OVER (PARTITION BY symbol ORDER BY week ROWS BETWEEN 19 PRECEDING AND CURRENT ROW) as ma20w,
+                        LAG(close_price) OVER (PARTITION BY symbol ORDER BY week) as prev_close,
+                        LAG(AVG(close_price) OVER (PARTITION BY symbol ORDER BY week ROWS BETWEEN 19 PRECEDING AND CURRENT ROW)) OVER (PARTITION BY symbol ORDER BY week) as prev_ma20w
+                    FROM weekly_data
+                )
+                SELECT symbol
+                FROM ma_calc
+                WHERE week = date_trunc('week', $1::date)
+                AND close_price > ma20w
+                AND (prev_close <= prev_ma20w OR prev_ma20w IS NULL)
+            ) lynn ON s.symbol = lynn.symbol
+            `;
+        }
 
         if (strategy) {
             switch (strategy) {
@@ -191,6 +247,9 @@ router.get('/screen', async (req, res) => {
                 case 'financial_giant':
                     whereClause += ` AND inst.total_net > 1000 AND p.change_percent > 0`;
                     break;
+                case 'lynn_lin_20w_breakout':
+                    // Already handled by lynnJoin filter
+                    break;
             }
         }
 
@@ -206,6 +265,7 @@ router.get('/screen', async (req, res) => {
         const baseQuery = `
             FROM stocks s
             JOIN daily_prices p ON s.symbol = p.symbol
+            ${lynnJoin}
             LEFT JOIN LATERAL (
                 SELECT pe_ratio, pb_ratio, dividend_yield
                 FROM fundamentals f_sub
@@ -270,7 +330,7 @@ router.get('/stocks/industries', async (req, res) => {
         const sql = `
             SELECT DISTINCT industry 
             FROM stocks 
-            WHERE industry IS NOT NULL AND industry != ''
+            WHERE industry IS NOT NULL AND industry != '' AND industry != '大盤'
             ORDER BY industry ASC
             `;
         const result = await query(sql);
@@ -361,16 +421,16 @@ router.get('/market-summary', async (req, res) => {
 
         const distributionSql = `
         SELECT
-        COUNT(*) filter(where change_percent >= 9.5) as limit_up,
+            COUNT(*) filter(where change_percent >= 9.5) as limit_up,
             COUNT(*) filter(where change_percent >= 5 AND change_percent < 9.5) as up_5,
-                COUNT(*) filter(where change_percent >= 2 AND change_percent < 5) as up_2_5,
-                    COUNT(*) filter(where change_percent > 0 AND change_percent < 2) as up_0_2,
-                        COUNT(*) filter(where change_percent = 0) as flat,
-                            COUNT(*) filter(where change_percent > -2 AND change_percent < 0) as down_0_2,
-                                COUNT(*) filter(where change_percent > -5 AND change_percent <= -2) as down_2_5,
-                                    COUNT(*) filter(where change_percent > -9.5 AND change_percent <= -5) as down_5,
-                                        COUNT(*) filter(where change_percent <= -9.5) as limit_down
-            FROM daily_prices p
+            COUNT(*) filter(where change_percent >= 2 AND change_percent < 5) as up_2_5,
+            COUNT(*) filter(where change_percent > 0 AND change_percent < 2) as up_0_2,
+            COUNT(*) filter(where change_percent = 0) as flat,
+            COUNT(*) filter(where change_percent < 0 AND change_percent > -2) as down_0_2,
+            COUNT(*) filter(where change_percent <= -2 AND change_percent > -5) as down_2_5,
+            COUNT(*) filter(where change_percent <= -5 AND change_percent > -9.5) as down_5,
+            COUNT(*) filter(where change_percent <= -9.5) as limit_down
+        FROM daily_prices p
             JOIN stocks s ON p.symbol = s.symbol
             ${whereClause} ${typeFilter}
         `;
@@ -618,7 +678,7 @@ SELECT * FROM fm_financial_statements
 // GET /api/institutional-rank - 三大法人排行
 router.get('/institutional-rank', async (req, res) => {
     try {
-        const { type = 'foreign', range = '3d', action = 'buy' } = req.query;
+        const { type = 'foreign', range = '3d', action = 'buy', market = 'all', stock_types = 'stock' } = req.query;
         const isSell = action === 'sell';
         const fieldMap = { 'foreign': 'foreign_net', 'investment': 'trust_net', 'dealer': 'dealer_net' };
         const field = fieldMap[type] || 'foreign_net';
@@ -633,17 +693,38 @@ router.get('/institutional-rank', async (req, res) => {
             LIMIT $1`, [days]);
         if (datesRes.rows.length === 0) return res.json({ success: true, data: [] });
         const targetDates = datesRes.rows.map(r => r.trade_date);
+
+        const params = [targetDates];
+        let paramCount = 2;
+        let whereClause = `WHERE i.trade_date = ANY($1::date[])`;
+
+        if (market !== 'all' && market !== '') {
+            whereClause += ` AND s.market = $${paramCount}`;
+            params.push(market);
+            paramCount++;
+        }
+
+        const types = (stock_types || 'stock').split(',');
+        let typeConditions = [];
+        if (types.includes('stock')) typeConditions.push("(s.symbol ~ '^[0-9]{4}$' AND s.symbol !~ '^00')");
+        if (types.includes('etf')) typeConditions.push("(s.symbol ~ '^00' OR s.name ILIKE '%ETF%')");
+        if (types.includes('warrant')) typeConditions.push("(s.symbol ~ '^[0-9]{6}$' AND s.symbol !~ '^00' AND s.symbol !~ '^02')");
+
+        if (typeConditions.length > 0) {
+            whereClause += ` AND (${typeConditions.join(' OR ')})`;
+        }
+
         const sql = `
-SELECT i.symbol, s.name, s.industry, s.market, SUM(i.${field}::numeric / 1000.0) as net_buy
+            SELECT i.symbol, s.name, s.industry, s.market, SUM(i.${field}::numeric / 1000.0) as net_buy
             FROM institutional i
             JOIN stocks s ON i.symbol = s.symbol
-            WHERE i.trade_date = ANY($1::date[])
+            ${whereClause}
             GROUP BY i.symbol, s.name, s.industry, s.market
             HAVING SUM(i.${field}) ${isSell ? '< 0' : '> 0'}
             ORDER BY net_buy ${isSell ? 'ASC' : 'DESC'}
             LIMIT 20
-    `;
-        const result = await query(sql, [targetDates]);
+        `;
+        const result = await query(sql, params);
         res.json({ success: true, data: result.rows });
     } catch (err) {
         console.error('Institutional rank error:', err);
@@ -709,15 +790,54 @@ SELECT s.symbol, s.name, s.industry, s.market, p.close_price, p.change_percent, 
 router.get('/stock/:symbol/health-check', async (req, res) => {
     try {
         const { symbol } = req.params;
+        console.log(`[DEBUG] Health check requested for: ${symbol} at ${new Date().toISOString()}`);
         const result = await query('SELECT * FROM stock_health_scores WHERE symbol = $1 ORDER BY calc_date DESC LIMIT 1', [symbol]);
         if (result.rows.length === 0) return res.status(404).json({ success: false, error: '找不到該個股健診資料' });
 
         const data = result.rows[0];
+
+        // 輔助函式：生成一段話摘要
+        const generateSummary = (d) => {
+            const highScores = [];
+            const lowScores = [];
+            const dims = [
+                { name: '獲利能力', score: d.profit_score },
+                { name: '成長能力', score: d.growth_score },
+                { name: '安全性', score: d.safety_score },
+                { name: '價值衡量', score: d.value_score },
+                { name: '配息能力', score: d.dividend_score },
+                { name: '籌碼面', score: d.chip_score }
+            ];
+
+            dims.forEach(dim => {
+                if (dim.score >= 70) highScores.push(dim.name);
+                else if (dim.score <= 40) lowScores.push(dim.name);
+            });
+
+            let summary = `本股綜合評分為 ${d.overall_score} 分，評等為 ${d.grade}。`;
+            if (highScores.length > 0) {
+                summary += `在 ${highScores.join('、')} 表現優異。`;
+            }
+            if (lowScores.length > 0) {
+                summary += `但需留意 ${lowScores.join('、')} 相對較弱。`;
+            }
+            if (d.value_score < 40) {
+                summary += "目前估值偏高，建議謹慎評估買點。";
+            } else if (d.value_score > 70) {
+                summary += "目前估值具備吸引力。";
+            }
+            if (d.chip_score > 70) {
+                summary += "近期籌碼面有法人加持，動能較強。";
+            }
+            return summary;
+        };
+
         res.json({
             success: true,
             overall: data.overall_score,
             grade: data.grade,
             gradeColor: data.grade_color,
+            summary: generateSummary(data),
             dimensions: [
                 { name: '獲利能力', score: data.profit_score || 0, detail: '基於 ROE 與毛利率表現' },
                 { name: '成長能力', score: data.growth_score || 0, detail: '基於營收與 EPS 成長率' },
@@ -840,18 +960,21 @@ router.get('/stock/:symbol/valuation-history', async (req, res) => {
         const avgCashDiv = divRes.rows.length > 0 ? (divRes.rows.reduce((a, b) => a + parseFloat(b.cash_dividend || 0), 0) / divRes.rows.length) : 0;
 
         // 4. 定義區間 (River Bands) - 轉換為前端預期的陣列格式
+        // 基於標準差的分佈：+2σ, +1σ, +0.5σ, 均值, -0.5σ, -1σ, -2σ
         const peBands = [
-            { label: '極高估', multiplier: peStats.avg + 2 * peStats.std },
-            { label: '高估', multiplier: peStats.avg + 1 * peStats.std },
-            { label: '合理', multiplier: peStats.avg },
-            { label: '低估', multiplier: peStats.avg - 1 * peStats.std },
-            { label: '極低估', multiplier: peStats.avg - 2 * peStats.std }
+            { label: '極高估 (+2σ)', multiplier: peStats.avg + 2 * peStats.std },
+            { label: '高估 (+1σ)', multiplier: peStats.avg + 1 * peStats.std },
+            { label: '偏貴 (+0.5σ)', multiplier: peStats.avg + 0.5 * peStats.std },
+            { label: '合理 (均值)', multiplier: peStats.avg },
+            { label: '偏低 (-0.5σ)', multiplier: peStats.avg - 0.5 * peStats.std },
+            { label: '低估 (-1σ)', multiplier: peStats.avg - 1 * peStats.std },
+            { label: '極低估 (-2σ)', multiplier: peStats.avg - 2 * peStats.std }
         ];
 
         const pbBands = [
-            { label: '高估', multiplier: pbStats.avg + 1 * pbStats.std },
-            { label: '合理', multiplier: pbStats.avg },
-            { label: '低估', multiplier: pbStats.avg - 1 * pbStats.std }
+            { label: '高估 (+1σ)', multiplier: pbStats.avg + 1 * pbStats.std },
+            { label: '合理 (均值)', multiplier: pbStats.avg },
+            { label: '低估 (-1σ)', multiplier: pbStats.avg - 1 * pbStats.std }
         ];
 
         // 5. 判定當前位階 (Zone)
@@ -871,15 +994,17 @@ router.get('/stock/:symbol/valuation-history', async (req, res) => {
         // 6. 為歷史資料增加價格，方便前端計算 EPS
         const historyWithPrice = history.map(h => ({
             ...h,
-            price: h.pe > 0 ? (h.pe * (currentPrice / currentPe)) : currentPrice // 估算歷史價格，或直接再查一次 daily_prices
+            price: h.pe > 0 ? (h.pe * (currentPrice / currentPe)) : currentPrice
         }));
 
         res.json({
             success: true,
             symbol,
             history: historyWithPrice,
-            peBands,
-            pbBands,
+            bands: {
+                pe: peBands,
+                pb: pbBands
+            },
             currentPrice,
             currentPe,
             zone,
@@ -907,6 +1032,55 @@ router.get('/stock/:symbol/health-history', async (req, res) => {
         const result = await query(sql, [symbol]);
         res.json({ success: true, data: result.rows });
     } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+
+// GET /api/market-margin - 獲取大盤融資融券餘額
+router.get('/market-margin', async (req, res) => {
+    try {
+        // 我們只要 MarginPurchaseMoney (金額) 與 ShortSale (券)
+        const sql = `
+            SELECT * FROM (
+                SELECT 
+                    m.date::text as trade_date,
+                    SUM(CASE WHEN m.name = 'MarginPurchaseMoney' THEN COALESCE(m.margin_purchase_today_balance, 0) ELSE 0 END)::bigint as margin_balance,
+                    SUM(CASE WHEN m.name = 'ShortSale' THEN COALESCE(m.short_sale_today_balance, 0) ELSE 0 END)::bigint as short_balance,
+                    MAX(p.close_price) as index_price
+                FROM fm_total_margin m
+                LEFT JOIN daily_prices p ON m.date = p.trade_date AND p.symbol = 'TAIEX'
+                GROUP BY m.date
+                ORDER BY m.date DESC
+                LIMIT 100
+            ) t ORDER BY t.trade_date ASC
+        `;
+        const result = await query(sql);
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Market margin error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET /api/market-focus - 獲取市場焦點 (各類熱門股)
+router.get('/market-focus', async (req, res) => {
+    try {
+        const { market = 'all', stock_types = 'stock' } = req.query;
+        const sql = `
+            SELECT trade_date, turnover, hot, foreign3d, trust3d, main3d
+            FROM market_focus_daily
+            WHERE market = $1 AND stock_types = $2
+            ORDER BY trade_date DESC
+            LIMIT 1
+        `;
+        const result = await query(sql, [market, stock_types]);
+        if (result.rows.length === 0) {
+            return res.json({ success: true, data: null });
+        }
+        res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+        console.error('Market focus error:', err);
         res.status(500).json({ success: false, error: err.message });
     }
 });

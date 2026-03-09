@@ -31,8 +31,8 @@ export default function ValuationRiverView({ symbol }) {
     }, [symbol]);
 
     const chartData = useMemo(() => {
-        if (!data?.history || !data?.peBands || !data?.pbBands) return [];
-        const { peBands, pbBands } = data; // These are now ARRAYS
+        if (!data?.history || !data?.bands?.pe || !data?.bands?.pb) return [];
+        const { pe: peBands, pb: pbBands } = data.bands; 
 
         // Sample every Nth point to keep chart performant
         const step = Math.max(1, Math.floor(data.history.length / 200));
@@ -77,7 +77,9 @@ export default function ValuationRiverView({ symbol }) {
         );
     }
 
-    const { currentPrice, currentPe, zone, peBands, pbBands, yieldValuation, stats } = data;
+    const { currentPrice, currentPe, zone, stats } = data;
+    const peBands = data.bands?.pe || [];
+    const pbBands = data.bands?.pb || [];
     const zoneStyle = ZONE_STYLES[zone] || ZONE_STYLES['合理區'];
 
     return (
@@ -141,10 +143,13 @@ export default function ValuationRiverView({ symbol }) {
                     <BarChart3 className="w-4 h-4 text-violet-600" />
                     {viewMode === 'pe' ? '本益比 (PE) 河流圖 — 近五年' : '淨值比 (PB) 河流圖 — 近五年'}
                 </h3>
-                <div className="h-[400px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                        {viewMode === 'pe' ? (
-                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <div className="h-[430px] w-full bg-slate-50/50 rounded-xl p-4 border border-slate-100">
+                    {(() => {
+                        console.log('ValuationRiverView: Rendering chart', { viewMode, hasData: !!data, historyCount: data?.history?.length, bandsCount: peBands.length });
+                        return null;
+                    })()}
+                    {viewMode === 'pe' ? (
+                        <AreaChart width={800} height={400} data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="redZone" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="0%" stopColor="#ef4444" stopOpacity={0.15} />
@@ -165,51 +170,68 @@ export default function ValuationRiverView({ symbol }) {
                                     }}
                                 />
                                 <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 700 }} />
-                                {peBands.map((band, idx) => (
-                                    <Area 
-                                        key={idx} 
-                                        type="monotone" 
-                                        dataKey={`pe_band_${idx}`} 
-                                        stroke={idx === 0 ? "#ef4444" : idx === 4 ? "#10b981" : "#94a3b8"} 
-                                        fill="none" 
-                                        strokeDasharray="3 3" 
-                                        strokeWidth={1} 
-                                        name={band.label} 
-                                        dot={false} 
-                                    />
-                                ))}
-                                <Line type="monotone" dataKey="pe" stroke="#7c3aed" strokeWidth={2.5} dot={false} name="當前PE" activeDot={{ r: 5, strokeWidth: 0 }} />
+                                
+                                {/* River Areas: Each Area fills the space between this band and the next one (lower) */}
+                                {peBands.map((band, idx) => {
+                                    if (idx === peBands.length - 1) return null; // Last band has no "next" band below it
+                                    
+                                    // Define colors based on position
+                                    const areaColors = [
+                                        '#fee2e2', // 極高估 - 高估 (Red)
+                                        '#ffedd5', // 高估 - 偏貴 (Orange)
+                                        '#f0f9ff', // 偏貴 - 合理 (Blue)
+                                        '#f0fdf4', // 合理 - 偏低 (Green)
+                                        '#ccfbf1', // 偏低 - 低估 (Teal)
+                                        '#dcfce7', // 低估 - 極低估 (Emerald)
+                                    ];
+
+                                    return (
+                                        <Area
+                                            key={idx}
+                                            type="monotone"
+                                            dataKey={`pe_band_${idx}`}
+                                            stackId="1"
+                                            stroke="none"
+                                            fill={areaColors[idx] || '#f1f5f9'}
+                                            fillOpacity={0.6}
+                                            connectNulls
+                                            name={band.label}
+                                        />
+                                    );
+                                })}
+                                
+                                <Line type="monotone" dataKey="pe" stroke="#7c3aed" strokeWidth={3} dot={false} name="當前 PE" activeDot={{ r: 6, strokeWidth: 0 }} />
                             </AreaChart>
                         ) : (
-                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                                <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                                <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#fff', borderColor: '#e2e8f0', borderRadius: '8px', fontWeight: 'bold' }}
-                                    formatter={(v, name) => {
-                                        const labels = { pb: '當前PB', pb_expensive: '偏貴(+1σ)', pb_fair: '合理(均值)', pb_cheap: '偏低(-1σ)' };
-                                        return [typeof v === 'number' || typeof v === 'string' ? Number(v).toFixed(2) : v, labels[name] || name];
-                                    }}
-                                />
-                                <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 700 }} />
-                                {pbBands.map((band, idx) => (
-                                    <Area 
-                                        key={idx} 
-                                        type="monotone" 
-                                        dataKey={`pb_band_${idx}`} 
-                                        stroke={idx === 0 ? "#f59e0b" : idx === 2 ? "#10b981" : "#94a3b8"} 
-                                        fill="none" 
-                                        strokeDasharray="3 3" 
-                                        strokeWidth={1} 
-                                        name={band.label} 
-                                        dot={false} 
-                                    />
-                                ))}
-                                <Line type="monotone" dataKey="pb" stroke="#7c3aed" strokeWidth={2.5} dot={false} name="當前PB" activeDot={{ r: 5, strokeWidth: 0 }} />
-                            </AreaChart>
-                        )}
-                    </ResponsiveContainer>
+                        <AreaChart width={800} height={400} data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                             {/* ... same internal components as PE ... */}
+                             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                             <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                             <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
+                             <Tooltip
+                                 contentStyle={{ backgroundColor: '#fff', borderColor: '#e2e8f0', borderRadius: '8px', fontWeight: 'bold' }}
+                                 formatter={(v, name) => [Number(v || 0).toFixed(2), name]}
+                             />
+                             <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 700 }} />
+                             {pbBands.map((band, idx) => {
+                                 if (idx === pbBands.length - 1) return null;
+                                 const areaColors = ['#fffbeb', '#f0f9ff', '#f0fdf4'];
+                                 return (
+                                     <Area
+                                         key={idx}
+                                         type="monotone"
+                                         dataKey={`pb_band_${idx}`}
+                                         stackId="1"
+                                         stroke="none"
+                                         fill={areaColors[idx] || '#f1f5f9'}
+                                         fillOpacity={0.6}
+                                         name={band.label}
+                                     />
+                                 );
+                             })}
+                             <Line type="monotone" dataKey="pb" stroke="#7c3aed" strokeWidth={3} dot={false} name="當前 PB" activeDot={{ r: 6, strokeWidth: 0 }} />
+                        </AreaChart>
+                    )}
                 </div>
             </div>
 

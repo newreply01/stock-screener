@@ -1,0 +1,27 @@
+                                     Table "public.stocks"
+    Column    |            Type             | Collation | Nullable |          Default          
+--------------+-----------------------------+-----------+----------+---------------------------
+ symbol       | character varying(20)       |           | not null | 
+ name         | character varying(200)      |           | not null | 
+ market       | character varying(200)      |           | not null | 'twse'::character varying
+ industry     | character varying(200)      |           |          | 
+ updated_at   | timestamp without time zone |           |          | now()
+ stock_type   | character varying(50)       |           |          | 
+ listing_date | date                        |           |          | 
+Indexes:
+    "stocks_pkey" PRIMARY KEY, btree (symbol)
+    "idx_stocks_industry" btree (industry)
+    "idx_stocks_is_stock" btree ((symbol::text ~ '^[0-9]{4}$'::text AND symbol::text !~ '^00'::text))
+    "idx_stocks_market" btree (market)
+Referenced by:
+    TABLE "daily_prices" CONSTRAINT "daily_prices_symbol_fkey1" FOREIGN KEY (symbol) REFERENCES stocks(symbol)
+    TABLE "dividend_policy" CONSTRAINT "dividend_policy_symbol_fkey" FOREIGN KEY (symbol) REFERENCES stocks(symbol)
+    TABLE "financial_statements" CONSTRAINT "financial_statements_symbol_fkey" FOREIGN KEY (symbol) REFERENCES stocks(symbol)
+    TABLE "fundamentals" CONSTRAINT "fundamentals_symbol_fkey" FOREIGN KEY (symbol) REFERENCES stocks(symbol)
+    TABLE "indicators" CONSTRAINT "indicators_symbol_fkey" FOREIGN KEY (symbol) REFERENCES stocks(symbol)
+    TABLE "institutional" CONSTRAINT "institutional_symbol_fkey1" FOREIGN KEY (symbol) REFERENCES stocks(symbol)
+    TABLE "monthly_revenue" CONSTRAINT "monthly_revenue_symbol_fkey" FOREIGN KEY (symbol) REFERENCES stocks(symbol)
+    TABLE "realtime_ticks_old_backup" CONSTRAINT "realtime_ticks_symbol_fkey" FOREIGN KEY (symbol) REFERENCES stocks(symbol)
+    TABLE "realtime_ticks" CONSTRAINT "realtime_ticks_symbol_fkey1" FOREIGN KEY (symbol) REFERENCES stocks(symbol)
+    TABLE "watchlist_items" CONSTRAINT "watchlist_items_symbol_fkey" FOREIGN KEY (symbol) REFERENCES stocks(symbol) ON DELETE CASCADE
+

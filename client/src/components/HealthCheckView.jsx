@@ -4,7 +4,7 @@ import {
     ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell,
     AreaChart, Area
 } from 'recharts';
-import { Shield, TrendingUp, Heart, Target, Coins, Users, Award, AlertTriangle } from 'lucide-react';
+import { Shield, TrendingUp, TrendingDown, Heart, Target, Coins, Users, Award, AlertTriangle, Activity, CheckCircle2, Circle } from 'lucide-react';
 import { API_BASE, getHealthHistory } from '../utils/api';
 
 const DIMENSION_ICONS = {
@@ -138,47 +138,59 @@ export default function HealthCheckView({ symbol }) {
                         </div>
                     </div>
 
-                    {/* Trend Chart Area (Subtle inline trend) */}
-                    <div className="flex-1 h-[100px] w-full min-w-[200px]">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">健康分數走勢 (近30日)</div>
-                        <div className="w-full h-[70px]">
-                            {history && history.length > 0 ? (
-                                <ResponsiveContainer width="100%" height={70}>
-                                    <AreaChart data={history} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-                                        <defs>
-                                            <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor={getScoreColor(overall)} stopOpacity={0.3} />
-                                                <stop offset="95%" stopColor={getScoreColor(overall)} stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                                        <XAxis 
-                                            dataKey="date" 
-                                            hide 
-                                        />
-                                        <YAxis domain={[0, 100]} hide />
-                                        <Tooltip
-                                            labelClassName="text-xs font-bold"
-                                            contentStyle={{ fontSize: '10px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                            formatter={(value) => [`${value} 分`, '綜合評分']}
-                                            labelFormatter={(label) => `日期: ${label}`}
-                                        />
-                                        <Area
-                                            type="monotone"
-                                            dataKey="score"
-                                            stroke={getScoreColor(overall)}
-                                            fillOpacity={1}
-                                            fill="url(#colorScore)"
-                                            strokeWidth={3}
-                                            animationDuration={1500}
-                                        />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="h-full flex items-center justify-center text-[10px] text-slate-300 italic">
-                                    尚無歷史趨勢資料
+                    {/* AI Summary & Trend */}
+                    <div className="flex-1 flex flex-col gap-4">
+                        {data.summary && (
+                            <div className={`p-4 rounded-xl border-l-4 ${style.border} bg-white/50 text-sm font-bold ${style.text} leading-relaxed shadow-sm`}>
+                                <div className="flex items-center gap-2 mb-1 opacity-70">
+                                    <Activity className="w-3.5 h-3.5" />
+                                    <span className="text-[10px] uppercase tracking-widest">AI 智慧健診清單</span>
                                 </div>
-                            )}
+                                {data.summary}
+                            </div>
+                        )}
+                        
+                        <div className="flex-1 min-h-[70px]">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 px-1">健康分數走勢 (近30日)</div>
+                            <div className="w-full h-[60px]">
+                                {history && history.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height={60}>
+                                        <AreaChart data={history} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                                            <defs>
+                                                <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor={getScoreColor(overall)} stopOpacity={0.3} />
+                                                    <stop offset="95%" stopColor={getScoreColor(overall)} stopOpacity={0} />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                                            <XAxis 
+                                                dataKey="date" 
+                                                hide 
+                                            />
+                                            <YAxis domain={[0, 100]} hide />
+                                            <Tooltip
+                                                labelClassName="text-xs font-bold"
+                                                contentStyle={{ fontSize: '10px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                formatter={(value) => [`${value} 分`, '綜合評分']}
+                                                labelFormatter={(label) => `日期: ${label}`}
+                                            />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="score"
+                                                stroke={getScoreColor(overall)}
+                                                fillOpacity={1}
+                                                fill="url(#colorScore)"
+                                                strokeWidth={3}
+                                                animationDuration={1500}
+                                            />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="h-full flex items-center justify-center text-[10px] text-slate-300 italic">
+                                        尚無歷史趨勢資料
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -276,6 +288,86 @@ export default function HealthCheckView({ symbol }) {
                         </div>
                     );
                 })}
+            </div>
+
+            {/* A-Hsun Indicators Checklist */}
+            <div className="bg-white border-2 border-slate-900 rounded-3xl p-8 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-slate-100 rounded-bl-full -z-10 opacity-50"></div>
+                
+                <div className="flex items-center gap-3 mb-8">
+                    <div className="bg-slate-900 p-2.5 rounded-2xl">
+                        <CheckCircle2 className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black text-slate-900 tracking-tighter">存股健診指標清單</h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Investment Quality Checklist</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                    {[
+                        { 
+                            label: '價格便宜程度', 
+                            desc: '本益比或淨值比處於歷史低水位', 
+                            checked: dimensions.find(d => d.name === '價值衡量')?.score >= 70,
+                            metric: `PE: ${metrics.pe || '--'}`
+                        },
+                        { 
+                            label: '公司獲利能力', 
+                            desc: 'ROE 高於 15% 且毛利表現穩定', 
+                            checked: dimensions.find(d => d.name === '獲利能力')?.score >= 70,
+                            metric: `ROE: ${metrics.latestROE ? metrics.latestROE + '%' : '--'}`
+                        },
+                        { 
+                            label: '營運動能成長', 
+                            desc: '營收或 EPS 呈現長期增長趨勢', 
+                            checked: dimensions.find(d => d.name === '成長能力')?.score >= 70,
+                            metric: `營收成長: ${data.revenue_growth ? data.revenue_growth + '%' : '--'}`
+                        },
+                        { 
+                            label: '財務安全穩健', 
+                            desc: '負債比低，具備良好流動性', 
+                            checked: dimensions.find(d => d.name === '安全性')?.score >= 70,
+                            metric: '風險: 低'
+                        },
+                        { 
+                            label: '籌碼優勢加持', 
+                            desc: '法人近期明顯佈局且持股增加', 
+                            checked: dimensions.find(d => d.name === '籌碼面')?.score >= 70,
+                            metric: `${metrics.totalBuy ? metrics.totalBuy + ' 張' : '法人持平'}`
+                        },
+                        { 
+                            label: '股利分配合理', 
+                            desc: '殖利率具吸引力且穩定配息', 
+                            checked: dimensions.find(d => d.name === '配息能力')?.score >= 70,
+                            metric: `殖利率: ${metrics.dy || '--'}%`
+                        }
+                    ].map((item, idx) => (
+                        <div key={idx} className={`flex items-start gap-4 p-4 rounded-2xl border-2 transition-all ${item.checked ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-100 bg-slate-50 opacity-60'}`}>
+                            <div className={`mt-1 h-6 w-6 rounded-full flex items-center justify-center shrink-0 ${item.checked ? 'bg-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-slate-200'}`}>
+                                {item.checked ? <CheckCircle2 className="w-4 h-4 text-white" /> : <Circle className="w-4 h-4 text-slate-400" />}
+                            </div>
+                            <div className="flex-1">
+                                <div className="flex items-center justify-between mb-0.5">
+                                    <h4 className={`text-sm font-black ${item.checked ? 'text-emerald-900' : 'text-slate-500'}`}>{item.label}</h4>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.checked ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
+                                        {item.metric}
+                                    </span>
+                                </div>
+                                <p className={`text-[11px] font-medium leading-tight ${item.checked ? 'text-emerald-600' : 'text-slate-400'}`}>{item.desc}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                
+                <div className="mt-10 flex items-center gap-3 p-4 bg-slate-900 rounded-2xl text-white">
+                    <Award className="w-5 h-5 text-amber-400" />
+                    <p className="text-xs font-bold leading-relaxed">
+                        系統評註：{overall >= 80 ? '本股多項指標符合「阿勳」優質股標準，具備長線存股潛力。' : 
+                                 overall >= 60 ? '本股表現穩健，但部分指標尚有進步空間，建議分批佈局。' : 
+                                 '本股目前指標偏弱，建議等待基本面或估值改善後再行動。'}
+                    </p>
+                </div>
             </div>
 
             {/* Key Metrics Summary */}
