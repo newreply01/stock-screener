@@ -93,10 +93,10 @@ export default function MonitorPage() {
     // Known background scripts — names/descriptions always shown; status from API
     const KNOWN_SCRIPTS = [
         { script: 'realtime_crawler.js', desc: '即時看盤行情爬蟲 (盤中每數秒更新)', schedule: '常駐執行 (守護程式)' },
-        { script: 'fetcher.js', desc: '每日盤後資料 (收盤價、當沖、法人、融資券)', schedule: '每交易日 15:30' },
+        { script: 'fetcher.js', desc: '每日盤後資料 (收盤價、當沖、法人、融資券)', schedule: '15:00 (初步價格) / 21:45 (籌碼補全)' },
         { script: 'news_fetcher.js', desc: '財經新聞同步', schedule: '每小時' },
         { script: 'finmind_fetcher.js', desc: '財報基本面資料 (損益表、資產負債表、月營收…)', schedule: '每週六 04:00' },
-        { script: 'calc_health_scores.js', desc: '全股個股健診排行計算', schedule: '每交易日 16:00' },
+        { script: 'calc_health_scores.js', desc: '全股個股健診排行計算', schedule: '15:30 (初算) / 22:15 (最終)' },
     ];
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -366,6 +366,7 @@ export default function MonitorPage() {
                             <tr>
                                 <th className="px-5 py-3 font-semibold">程式名稱 (.js)</th>
                                 <th className="px-5 py-3 font-semibold">用途說明</th>
+                                <th className="px-5 py-3 font-semibold text-blue-600">排程說明</th>
                                 <th className="px-5 py-3 font-semibold">狀態與執行訊息</th>
                                 <th className="px-5 py-3 font-semibold text-right">最後執行時間</th>
                             </tr>
