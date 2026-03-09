@@ -188,7 +188,7 @@ export default function AdminUserManagement() {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                            <span={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter border ${
+                                        <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter border ${
                                             u.role === 'admin' ? 'bg-blue-50 text-blue-600 border-blue-200' : 
                                             u.role.startsWith('vip') ? 'bg-amber-50 text-amber-600 border-amber-200' :
                                             'bg-slate-100 text-slate-500 border-slate-200'
