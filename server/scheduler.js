@@ -47,17 +47,17 @@ function getLiveSchedulerStatus() {
 }
 
 function startScheduler() {
-    // 每交易日 15:30 更新行情 (台股收盤後)
-    const fetcherTask = cron.schedule('30 15 * * 1-5', async () => {
+    // 每交易日 15:00 更新行情 (初步價格同步)
+    const fetcherTask1500 = cron.schedule('0 15 * * 1-5', async () => {
         isTaskRunning['fetcher.js'] = true;
-        console.log(' 定時排程開始：抓取今日行情...');
-        await logScriptStatus('fetcher.js', 'RUNNING', '正在執行盤後行情抓取');
+        console.log(' 定時排程開始 (15:00)：抓取今日行情...');
+        await logScriptStatus('fetcher.js', 'RUNNING', '正在執行盤後行情初步抓取');
         try {
             await catchUp();
-            console.log(' 今日行情抓取完成');
-            await logScriptStatus('fetcher.js', 'SUCCESS', '盤後行情抓取完成');
+            console.log(' (15:00) 今日行情抓取完成');
+            await logScriptStatus('fetcher.js', 'SUCCESS', '盤後行情初步抓取完成');
         } catch (err) {
-            console.error(' 行情抓取失敗:', err.message);
+            console.error(' (15:00) 行情抓取失敗:', err.message);
             await logScriptStatus('fetcher.js', 'FAILED', `執行失敗: ${err.message}`);
         } finally {
             isTaskRunning['fetcher.js'] = false;
@@ -66,7 +66,28 @@ function startScheduler() {
         scheduled: true,
         timezone: 'Asia/Taipei'
     });
-    initTaskTracking('fetcher.js', fetcherTask);
+    initTaskTracking('fetcher.js_1500', fetcherTask1500);
+
+    // 每交易日 21:45 補抓籌碼資料 (三大法人、融資融券更新後)
+    const fetcherTask2145 = cron.schedule('45 21 * * 1-5', async () => {
+        isTaskRunning['fetcher.js'] = true;
+        console.log(' 定時排程開始 (21:45)：補抓今日籌碼資料...');
+        await logScriptStatus('fetcher.js', 'RUNNING', '正在補抓今日法人與資券資料');
+        try {
+            await catchUp();
+            console.log(' (21:45) 今日籌碼資料補全完成');
+            await logScriptStatus('fetcher.js', 'SUCCESS', '今日法人與資券補抓完成');
+        } catch (err) {
+            console.error(' (21:45) 籌碼補抓失敗:', err.message);
+            await logScriptStatus('fetcher.js', 'FAILED', `補抓失敗: ${err.message}`);
+        } finally {
+            isTaskRunning['fetcher.js'] = false;
+        }
+    }, {
+        scheduled: true,
+        timezone: 'Asia/Taipei'
+    });
+    initTaskTracking('fetcher.js_2145', fetcherTask2145);
 
     // 每小時更新新聞
     const newsTask = cron.schedule('0 * * * *', async () => {
@@ -110,18 +131,18 @@ function startScheduler() {
     });
     initTaskTracking('finmind_fetcher.js', finmindTask);
 
-    // 每交易日 22:00 計算全股健診排行 (籌碼資料約 21:30 更新完成)
-    const healthTask = cron.schedule('0 22 * * 1-5', async () => {
+    // 每交易日 15:30 第一次計算全股健診排行 (初步價格更新後)
+    const healthTask1530 = cron.schedule('30 15 * * 1-5', async () => {
         isTaskRunning['calc_health_scores.js'] = true;
-        console.log('🏥 定時排程開始：計算全股健診排行...');
-        await logScriptStatus('calc_health_scores.js', 'RUNNING', '正在計算全股健診排行');
+        console.log('🏥 定時排程開始 (15:30)：計算全股健診排行 (初步)...');
+        await logScriptStatus('calc_health_scores.js', 'RUNNING', '正在計算初步全股健診排行');
         try {
             await runHealthCheck();
-            console.log('🏥 全股健診排行計算完成');
-            await logScriptStatus('calc_health_scores.js', 'SUCCESS', '健診排行計算完成');
+            console.log('🏥 (15:30) 全股健診排行計算完成');
+            await logScriptStatus('calc_health_scores.js', 'SUCCESS', '初步健診排行計算完成');
         } catch (err) {
-            console.error('🏥 健診排行計算失敗:', err.message);
-            await logScriptStatus('calc_health_scores.js', 'FAILED', `計算失敗: ${err.message}`);
+            console.error('🏥 (15:30) 健診排行計算失敗:', err.message);
+            await logScriptStatus('calc_health_scores.js', 'FAILED', `初步計算失敗: ${err.message}`);
         } finally {
             isTaskRunning['calc_health_scores.js'] = false;
         }
@@ -129,7 +150,28 @@ function startScheduler() {
         scheduled: true,
         timezone: 'Asia/Taipei'
     });
-    initTaskTracking('calc_health_scores.js', healthTask);
+    initTaskTracking('calc_health_scores.js_1530', healthTask1530);
+
+    // 每交易日 22:15 第二次計算全股健診排行 (籌碼資料補全後)
+    const healthTask2215 = cron.schedule('15 22 * * 1-5', async () => {
+        isTaskRunning['calc_health_scores.js'] = true;
+        console.log('🏥 定時排程開始 (22:15)：計算全股健診排行 (最終)...');
+        await logScriptStatus('calc_health_scores.js', 'RUNNING', '正在計算最終全股健診排行');
+        try {
+            await runHealthCheck();
+            console.log('🏥 (22:15) 全股健診排行計算完成');
+            await logScriptStatus('calc_health_scores.js', 'SUCCESS', '最終健診排行計算完成');
+        } catch (err) {
+            console.error('🏥 (22:15) 健診排行計算失敗:', err.message);
+            await logScriptStatus('calc_health_scores.js', 'FAILED', `最終計算失敗: ${err.message}`);
+        } finally {
+            isTaskRunning['calc_health_scores.js'] = false;
+        }
+    }, {
+        scheduled: true,
+        timezone: 'Asia/Taipei'
+    });
+    initTaskTracking('calc_health_scores.js_2215', healthTask2215);
 
     // 每交易日 16:30 補抓今日歷史 1 分K (盤後資料完整後執行)
     if (syncHistoricalMinuteBatch) {

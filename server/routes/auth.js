@@ -10,7 +10,7 @@ const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // POST /api/auth/register — Email + 密碼註冊
 router.post('/register', async (req, res) => {
-    const { email, password, name } = req.body;
+    const { email, password, name, nickname } = req.body;
 
     if (!email || !password) {
         return res.status(400).json({ success: false, error: '請輸入 Email 和密碼' });
@@ -28,11 +28,12 @@ router.post('/register', async (req, res) => {
 
         const passwordHash = await bcrypt.hash(password, 12);
         const displayName = name || email.split('@')[0];
+        const displayNickname = nickname || displayName;
 
         const result = await query(
-            `INSERT INTO users (email, password_hash, name, provider) 
-             VALUES ($1, $2, $3, 'local') RETURNING id, email, name, avatar_url, provider`,
-            [email, passwordHash, displayName]
+            `INSERT INTO users (email, password_hash, name, nickname, provider, role) 
+             VALUES ($1, $2, $3, $4, 'local', 'user') RETURNING id, uuid, email, name, nickname, avatar_url, provider, role`,
+            [email, passwordHash, displayName, displayNickname]
         );
 
         const user = result.rows[0];
@@ -41,7 +42,7 @@ router.post('/register', async (req, res) => {
         await query('INSERT INTO watchlists (name, user_id) VALUES ($1, $2)', ['我的自選股', user.id]);
 
         const token = generateToken(user);
-        res.json({ success: true, token, user: { id: user.id, email: user.email, name: user.name, avatar_url: user.avatar_url } });
+        res.json({ success: true, token, user: { id: user.id, uuid: user.uuid, email: user.email, name: user.name, nickname: user.nickname, avatar_url: user.avatar_url, role: user.role } });
     } catch (err) {
         console.error('註冊失敗:', err);
         res.status(500).json({ success: false, error: '伺服器錯誤' });
@@ -58,7 +59,7 @@ router.post('/login', async (req, res) => {
 
     try {
         const result = await query(
-            'SELECT id, email, name, avatar_url, password_hash, provider FROM users WHERE email = $1 AND provider = $2',
+            'SELECT id, uuid, email, name, nickname, avatar_url, password_hash, provider, role FROM users WHERE email = $1 AND provider = $2',
             [email, 'local']
         );
 
@@ -74,7 +75,7 @@ router.post('/login', async (req, res) => {
         }
 
         const token = generateToken(user);
-        res.json({ success: true, token, user: { id: user.id, email: user.email, name: user.name, avatar_url: user.avatar_url } });
+        res.json({ success: true, token, user: { id: user.id, uuid: user.uuid, email: user.email, name: user.name, nickname: user.nickname, avatar_url: user.avatar_url, role: user.role } });
     } catch (err) {
         console.error('登入失敗:', err);
         res.status(500).json({ success: false, error: '伺服器錯誤' });
@@ -101,7 +102,7 @@ router.post('/google', async (req, res) => {
 
         // 檢查是否已有此 Google 帳號
         let result = await query(
-            'SELECT id, email, name, avatar_url, provider FROM users WHERE provider = $1 AND provider_id = $2',
+            'SELECT id, uuid, email, name, nickname, avatar_url, provider, role FROM users WHERE provider = $1 AND provider_id = $2',
             ['google', googleId]
         );
 
@@ -118,8 +119,8 @@ router.post('/google', async (req, res) => {
         } else {
             // 新使用者
             const insertResult = await query(
-                `INSERT INTO users (email, name, avatar_url, provider, provider_id) 
-                 VALUES ($1, $2, $3, 'google', $4) RETURNING id, email, name, avatar_url, provider`,
+                `INSERT INTO users (email, name, nickname, avatar_url, provider, provider_id, role) 
+                 VALUES ($1, $2, $2, $3, 'google', $4, 'user') RETURNING id, uuid, email, name, nickname, avatar_url, provider, role`,
                 [email, name, picture, googleId]
             );
             user = insertResult.rows[0];
@@ -129,17 +130,17 @@ router.post('/google', async (req, res) => {
         }
 
         const token = generateToken(user);
-        res.json({ success: true, token, user: { id: user.id, email: user.email, name: user.name, avatar_url: user.avatar_url } });
+        res.json({ success: true, token, user: { id: user.id, uuid: user.uuid, email: user.email, name: user.name, nickname: user.nickname, avatar_url: user.avatar_url, role: user.role } });
     } catch (err) {
         console.error('Google 登入失敗:', err);
         res.status(401).json({ success: false, error: 'Google 驗證失敗' });
     }
 });
 
-// GET /api/auth/me —// 取得目前使用者資訊
+// GET /api/auth/me — 取得目前使用者資訊
 router.get('/me', requireAuth, async (req, res) => {
     try {
-        const { rows } = await query('SELECT id, email, name, avatar_url, provider, created_at FROM users WHERE id = $1', [req.user.id]);
+        const { rows } = await query('SELECT id, uuid, email, name, nickname, avatar_url, provider, role, created_at FROM users WHERE id = $1', [req.user.id]);
         if (rows.length === 0) {
             return res.status(404).json({ success: false, error: '使用者不存在' });
         }
@@ -150,16 +151,16 @@ router.get('/me', requireAuth, async (req, res) => {
     }
 });
 
-// 更新使用者資訊 (名稱)
+// 更新使用者資訊 (名稱、暱稱)
 router.put('/me', requireAuth, async (req, res) => {
-    const { name } = req.body;
+    const { name, nickname } = req.body;
     if (!name || name.trim() === '') {
         return res.status(400).json({ success: false, error: '名稱不能為空' });
     }
     try {
         const { rows } = await query(
-            'UPDATE users SET name = $1, updated_at = NOW() WHERE id = $2 RETURNING id, email, name, avatar_url, provider',
-            [name.trim(), req.user.id]
+            'UPDATE users SET name = $1, nickname = $2, updated_at = NOW() WHERE id = $3 RETURNING id, uuid, email, name, nickname, avatar_url, provider, role',
+            [name.trim(), nickname?.trim() || name.trim(), req.user.id]
         );
         if (rows.length === 0) {
             return res.status(404).json({ success: false, error: '使用者不存在' });
@@ -171,39 +172,40 @@ router.put('/me', requireAuth, async (req, res) => {
     }
 });
 
-// 更新使用者密碼
-router.put('/password', requireAuth, async (req, res) => {
-    const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword || newPassword.length < 6) {
-        return res.status(400).json({ success: false, error: '請提供有效的密碼' });
+// 更新使用者信箱
+router.put('/me/email', requireAuth, async (req, res) => {
+    const { newEmail, password } = req.body;
+    if (!newEmail || !password) {
+        return res.status(400).json({ success: false, error: '請提供新信箱與密碼' });
     }
     try {
-        const { rows } = await query(
-            'SELECT password_hash, provider FROM users WHERE id = $1',
-            [req.user.id]
-        );
+        const { rows } = await query('SELECT password_hash, provider FROM users WHERE id = $1', [req.user.id]);
         if (rows.length === 0) return res.status(404).json({ success: false, error: '使用者不存在' });
 
         const user = rows[0];
         if (user.provider !== 'local') {
-            return res.status(400).json({ success: false, error: '第三方登入的帳號無法修改密碼' });
+            return res.status(400).json({ success: false, error: '第三方登入的帳號無法修改信箱' });
         }
 
-        const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+        const isMatch = await bcrypt.compare(password, user.password_hash);
         if (!isMatch) {
-            return res.status(401).json({ success: false, error: '目前密碼不正確' });
+            return res.status(401).json({ success: false, error: '密碼不正確' });
         }
 
-        const salt = await bcrypt.genSalt(10);
-        const hash = await bcrypt.hash(newPassword, salt);
-
-        await query(
-            'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
-            [hash, req.user.id]
+        // 檢查新信箱是否已被佔用
+        const existing = await query('SELECT id FROM users WHERE email = $1 AND provider = $2', [newEmail, 'local']);
+        if (existing.rows.length > 0) {
+            return res.status(409).json({ success: false, error: '此 Email 已被其他帳號使用' });
+        }
+        // 執行更新
+        const updateRes = await query(
+            'UPDATE users SET email = $1, updated_at = NOW() WHERE id = $2 RETURNING id, uuid, email, name, nickname, avatar_url, provider, role',
+            [newEmail, req.user.id]
         );
-        res.json({ success: true, message: '密碼已更新' });
+        
+        res.json({ success: true, message: '信箱已成功更新', user: updateRes.rows[0] });
     } catch (err) {
-        console.error('Update password error:', err);
+        console.error('Update email error:', err);
         res.status(500).json({ success: false, error: '伺服器錯誤' });
     }
 });

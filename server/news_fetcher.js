@@ -1,5 +1,6 @@
 const { pool } = require('./db');
 const fetch = require('node-fetch');
+const nodeFetch = fetch.default || fetch;
 
 const CATEGORIES = {
     'headline': '熱門頭條',
@@ -9,10 +10,24 @@ const CATEGORIES = {
     'wd_macro': '全球時事'
 };
 
+// 更新同步進度 (用於系統監控)
+async function updateProgress(dataset, stockId = '') {
+    try {
+        await pool.query(
+            `INSERT INTO fm_sync_progress (dataset, stock_id, last_sync_date, status)
+             VALUES ($1, $2, NOW(), 'done')
+             ON CONFLICT (dataset, stock_id) DO UPDATE SET last_sync_date = NOW(), status = 'done'`,
+            [dataset, stockId]
+        );
+    } catch (e) {
+        console.error(`[Progress] Failed to update ${dataset}:`, e.message);
+    }
+}
+
 async function fetchCategoryNews(categoryId) {
     const url = `https://api.cnyes.com/media/api/v1/newslist/category/${categoryId}?limit=20`;
     try {
-        const response = await fetch(url);
+        const response = await nodeFetch(url);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
         return data.items.data || [];
@@ -60,6 +75,7 @@ async function syncAllNews() {
             console.log(`✅ [NewsFetcher] ${catName}: Synced ${items.length} items, ${saved} new.`);
         }
     }
+    await updateProgress('News');
     console.log('📰 [NewsFetcher] News sync completed.');
 }
 

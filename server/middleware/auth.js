@@ -4,7 +4,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'muchstock-default-secret-change-me
 
 function generateToken(user) {
     return jwt.sign(
-        { id: user.id, email: user.email, name: user.name },
+        { id: user.id, uuid: user.uuid, email: user.email, name: user.name, nickname: user.nickname, role: user.role },
         JWT_SECRET,
         { expiresIn: '7d' }
     );
@@ -41,4 +41,20 @@ function optionalAuth(req, res, next) {
     next();
 }
 
-module.exports = { generateToken, requireAuth, optionalAuth, JWT_SECRET };
+// 角色權限檢查中間件
+function requireRole(allowedRoles) {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ success: false, error: '請先登入' });
+        }
+        
+        const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({ success: false, error: '權限不足' });
+        }
+        
+        next();
+    };
+}
+
+module.exports = { generateToken, requireAuth, optionalAuth, requireRole, JWT_SECRET };

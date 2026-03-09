@@ -25,8 +25,8 @@ async function exportSlimDB() {
 
     // 2. 決定哪些表要排除資料 (Keep Schema, Exclude Data)
     // 這些表我們之後會手動補充「過濾後」的資料
+    // NOTE: 'stocks' 從此清單移出，由 pg_dump 直接處理，可解決大部分 FK 問題
     const manualTables = [
-        'stocks',
         'daily_prices_2025',
         'daily_prices_2026',
         'institutional_2025',
@@ -51,31 +51,40 @@ async function exportSlimDB() {
 
     try {
         // Step 1: 匯出 Schema + 預設資料
-        console.log("📦 1/3 匯出全表結構與基礎數據 (已排除權證表資料)...");
+        console.log("📦 1/3 匯出全表結構與基礎數據 (已排除大型區隔表資料)...");
         const excludeString = excludeDataFlags.join(' ');
         const dumpCmd = `pg_dump -h ${pgHost} -p ${pgPort} -U ${pgUser} -d ${pgDb} -O -x --no-security-labels --no-privileges --no-comments ${excludeString} -f ${OUTPUT_FILE}`;
         execSync(dumpCmd, { stdio: 'inherit', env });
 
-        // Step 1.5: 插入 DROP 區塊 (確保 Import 時乾淨)
-        console.log("🛠️  插入 DROP TABLE 區塊...");
+        // Step 1.5: 插入優化與清理區塊
+        console.log("🛠️  插入優化與 DROP TABLE 區塊...");
         const originalContent = fs.readFileSync(OUTPUT_FILE, 'utf8');
         const dropStrings = allTables
             .filter(t => !t.startsWith('realtime_ticks_'))
             .map(t => `DROP TABLE IF EXISTS public."${t}" CASCADE;`)
             .join('\n');
         
-        fs.writeFileSync(OUTPUT_FILE, `-- Stock Screener Slim DB\n-- Cleanup\n${dropStrings}\n\n${originalContent}`);
+        const header = `-- Stock Screener Slim DB\n` +
+                       `SET statement_timeout = 0;\n` +
+                       `SET lock_timeout = 0;\n` +
+                       `SET client_encoding = 'UTF8';\n` +
+                       `SET standard_conforming_strings = on;\n` +
+                       `SET check_function_bodies = false;\n` +
+                       `SET client_min_messages = warning;\n` +
+                       `SET session_replication_role = 'replica';\n\n` +
+                       `-- Cleanup\n${dropStrings}\n\n`;
+        
+        fs.writeFileSync(OUTPUT_FILE, header + originalContent);
 
-        // Step 2: 手動匯出「過濾權證後」的資料
-        console.log("📦 2/3 正在過濾並追加核心資料 (排除 6 碼權證)...");
+        // Step 2: 手動追加過濾後的資料
+        console.log("📦 2/3 正在追加過濾後的區隔表資料...");
         
         const filters = {
-            'stocks': "WHERE length(symbol) < 6 AND industry NOT IN ('認購權證(不含牛證)', '認售權證(不含熊證)', '牛證(不含可展延牛證)', '熊證(不含可展延熊證)')",
             'daily_prices_2025': "WHERE length(symbol) < 6",
             'daily_prices_2026': "WHERE length(symbol) < 6",
             'institutional_2025': "WHERE length(symbol) < 6",
             'institutional_2026': "WHERE length(symbol) < 6",
-            'fm_stock_price': "WHERE date >= '2025-01-01' AND length(symbol) < 6"
+            'fm_stock_price': "WHERE date >= '2025-01-01'"
         };
 
         for (const tableName of manualTables) {
@@ -83,6 +92,7 @@ async function exportSlimDB() {
             
             console.log(`   - 處理表: ${tableName}`);
             const filterClause = filters[tableName] || "";
+            // 注意：這裡使用符號表過濾以確保權證被排除 (除了 fm_stock_price)
             const copySql = `COPY (SELECT * FROM "${tableName}" ${filterClause}) TO STDOUT WITH CSV;\n`;
             const sqlFile = `/tmp/${tableName}_copy.sql`;
             const csvFile = `/tmp/${tableName}_data.csv`;
@@ -92,14 +102,15 @@ async function exportSlimDB() {
             const psqlCmd = `psql -h ${pgHost} -p ${pgPort} -U ${pgUser} -d ${pgDb} -f ${sqlFile} > ${csvFile}`;
             execSync(psqlCmd, { env });
 
-            fs.appendFileSync(OUTPUT_FILE, `\n-- Data for ${tableName} (Filtered)\nCOPY public."${tableName}" FROM stdin WITH CSV;\n`);
+            fs.appendFileSync(OUTPUT_FILE, `\n-- Data for ${tableName} (Slimmed)\nCOPY public."${tableName}" FROM stdin WITH CSV;\n`);
             if (fs.existsSync(csvFile)) {
                 const csvData = fs.readFileSync(csvFile);
                 fs.appendFileSync(OUTPUT_FILE, csvData);
-                fs.appendFileSync(OUTPUT_FILE, `\\. \n`); // End of COPY
+                fs.appendFileSync(OUTPUT_FILE, `\\.\n`);
             }
         }
 
+        fs.appendFileSync(OUTPUT_FILE, `\nSET session_replication_role = 'origin';\n`);
         console.log(`✅ 匯出完成！檔案：${OUTPUT_FILE}`);
         const stats = fs.statSync(OUTPUT_FILE);
         console.log(`📊 最終檔案大小: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);

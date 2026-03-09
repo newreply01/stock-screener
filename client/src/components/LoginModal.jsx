@@ -10,6 +10,7 @@ export default function LoginModal({ isOpen, onClose }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
+    const [nickname, setNickname] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -69,7 +70,7 @@ export default function LoginModal({ isOpen, onClose }) {
 
         try {
             if (mode === 'register') {
-                await register(email, password, name);
+                await register(email, password, name, nickname);
             } else {
                 await login(email, password);
             }
@@ -77,6 +78,7 @@ export default function LoginModal({ isOpen, onClose }) {
             setEmail('');
             setPassword('');
             setName('');
+            setNickname('');
         } catch (err) {
             setError(err.message || '操作失敗');
         } finally {
@@ -134,12 +136,24 @@ export default function LoginModal({ isOpen, onClose }) {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {mode === 'register' && (
                             <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="真實姓名"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none text-sm font-medium transition-all"
+                                />
+                            </div>
+                        )}
+
+                        {mode === 'register' && (
+                            <div className="relative">
                                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                 <input
                                     type="text"
-                                    placeholder="姓名 / 暱稱"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
+                                    placeholder="暱稱 (顯示於討論區/個人資料)"
+                                    value={nickname}
+                                    onChange={(e) => setNickname(e.target.value)}
                                     className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none text-sm font-medium transition-all"
                                 />
                             </div>

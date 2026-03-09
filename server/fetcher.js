@@ -1,5 +1,6 @@
 const { query } = require('./db');
-const fetch = globalThis.fetch || require('node-fetch');
+const fetch = require('node-fetch');
+const nodeFetch = fetch.default || fetch;
 
 // 來源設定
 const TWSE_MI_INDEX = 'https://www.twse.com.tw/exchangeReport/MI_INDEX?response=json&type=ALLBUT0999';
@@ -46,13 +47,28 @@ async function ensureStock(symbol, name = symbol) {
     );
 }
 
+// 更新同步進度 (用於系統監控)
+async function updateProgress(dataset, stockId = '') {
+    try {
+        await query(
+            `INSERT INTO fm_sync_progress (dataset, stock_id, last_sync_date, status)
+             VALUES ($1, $2, NOW(), 'done')
+             ON CONFLICT (dataset, stock_id) DO UPDATE SET last_sync_date = NOW(), status = 'done'`,
+            [dataset, stockId]
+        );
+        // console.log(`[Progress] Updated ${dataset} ${stockId}`);
+    } catch (e) {
+        console.error(`[Progress] Failed to update ${dataset}:`, e.message);
+    }
+}
+
 // ===== 抓取上市 (TWSE) 歷史 =====
 async function fetchTWSE(dateObj) {
     const dateStr = toDateStr(dateObj); // YYYYMMDD
     console.log(`[TWSE] 抓取 ${dateStr}...`);
     try {
         const url = `${TWSE_MI_INDEX}&date=${dateStr}`;
-        const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36' } });
+        const res = await nodeFetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36' } });
         const json = await res.json();
 
         if (json.stat !== 'OK') {
@@ -112,6 +128,7 @@ async function fetchTWSE(dateObj) {
             count++;
         }
         console.log(`[TWSE] ${dateStr} 更新 ${count} 筆`);
+        if (count > 0) await updateProgress('TaiwanStockPrice');
     } catch (e) {
         console.error(`[TWSE] ${dateStr} 失敗:`, e.message);
     }
@@ -124,7 +141,7 @@ async function fetchTPEx(dateObj) {
     try {
         const url = `${TPEX_DAILY_URL}&d=${rocDate}`;
         // Added User-Agent to avoid blocking
-        const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36' } });
+        const res = await nodeFetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36' } });
         const json = await res.json();
 
         const dataRows = (json.tables && json.tables[0] && json.tables[0].data) ? json.tables[0].data : json.aaData;
@@ -166,6 +183,7 @@ async function fetchTPEx(dateObj) {
             count++;
         }
         console.log(`[TPEx] ${rocDate} 更新 ${count} 筆`);
+        if (count > 0) await updateProgress('TaiwanStockPrice');
     } catch (e) {
         console.error(`[TPEx] ${rocDate} 失敗:`, e.message);
     }
@@ -177,7 +195,7 @@ async function fetchFundamentals(dateObj) {
     const dateHyphen = toDateHyphen(dateObj);
     console.log(`[Fund] 抓取 ${dateStr}...`);
     try {
-        const res = await fetch(`${TWSE_PE_URL}&date=${dateStr}`, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36' } });
+        const res = await nodeFetch(`${TWSE_PE_URL}&date=${dateStr}`, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36' } });
         const json = await res.json();
 
         if (json.stat !== 'OK' || !json.data) return;
@@ -206,6 +224,7 @@ async function fetchFundamentals(dateObj) {
             count++;
         }
         console.log(`[Fund] ${dateStr} 更新 ${count} 筆`);
+        if (count > 0) await updateProgress('TaiwanStockFinancialStatements');
     } catch (e) {
         console.error(`[Fund] ${dateStr} 失敗:`, e.message);
     }
@@ -217,7 +236,7 @@ async function fetchTPExFundamentals(dateObj) {
     const dateHyphen = toDateHyphen(dateObj);
     console.log(`[TPEx-Fund] 抓取 ${rocDate}...`);
     try {
-        const res = await fetch(`${TPEX_PE_URL}&d=${rocDate}`, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36' } });
+        const res = await nodeFetch(`${TPEX_PE_URL}&d=${rocDate}`, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36' } });
         const json = await res.json();
 
         if (!json.tables || json.tables.length === 0) return;
@@ -248,6 +267,7 @@ async function fetchTPExFundamentals(dateObj) {
             count++;
         }
         console.log(`[TPEx-Fund] ${rocDate} 更新 ${count} 筆`);
+        if (count > 0) await updateProgress('TaiwanStockFinancialStatements');
     } catch (e) {
         console.error(`[TPEx-Fund] ${rocDate} 失敗:`, e.message);
     }
@@ -259,7 +279,7 @@ async function fetchInstitutional(dateObj) {
     const dateHyphen = toDateHyphen(dateObj);
     console.log(`[Inst] 抓取 ${dateStr}...`);
     try {
-        const res = await fetch(`${TWSE_INST_URL}&date=${dateStr}`, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36' } });
+        const res = await nodeFetch(`${TWSE_INST_URL}&date=${dateStr}`, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36' } });
         const json = await res.json();
 
         if (json.stat !== 'OK' || !json.data) {
@@ -304,6 +324,7 @@ async function fetchInstitutional(dateObj) {
             count++;
         }
         console.log(`[Inst] ${dateStr} 更新 ${count} 筆 (過濾跳過 ${skipCount} 筆)`);
+        if (count > 0) await updateProgress('TaiwanStockInstitutional');
     } catch (e) {
         console.error(`[Inst] ${dateStr} 失敗:`, e.message);
     }
@@ -316,7 +337,7 @@ async function fetchTPExInstitutional(dateObj) {
     console.log(`[TPEx-Inst] 抓取 ${rocDate}...`);
     try {
         const url = `${TPEX_INST_URL}&d=${rocDate}`;
-        const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36' } });
+        const res = await nodeFetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36' } });
         const text = await res.text();
         let json;
         try {
@@ -379,6 +400,7 @@ async function fetchTPExInstitutional(dateObj) {
             count++;
         }
         console.log(`[TPEx-Inst] ${rocDate} 更新 ${count} 筆 (過濾跳過 ${skipCount} 筆)`);
+        if (count > 0) await updateProgress('TaiwanStockInstitutional');
     } catch (e) {
         console.error(`[TPEx-Inst] ${rocDate} 失敗:`, e.message);
     }

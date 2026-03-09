@@ -109,7 +109,7 @@ router.get('/status', async (req, res) => {
                 case 'TaiwanFuturesInstitutionalInvestors':
                 case 'TaiwanOptionInstitutionalInvestors':
                     script = 'fetcher.js';
-                    description = '每交易日 15:30 更新';
+                    description = '每交易日 15:00 初步 / 21:45 補全';
                     break;
                 // 新聞
                 case 'TaiwanStockNews':

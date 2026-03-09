@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Menu, Bell, Globe, LogOut } from 'lucide-react';
+import { User, Menu, Bell, Globe, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Header({ currentView = 'dashboard' }) {
@@ -140,6 +140,14 @@ export default function Header({ currentView = 'dashboard' }) {
                                         >
                                             <User className="w-4 h-4" /> 個人設定
                                         </button>
+                                        {user.role === 'admin' && (
+                                            <button
+                                                onClick={() => dispatchView('admin-users')}
+                                                className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-brand-primary hover:bg-brand-primary/5 rounded-lg transition-colors"
+                                            >
+                                                <Settings className="w-4 h-4" /> 使用者管理
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => {
                                                 logout();

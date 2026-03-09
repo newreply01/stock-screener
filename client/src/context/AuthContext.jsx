@@ -56,11 +56,11 @@ export function AuthProvider({ children }) {
         return data.user;
     }, []);
 
-    const register = useCallback(async (email, password, name) => {
+    const register = useCallback(async (email, password, name, nickname) => {
         const res = await fetch(`${API_BASE}/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, name }),
+            body: JSON.stringify({ email, password, name, nickname }),
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
@@ -89,8 +89,19 @@ export function AuthProvider({ children }) {
         setUser(null);
     }, []);
 
+    const updateUser = useCallback((updatedUser) => {
+        setUser(prev => {
+            const newUser = { ...prev, ...updatedUser };
+            setSavedUser(newUser);
+            return newUser;
+        });
+    }, []);
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, googleLogin, logout, showLoginModal, setShowLoginModal, requireLogin }}>
+        <AuthContext.Provider value={{ 
+            user, loading, login, register, googleLogin, logout, 
+            updateUser, showLoginModal, setShowLoginModal, requireLogin 
+        }}>
             {children}
         </AuthContext.Provider>
     );

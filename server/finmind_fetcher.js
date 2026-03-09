@@ -46,6 +46,19 @@ function getTokenStatus() {
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+async function updateProgress(dataset, stockId = '') {
+    try {
+        await pool.query(
+            `INSERT INTO fm_sync_progress (dataset, stock_id, last_sync_date, status)
+             VALUES ($1, $2, NOW(), 'done')
+             ON CONFLICT (dataset, stock_id) DO UPDATE SET last_sync_date = NOW(), status = 'done'`,
+            [dataset, stockId]
+        );
+    } catch (e) {
+        console.error(`[Progress] Failed to update ${dataset}:`, e.message);
+    }
+}
+
 async function fetchFinMind(dataset, data_id, start_date = START_DATE) {
     let url = `${BASE_URL}?dataset=${dataset}&data_id=${data_id}&start_date=${start_date}`;
     const token = getCurrentToken();
@@ -268,6 +281,7 @@ async function syncDetailedFinancials(symbol) {
                     }
                 }
                 console.log(`✅ [FinMind] Synced ${dataset} for ${symbol}: ${data.length} items.`);
+                await updateProgress(dataset, symbol);
             }
         }
     } catch (err) {
@@ -291,6 +305,7 @@ async function syncStockFinancials(symbol) {
                 DO UPDATE SET revenue = EXCLUDED.revenue
             `, [symbol, item.revenue_year, item.revenue_month, item.revenue]);
         }
+        if (revenues.length > 0) await updateProgress('TaiwanStockMonthRevenue', symbol);
 
         await syncDetailedFinancials(symbol);
 

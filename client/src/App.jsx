@@ -18,6 +18,7 @@ import RealtimeExplorer from './components/RealtimeExplorer'
 import HealthCheckRanking from './components/HealthCheckRanking'
 import MonitorPage from './components/MonitorPage'
 import PortfolioDashboard from './components/PortfolioDashboard'
+import AdminUserManagement from './components/AdminUserManagement'
 import { screenStocks, getStats, getWatchlists, addStockToWatchlist, removeStockFromWatchlist } from './utils/api'
 import { useAuth } from './context/AuthContext'
 import { useGlobalFilters } from './context/GlobalFilterContext'
@@ -202,6 +203,8 @@ function App() {
           <HealthCheckRanking onSelectStock={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }} />
         ) : currentView === 'monitor' ? (
           <MonitorPage />
+        ) : currentView === 'admin-users' ? (
+          <AdminUserManagement />
         ) : currentView === 'stock-detail' ? (
           <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
             <StockDetail stock={mainStock} isInline={true} />
