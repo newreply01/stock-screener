@@ -77,7 +77,7 @@ export default function ValuationRiverView({ symbol }) {
         );
     }
 
-    const { currentPrice, currentPe, zone, stats } = data;
+    const { currentPrice, currentPe, zone, stats, yieldValuation } = data;
     const peBands = data.bands?.pe || [];
     const pbBands = data.bands?.pb || [];
     const zoneStyle = ZONE_STYLES[zone] || ZONE_STYLES['合理區'];

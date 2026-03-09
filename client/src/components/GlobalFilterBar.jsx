@@ -23,8 +23,8 @@ export default function GlobalFilterBar() {
     }, []);
 
     return (
-        <div className="bg-white px-6 py-4 border-b border-gray-200">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 max-w-5xl mx-auto">
+        <div className="bg-white px-4 py-4 border-b border-gray-200">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 max-w-7xl mx-auto">
 
                 {/* 1. Market Filter */}
                 <div className="flex items-center gap-3">
@@ -38,7 +38,7 @@ export default function GlobalFilterBar() {
                             <button
                                 key={m.id}
                                 onClick={() => setMarket(m.id)}
-                                className={`px-5 py-2 rounded-lg text-sm font-black transition-all min-w-[70px]
+                                className={`px-3 py-2 rounded-lg text-sm font-black transition-all min-w-[55px]
                                     ${market === m.id
                                         ? 'bg-white text-[#ea4335] shadow-sm font-black z-10 custom-market-active'
                                         : 'text-gray-500 font-bold hover:text-gray-800 hover:bg-white/50'
@@ -72,7 +72,7 @@ export default function GlobalFilterBar() {
                                 <button
                                     key={type.id}
                                     onClick={() => toggleStockType(type.id)}
-                                    className={`px-6 py-2 rounded-lg text-sm transition-all min-w-[70px]
+                                    className={`px-3 py-2 rounded-lg text-sm transition-all min-w-[55px]
                                         ${isSelected
                                             ? 'bg-[#ea4335] text-white font-black shadow-md border border-red-600/20 hover:bg-[#d33426]'
                                             : 'text-gray-500 font-bold hover:bg-white hover:text-gray-800'
@@ -100,7 +100,7 @@ export default function GlobalFilterBar() {
                         onChange={setIndustry}
                         options={industries}
                         allLabel="全產業"
-                        className="w-full sm:w-[180px]"
+                        className="w-full lg:w-[150px]"
                     />
                 </div>
 

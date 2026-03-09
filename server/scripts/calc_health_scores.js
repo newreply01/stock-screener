@@ -61,15 +61,12 @@ async function calcAllScores() {
     const allStocks = stocksRes.rows;
     console.log(`📊 Processing ${allStocks.length} stocks...`);
 
-    // Get latest trade date
-    const dateRes = await query('SELECT MAX(trade_date) as latest FROM daily_prices');
-    let calcDate = dateRes.rows[0]?.latest || new Date();
+    // Get latest trade date - Format as string in DB to avoid TZ issues
+    const dateRes = await query("SELECT TO_CHAR(MAX(trade_date), 'YYYY-MM-DD') as latest FROM daily_prices");
+    let calcDate = dateRes.rows[0]?.latest;
     
-    // Normalize to YYYY-MM-DD string to avoid timestamp mismatch in DELETE
-    if (calcDate instanceof Date) {
-        calcDate = calcDate.toISOString().split('T')[0];
-    } else if (typeof calcDate === 'string' && calcDate.includes('T')) {
-        calcDate = calcDate.split('T')[0];
+    if (!calcDate) {
+        calcDate = new Date().toISOString().split('T')[0];
     }
 
     // Batch fetch: fundamentals for all stocks
@@ -90,53 +87,69 @@ async function calcAllScores() {
     const priceMap = {};
     priceRes.rows.forEach(r => { priceMap[r.symbol] = r; });
 
-    // Batch fetch: monthly revenue (latest 13 months per stock for YoY)
+    // Batch fetch: monthly revenue (latest 13 months per stock) - FILTER IN SQL
     const revRes = await query(`
-        SELECT symbol, revenue, revenue_year, revenue_month,
-               ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY revenue_year DESC, revenue_month DESC) as rn
-        FROM monthly_revenue
+        SELECT symbol, revenue, revenue_year, revenue_month
+        FROM (
+            SELECT symbol, revenue, revenue_year, revenue_month,
+                   ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY revenue_year DESC, revenue_month DESC) as rn
+            FROM monthly_revenue
+        ) t
+        WHERE rn <= 13
     `);
     const revMap = {};
     revRes.rows.forEach(r => {
         if (!revMap[r.symbol]) revMap[r.symbol] = [];
-        if (r.rn <= 13) revMap[r.symbol].push(r);
+        revMap[r.symbol].push(r);
     });
 
-    // Batch fetch: EPS (latest 5 per stock)
+    // Batch fetch: EPS (latest 8 per stock) - FILTER IN SQL
     const epsRes = await query(`
-        SELECT symbol, value, date,
-               ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY date DESC) as rn
-        FROM financial_statements
-        WHERE type = 'EPS'
+        SELECT symbol, value, date
+        FROM (
+            SELECT symbol, value, date,
+                   ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY date DESC) as rn
+            FROM financial_statements
+            WHERE type = 'EPS'
+        ) t
+        WHERE rn <= 8
     `);
     const epsMap = {};
     epsRes.rows.forEach(r => {
         if (!epsMap[r.symbol]) epsMap[r.symbol] = [];
-        if (r.rn <= 8) epsMap[r.symbol].push(r);
+        epsMap[r.symbol].push(r);
     });
 
-    // Batch fetch: institutional (latest 10 per stock)
+    // Batch fetch: institutional (latest 10 per stock) - FILTER IN SQL
     const instRes = await query(`
-        SELECT symbol, foreign_net, trust_net, total_net,
-               ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY trade_date DESC) as rn
-        FROM institutional
+        SELECT symbol, foreign_net, trust_net, total_net
+        FROM (
+            SELECT symbol, foreign_net, trust_net, total_net,
+                   ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY trade_date DESC) as rn
+            FROM institutional
+        ) t
+        WHERE rn <= 10
     `);
     const instMap = {};
     instRes.rows.forEach(r => {
         if (!instMap[r.symbol]) instMap[r.symbol] = [];
-        if (r.rn <= 10) instMap[r.symbol].push(r);
+        instMap[r.symbol].push(r);
     });
 
-    // Batch fetch: dividends (latest 5 per stock)
+    // Batch fetch: dividends (latest 5 per stock) - FILTER IN SQL
     const divRes = await query(`
-        SELECT symbol, year, cash_dividend,
-               ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY year DESC) as rn
-        FROM dividend_policy
+        SELECT symbol, year, cash_dividend
+        FROM (
+            SELECT symbol, year, cash_dividend,
+                   ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY year DESC) as rn
+            FROM dividend_policy
+        ) t
+        WHERE rn <= 5
     `);
     const divMap = {};
     divRes.rows.forEach(r => {
         if (!divMap[r.symbol]) divMap[r.symbol] = [];
-        if (r.rn <= 5) divMap[r.symbol].push(r);
+        divMap[r.symbol].push(r);
     });
 
     // Batch fetch: GrossProfit & Revenue from fm_financial_statements

@@ -10,6 +10,7 @@ const watchlistRoutes = require('./routes/watchlist');
 const realtimeRoutes = require('./routes/realtime_query');
 const filterRoutes = require('./routes/filters');
 const portfolioRoutes = require('./routes/portfolio');
+const streamRoutes = require('./routes/stream');
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use('/api/watchlists', watchlistRoutes);
 app.use('/api/realtime', realtimeRoutes);
 app.use('/api/filters', filterRoutes);
 app.use('/api/portfolio', portfolioRoutes);
+app.use('/api/stream', streamRoutes);
 app.use('/api', screenerRoutes);
 
 const distPath = path.join(__dirname, '..', 'client', 'dist');

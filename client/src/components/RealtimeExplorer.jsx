@@ -26,6 +26,7 @@ const RealtimeExplorer = ({ onStockSelect }) => {
         setLoading(true);
         try {
             const res = await getRealtimeTicks(sym, dt);
+            console.log('RealtimeExplorer: Received ticks response', { symbol: sym, success: res.success, count: res.data?.length, date: res.date });
             if (res.success) {
                 setData(res.data || []);
                 setCurrentDate(res.date);
@@ -154,8 +155,8 @@ const RealtimeExplorer = ({ onStockSelect }) => {
                                 <td colSpan="8" className="py-12 bg-white text-center">
                                     <div className="flex flex-col items-center justify-center text-slate-500 min-h-[150px]">
                                         <Search className="w-8 h-8 text-slate-300 mb-3" />
-                                        <p className="font-bold text-base mb-1">({symbol}) 查無分時資料</p>
-                                        <p className="text-sm mb-4">這可能是因為該標的在查詢日期無交易紀錄，<br />或者是即時爬蟲尚未在此時段擷取到新的成交快照。</p>
+                                        <p className="font-bold text-base mb-1">({symbol}) 查微分時資料</p>
+                                        <p className="text-sm mb-4">這可能是因為該標在查詢日期無交易紀錄，<br />或者是即時爬蟲尚未在此時段擷取到新的成交快照。</p>
 
                                         {activeSymbols.length > 0 && (
                                             <div className="mt-4 max-w-lg w-full">
@@ -186,7 +187,7 @@ const RealtimeExplorer = ({ onStockSelect }) => {
                                 </td>
                             </tr>
                         ) : (
-                            data.map((tick, i) => {
+                            [...data].sort((a, b) => b.time_str.localeCompare(a.time_str)).map((tick, i) => {
                                 const basePrice = tick.previous_close || tick.open_price;
                                 const diff = tick.price && basePrice ? tick.price - basePrice : null;
                                 const diffPct = diff !== null && basePrice ? (diff / basePrice) * 100 : null;

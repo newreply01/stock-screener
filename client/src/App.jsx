@@ -47,7 +47,9 @@ function App() {
     } catch (e) { console.error('Watchlist fetch error:', e) }
   }
 
-  useEffect(() => { fetchUserWatchlists() }, [currentView])
+  useEffect(() => { 
+    if (user) fetchUserWatchlists() 
+  }, [currentView, user])
 
   const toggleWatchlist = async (symbol) => {
     if (!requireLogin()) return;

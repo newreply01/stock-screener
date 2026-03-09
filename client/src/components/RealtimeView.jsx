@@ -42,7 +42,7 @@ export default function RealtimeView({ stock }) {
     }, [stock?.symbol]);
 
     // Format data or fallback
-    const displayData = realtimeData || {};
+    const displayData = realtimeData?.data || {};
     const bidAskData = displayData.five_levels || [
         { bid: null, bVol: null, ask: null, aVol: null },
         { bid: null, bVol: null, ask: null, aVol: null },
@@ -51,9 +51,11 @@ export default function RealtimeView({ stock }) {
         { bid: null, bVol: null, ask: null, aVol: null },
     ];
 
-    const currentPrice = displayData.last_price || displayData.previous_close || parseFloat(stock.close_price) || '--';
+    const currentPrice = displayData.price || displayData.previous_close || parseFloat(stock.close_price) || '--';
     const change = displayData.change_percent !== undefined ? displayData.change_percent : (parseFloat(stock.change_percent) || 0);
     const isUp = change >= 0;
+
+    console.log('RealtimeView: Rendering with data', { symbol: stock.symbol, hasData: !!realtimeData, displayData });
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -112,8 +114,8 @@ export default function RealtimeView({ stock }) {
                         <div className="flex items-center gap-2 mb-4">
                             <Clock className="w-4 h-4 text-slate-400" />
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Transaction Summary</span>
-                            {displayData.latest_time && (
-                                <span className="ml-auto text-[10px] font-mono font-bold text-brand-primary px-2 py-0.5 bg-brand-primary/10 rounded border border-brand-primary/20">{displayData.latest_time}</span>
+                            {displayData.time_str && (
+                                <span className="ml-auto text-[10px] font-mono font-bold text-brand-primary px-2 py-0.5 bg-brand-primary/10 rounded border border-brand-primary/20">{displayData.time_str}</span>
                             )}
                         </div>
                         <div className="flex justify-between items-end">

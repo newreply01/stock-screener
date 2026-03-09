@@ -44,6 +44,7 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
             setLoading(true);
             try {
                 let rawData = await getHistory(stock.symbol, 1000); // 獲取更多數據以支持週期轉換
+                console.log('StockChart: Received history rawData', { symbol: stock.symbol, count: rawData?.length, sample: rawData?.[0] });
                 if (!isMounted || !rawData.length) {
                     setLoading(false);
                     return;

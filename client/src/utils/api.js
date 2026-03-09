@@ -185,13 +185,13 @@ export async function getRealtimeData(symbol) {
 export async function getRealtimeTicks(symbol, date) {
     if (!symbol) return { data: [], date: null };
     const dateParam = date ? `&date=${date}` : '';
-    const res = await fetch(`${API_BASE}/realtime-ticks?symbol=${symbol}${dateParam}`);
+    const res = await fetch(`${API_BASE}/realtime/realtime-ticks?symbol=${symbol}${dateParam}`);
     if (!res.ok) throw new Error('獲取盤中分時資料失敗');
     return res.json();
 }
 
 export async function getRealtimeActive() {
-    const res = await fetch(`${API_BASE}/realtime-active`);
+    const res = await fetch(`${API_BASE}/realtime/realtime-active`);
     if (!res.ok) throw new Error('獲取即時熱門標的失敗');
     return res.json();
 }
