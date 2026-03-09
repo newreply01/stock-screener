@@ -110,8 +110,8 @@ function startScheduler() {
     });
     initTaskTracking('finmind_fetcher.js', finmindTask);
 
-    // 每交易日 16:00 計算全股健診排行 (catchUp 15:30 完成後)
-    const healthTask = cron.schedule('0 16 * * 1-5', async () => {
+    // 每交易日 22:00 計算全股健診排行 (籌碼資料約 21:30 更新完成)
+    const healthTask = cron.schedule('0 22 * * 1-5', async () => {
         isTaskRunning['calc_health_scores.js'] = true;
         console.log('🏥 定時排程開始：計算全股健診排行...');
         await logScriptStatus('calc_health_scores.js', 'RUNNING', '正在計算全股健診排行');
