@@ -1085,4 +1085,47 @@ router.get('/market-focus', async (req, res) => {
     }
 });
 
+// GET /api/debug-db - 除錯用：檢查資料庫連線與資料量
+router.get('/debug-db', async (req, res) => {
+    try {
+        const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || 'Not Set';
+        const maskedUrl = dbUrl.replace(/:([^@]+)@/, ':****@');
+        
+        const counts = await Promise.all([
+            query('SELECT count(*) FROM daily_prices').catch(e => ({ error: e.message })),
+            query('SELECT count(*) FROM stocks').catch(e => ({ error: e.message })),
+            query('SELECT count(*) FROM stock_health_scores').catch(e => ({ error: e.message })),
+            query('SELECT count(*) FROM market_focus_daily').catch(e => ({ error: e.message }))
+        ]);
+
+        const latestPrices = await query(`
+            SELECT trade_date, count(*) as count
+            FROM daily_prices
+            WHERE trade_date IN (
+                SELECT DISTINCT trade_date FROM daily_prices ORDER BY trade_date DESC LIMIT 5
+            )
+            GROUP BY trade_date
+            ORDER BY trade_date DESC
+        `).catch(e => ({ error: e.message }));
+
+        res.json({
+            success: true,
+            env: {
+                DATABASE_URL: maskedUrl,
+                VERCEL: process.env.VERCEL,
+                NODE_ENV: process.env.NODE_ENV
+            },
+            counts: {
+                daily_prices: counts[0].rows ? counts[0].rows[0].count : counts[0].error,
+                stocks: counts[1].rows ? counts[1].rows[0].count : counts[1].error,
+                health_scores: counts[2].rows ? counts[2].rows[0].count : counts[2].error,
+                market_focus: counts[3].rows ? counts[3].rows[0].count : counts[3].error
+            },
+            latest_prices_distribution: latestPrices.rows || latestPrices.error
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 module.exports = router;
