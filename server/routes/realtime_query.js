@@ -47,12 +47,11 @@ router.get('/realtime-ticks', async (req, res) => {
                 t.volume, t.trade_volume, 
                 t.buy_intensity, t.sell_intensity, t.five_levels,
                 COALESCE(
+                    NULLIF(t.previous_close, 0),
                     CASE 
-                        WHEN $2::date >= CURRENT_DATE THEN sn.yest_close 
-                        ELSE NULL 
-                    END,
-                    (SELECT close_price FROM daily_prices dp WHERE dp.symbol = t.symbol AND dp.trade_date < $2::date ORDER BY dp.trade_date DESC LIMIT 1),
-                    t.previous_close
+                        WHEN $2::date >= CURRENT_DATE THEN sn.today_close 
+                        ELSE (SELECT close_price FROM daily_prices dp WHERE dp.symbol = t.symbol AND dp.trade_date < $2::date ORDER BY dp.trade_date DESC LIMIT 1)
+                    END
                 ) as previous_close
             FROM ${tableName} t
             LEFT JOIN stocks s ON t.symbol = s.symbol
@@ -138,12 +137,11 @@ const sql = `
                 s.name,
                 TO_CHAR(t.trade_time, 'HH24:MI:SS') as time_str,
                 COALESCE(
+                    NULLIF(t.previous_close, 0),
                     CASE 
-                        WHEN DATE(t.trade_time) >= CURRENT_DATE THEN sn.yest_close 
-                        ELSE NULL 
-                    END,
-                    (SELECT close_price FROM daily_prices dp WHERE dp.symbol = t.symbol AND dp.trade_date < DATE(t.trade_time) ORDER BY dp.trade_date DESC LIMIT 1),
-                    t.previous_close
+                        WHEN DATE(t.trade_time) >= CURRENT_DATE THEN sn.today_close 
+                        ELSE (SELECT close_price FROM daily_prices dp WHERE dp.symbol = t.symbol AND dp.trade_date < DATE(t.trade_time) ORDER BY dp.trade_date DESC LIMIT 1)
+                    END
                 ) as previous_close
             FROM (
                 SELECT * FROM realtime_ticks WHERE symbol = $1
