@@ -164,8 +164,12 @@ export default function HealthCheckRanking({ onSelectStock }) {
                                 <Search className="w-6 h-6 text-teal-600" />
                             </div>
                             <div>
-                                <h2 className="text-xl font-black text-slate-800 tracking-tight">切換分析標的</h2>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">切換目前正在分析的股票</p>
+                                <h2 className="text-xl font-black text-brand-primary tracking-tight">
+                                    {selectedStock ? `${selectedStock.name} (${selectedStock.symbol})` : '切換分析標的'}
+                                </h2>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                    {selectedStock ? `目前分析標的：${selectedStock.industry || '未指定行業'}` : '請搜尋或從排行中選擇股票進行分析'}
+                                </p>
                             </div>
                         </div>
                         <div className="w-full sm:w-96">

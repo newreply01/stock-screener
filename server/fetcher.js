@@ -573,4 +573,4 @@ if (require.main === module) {
         .catch(err => { console.error(err); process.exit(1); });
 }
 
-module.exports = { catchUp, fetchRange, fetchTPEx };
+module.exports = { catchUp, fetchRange, fetchTWSE, fetchTPEx, updateLastCloseSnapshot };
