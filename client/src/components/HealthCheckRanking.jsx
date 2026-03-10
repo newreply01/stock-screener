@@ -422,46 +422,49 @@ export default function HealthCheckRanking({ onSelectStock }) {
                                     <ChevronRight className="w-4 h-4" />
                                 </button>
                             </div>
-                        )}
-                    </div>
-                </>
-            ) : (
+                        </div>
+                    )}
+                </div>
+            </>
+        ) : (
+
                 <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden min-h-[700px]">
-                        {!selectedStock && activeTab !== 'pk' ? (
-                            <div className="h-[600px] flex flex-col items-center justify-center text-slate-400 p-10 text-center">
-                                <div className="w-20 h-20 bg-teal-50 rounded-full flex items-center justify-center mb-6 border border-teal-100 shadow-inner">
-                                    <Search className="w-10 h-10 text-teal-300" />
-                                </div>
-                                <h3 className="text-2xl font-black text-slate-700 mb-3 tracking-tight">尚未選擇分析標的</h3>
-                                <p className="text-sm font-bold text-slate-400 max-w-sm leading-relaxed mb-8">請在上方搜尋框輸入股票代號，<br />或從「健診排行」中點擊股票進行深入分析。</p>
-                                <div className="w-64">
-                                    <StockSearchAutocomplete onSelectStock={(s) => setSelectedStock(s)} />
-                                </div>
+                    {!selectedStock && activeTab !== 'pk' ? (
+                        <div className="h-[600px] flex flex-col items-center justify-center text-slate-400 p-10 text-center">
+                            <div className="w-20 h-20 bg-teal-50 rounded-full flex items-center justify-center mb-6 border border-teal-100 shadow-inner">
+                                <Search className="w-10 h-10 text-teal-300" />
                             </div>
-                        ) : activeTab === 'health' ? (
-                            <div className="p-0">
-                                <HealthCheckView symbol={selectedStock.symbol} />
+                            <h3 className="text-2xl font-black text-slate-700 mb-3 tracking-tight">尚未選擇分析標的</h3>
+                            <p className="text-sm font-bold text-slate-400 max-w-sm leading-relaxed mb-8">請在上方搜尋框輸入股票代號，<br />或從「健診排行」中點擊股票進行深入分析。</p>
+                            <div className="w-64">
+                                <StockSearchAutocomplete onSelectStock={(s) => setSelectedStock(s)} />
                             </div>
-                        ) : activeTab === 'valuation' ? (
-                            <div className="p-8">
-                                <ValuationRiverView symbol={selectedStock.symbol} />
-                            </div>
-                        ) : activeTab === 'pk' ? (
-                            <div className="p-0">
-                                <StockCompareView initialSymbols={selectedStock ? [selectedStock.symbol] : []} />
-                            </div>
-                        ) : activeTab === 'trend' ? (
-                            <div className="p-0">
-                                <TrendView stock={selectedStock} />
-                            </div>
-                        ) : activeTab === 'chart' ? (
-                            <div className="p-8 min-h-[800px]">
-                                <StockChart stock={selectedStock} />
-                            </div>
-                        ) : null}
-                    </div>
-                )}
-            </div>
+                        </div>
+                    ) : activeTab === 'health' ? (
+                        <div className="p-0">
+                            <HealthCheckView symbol={selectedStock.symbol} />
+                        </div>
+                    ) : activeTab === 'valuation' ? (
+                        <div className="p-8">
+                            <ValuationRiverView symbol={selectedStock.symbol} />
+                        </div>
+                    ) : activeTab === 'pk' ? (
+                        <div className="p-0">
+                            <StockCompareView initialSymbols={selectedStock ? [selectedStock.symbol] : []} />
+                        </div>
+                    ) : activeTab === 'trend' ? (
+                        <div className="p-0">
+                            <TrendView stock={selectedStock} />
+                        </div>
+                    ) : activeTab === 'chart' ? (
+                        <div className="p-8 min-h-[800px]">
+                            <StockChart stock={selectedStock} />
+                        </div>
+                    ) : null}
+                </div>
+            )}
         </div>
+    </div>
     );
 }
+
