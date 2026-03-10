@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Flame } from 'lucide-react';
+import { Search, Flame, TrendingUp } from 'lucide-react';
 import { getRealtimeTicks, getRealtimeActive } from '../utils/api';
+import StockSearchAutocomplete from './StockSearchAutocomplete';
 
 const RealtimeExplorer = ({ onStockSelect }) => {
     const [symbol, setSymbol] = useState('2330');
@@ -60,7 +61,7 @@ const RealtimeExplorer = ({ onStockSelect }) => {
 
     // Simple logic for coloring
     const getRowColor = (tick) => {
-        const basePrice = tick.previous_close || tick.open_price;
+        const basePrice = tick.previous_close;
         if (!tick.price || !basePrice) return 'text-slate-700';
         if (tick.price > basePrice) return 'text-red-600 bg-red-50/50';
         if (tick.price < basePrice) return 'text-green-600 bg-green-50/50';
@@ -94,27 +95,32 @@ const RealtimeExplorer = ({ onStockSelect }) => {
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="flex gap-2">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     <input
                         type="date"
                         value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        className="border border-slate-300 rounded px-3 py-1.5 text-sm outline-none focus:border-brand-primary"
+                        onChange={(e) => {
+                            setDate(e.target.value);
+                            fetchData(symbol, e.target.value);
+                        }}
+                        className="border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary/50 transition-all bg-white shadow-sm"
                     />
-                    <div className="relative">
-                        <input
-                            type="text"
-                            value={symbol}
-                            onChange={(e) => setSymbol(e.target.value)}
-                            placeholder="股票代號"
-                            className="w-32 border border-slate-300 rounded px-3 py-1.5 text-sm outline-none focus:border-brand-primary pl-8"
+                    <div className="w-64">
+                        <StockSearchAutocomplete
+                            onSelectStock={(stock) => {
+                                setSymbol(stock.symbol);
+                                fetchData(stock.symbol, date);
+                            }}
                         />
-                        <Search className="w-4 h-4 text-slate-400 absolute left-2 top-2" />
                     </div>
-                    <button type="submit" className="bg-brand-primary hover:bg-brand-dark text-white rounded px-4 py-1.5 text-sm font-bold transition-colors shadow-sm">
-                        查詢
+                    <button
+                        onClick={() => fetchData(symbol, date)}
+                        className="bg-brand-primary hover:bg-brand-dark text-white rounded-xl px-6 py-2.5 text-sm font-black transition-all shadow-sm active:scale-95 flex items-center gap-2"
+                    >
+                        <Search className="w-4 h-4" />
+                        刷新
                     </button>
-                </form>
+                </div>
             </div>
 
             {/* Content Body */}
@@ -188,7 +194,7 @@ const RealtimeExplorer = ({ onStockSelect }) => {
                             </tr>
                         ) : (
                             [...data].sort((a, b) => b.time_str.localeCompare(a.time_str)).map((tick, i) => {
-                                const basePrice = tick.previous_close || tick.open_price;
+                                const basePrice = tick.previous_close;
                                 const diff = tick.price && basePrice ? tick.price - basePrice : null;
                                 const diffPct = diff !== null && basePrice ? (diff / basePrice) * 100 : null;
                                 const diffColor = diff > 0 ? 'text-red-600 font-bold' : (diff < 0 ? 'text-green-600 font-bold' : 'text-slate-500 font-bold');

@@ -32,12 +32,29 @@ async function logCrawlerStatus(status, message) {
 }
 
 async function getTargetSymbols() {
-    const res = await query("SELECT symbol, market FROM stocks WHERE symbol ~ '^[0-9]{4}$'");
-    return res.rows.map(r => ({
-        symbol: r.symbol,
-        market: r.market,
-        prefix: r.market === 'twse' ? 'tse' : 'otc'
-    }));
+    try {
+        // 從 stocks 表獲取所有需要監控的標的
+        // 1. 排除 industry 為 NULL 的項目 (通常是權證)
+        // 2. 排除 industry 中包含 "權證", "牛證", "熊證" 的項目
+        // 3. 雖然有些 ETF 長度為 6 碼，但其 industry 為 'ETF'，應保留
+        const res = await query(`
+            SELECT symbol, market FROM stocks 
+            WHERE industry IS NOT NULL 
+              AND industry NOT LIKE '%權證%'
+              AND industry NOT LIKE '%牛證%'
+              AND industry NOT LIKE '%熊證%'
+        `);
+        const symbols = res.rows.map(r => ({
+            symbol: r.symbol,
+            market: r.market,
+            prefix: r.market === 'twse' ? 'tse' : 'otc'
+        }));
+        console.log(`[Crawler] Target symbols count: ${symbols.length} (Smart filter: Included ETFs/ETNs, Excluded Warrants)`);
+        return symbols;
+    } catch (err) {
+        console.error(`[Crawler] Failed to get target symbols:`, err.message);
+        return [];
+    }
 }
 
 function parseFiveLevels(pricesStr, volsStr) {
@@ -99,10 +116,35 @@ function resolvePrice(info) {
 
 async function startCrawler() {
     console.log(`[Realtime Crawler] Started. Checking market hours...`);
+    
+    // 初始化追蹤變數，避免重啟時誤刪資料
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
+    let lastClearedDate = '';
+    let lastMigratedDate = '';
+
+    try {
+        // 檢查今天是否已經清盤過 (看 Hot Table 是否有今日以前的殘留資料)
+        const checkClearRes = await query(`SELECT 1 FROM realtime_ticks WHERE DATE(trade_time) < $1::date LIMIT 1`, [todayStr]);
+        if (checkClearRes.rows.length === 0) {
+            // 如果沒看到舊資料，或是本來就空，假設今日已清
+            lastClearedDate = todayStr;
+        }
+
+        // 檢查今天是否已經搬移過 (看 Cold Table 是否存有今日資料)
+        const checkMigrateRes = await query(`SELECT 1 FROM realtime_ticks_history WHERE DATE(trade_time) = $1::date LIMIT 1`, [todayStr]);
+        if (checkMigrateRes.rows.length > 0) {
+            lastMigratedDate = todayStr;
+        }
+        
+        console.log(`[Maintenance] Init: lastClearedDate=${lastClearedDate}, lastMigratedDate=${lastMigratedDate}`);
+    } catch (err) {
+        console.error(`[Maintenance] Init failed: ${err.message}`);
+    }
 
     while (true) {
         const now = new Date();
         const tpeTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+        const currentToday = tpeTime.toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
         const day = tpeTime.getDay();
         const hours = tpeTime.getHours();
         const minutes = tpeTime.getMinutes();
@@ -111,7 +153,56 @@ async function startCrawler() {
         const timeInMinutes = hours * 60 + minutes;
         const marketOpen = 8 * 60 + 50;   // 08:50
         const marketClose = 13 * 60 + 40;  // 13:40
+        const migrationTime = 13 * 60 + 45; // 13:45 執行資料搬移
 
+        // --- 每日維護邏輯 ---
+
+        // 1. 開盤前清理 (Hot Table)
+        if (timeInMinutes >= marketOpen && timeInMinutes <= marketClose && todayStr !== lastClearedDate) {
+            console.log(`[Maintenance] New trading day ${todayStr}. Clearing hot table...`);
+            try {
+                await query('DELETE FROM realtime_ticks WHERE trade_time < $1::date', [todayStr]);
+                lastClearedDate = todayStr;
+                console.log(`[Maintenance] Hot table cleared (old data deleted).`);
+            } catch (err) {
+                console.error(`[Maintenance] Clear failed: ${err.message}`);
+            }
+        }
+
+        // 2. 收盤後搬移 (Hot -> Cold)
+        if (timeInMinutes >= migrationTime && currentToday !== lastMigratedDate) {
+            console.log(`[Maintenance] Market closed. Migrating today's ticks to history...`);
+            try {
+                // 將當日資料複製到歷史表
+                await query(`
+                    INSERT INTO realtime_ticks_history 
+                    (symbol, trade_time, price, open_price, high_price, low_price, volume, trade_volume, buy_intensity, sell_intensity, five_levels, previous_close)
+                    SELECT symbol, trade_time, price, open_price, high_price, low_price, volume, trade_volume, buy_intensity, sell_intensity, five_levels, previous_close
+                    FROM realtime_ticks
+                `);
+                lastMigratedDate = currentToday;
+                console.log(`[Maintenance] Migration to history complete. Data remains in Hot Table for after-hours viewing.`);
+
+                // Vercel 專屬優化：冷表只留 3 天
+                if (process.env.VERCEL === '1') {
+                    console.log(`[Vercel Optimization] Cleaning up cold table (retention: 3 days)...`);
+                    try {
+                        await query(`DELETE FROM realtime_ticks_history WHERE trade_time < NOW() - INTERVAL '3 days'`);
+                        console.log(`[Vercel Optimization] Cold table cleanup complete.`);
+
+                        // 軌跡紀錄清理：只留 3 天
+                        await query(`DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '3 days'`);
+                        console.log(`[Vercel Optimization] Audit logs cleanup complete.`);
+                    } catch (err) {
+                        console.error(`[Vercel Optimization] Cleanup failed: ${err.message}`);
+                    }
+                }
+            } catch (err) {
+                console.error(`[Maintenance] Migration failed: ${err.message}`);
+            }
+        }
+
+        // --- 爬蟲執行邏輯 ---
         if (!isWeekday || timeInMinutes < marketOpen || timeInMinutes > marketClose) {
             console.log(`[Market Closed] Sleeping...`);
             await logCrawlerStatus('WAITING', '休市中，等待開盤');

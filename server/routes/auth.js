@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const { OAuth2Client } = require('google-auth-library');
 const { query } = require('../db');
 const { generateToken, requireAuth } = require('../middleware/auth');
+const { logActivity } = require('../utils/audit_logger');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
@@ -42,6 +43,10 @@ router.post('/register', async (req, res) => {
         await query('INSERT INTO watchlists (name, user_id) VALUES ($1, $2)', ['我的自選股', user.id]);
 
         const token = generateToken(user);
+        
+        // 紀錄註冊行為
+        await logActivity(user.uuid, 'USER_REGISTER', 'user', user.id, { email: user.email }, req);
+        
         res.json({ success: true, token, user: { id: user.id, uuid: user.uuid, email: user.email, name: user.name, nickname: user.nickname, avatar_url: user.avatar_url, role: user.role } });
     } catch (err) {
         console.error('註冊失敗:', err);
@@ -75,6 +80,10 @@ router.post('/login', async (req, res) => {
         }
 
         const token = generateToken(user);
+        
+        // 紀錄登入行為
+        await logActivity(user.uuid, 'USER_LOGIN', 'user', user.id, { email: user.email }, req);
+        
         res.json({ success: true, token, user: { id: user.id, uuid: user.uuid, email: user.email, name: user.name, nickname: user.nickname, avatar_url: user.avatar_url, role: user.role } });
     } catch (err) {
         console.error('登入失敗:', err);
@@ -130,6 +139,10 @@ router.post('/google', async (req, res) => {
         }
 
         const token = generateToken(user);
+        
+        // 紀錄 Google 登入行為
+        await logActivity(user.uuid, 'USER_LOGIN_GOOGLE', 'user', user.id, { email: user.email }, req);
+        
         res.json({ success: true, token, user: { id: user.id, uuid: user.uuid, email: user.email, name: user.name, nickname: user.nickname, avatar_url: user.avatar_url, role: user.role } });
     } catch (err) {
         console.error('Google 登入失敗:', err);
@@ -165,6 +178,10 @@ router.put('/me', requireAuth, async (req, res) => {
         if (rows.length === 0) {
             return res.status(404).json({ success: false, error: '使用者不存在' });
         }
+
+        // 紀錄個人資料修改
+        await logActivity(req.user.uuid, 'UPDATE_PROFILE', 'user', req.user.id, { name, nickname }, req);
+
         res.json({ success: true, user: rows[0] });
     } catch (err) {
         console.error('Update me error:', err);

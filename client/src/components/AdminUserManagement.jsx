@@ -4,13 +4,18 @@ import { authFetch } from '../utils/auth';
 import { 
     Users, Search, Shield, User, Clock, 
     MoreHorizontal, ChevronRight, X, ExternalLink, 
-    CheckCircle2, AlertCircle, Trash2, Ban
+    CheckCircle2, AlertCircle, Trash2, Ban, Activity
 } from 'lucide-react';
+
+import AdminAuditLogs from './AdminAuditLogs';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 export default function AdminUserManagement() {
     const { user: currentUser } = useAuth();
+    const [activeTab, setActiveTab] = useState('users'); // 'users' or 'logs'
+    
+    // 使用者列表相關狀態
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -50,10 +55,10 @@ export default function AdminUserManagement() {
     }, [search, roleFilter, page]);
 
     useEffect(() => {
-        if (currentUser?.role === 'admin') {
+        if (currentUser?.role === 'admin' && activeTab === 'users') {
             fetchUsers();
         }
-    }, [fetchUsers, currentUser]);
+    }, [fetchUsers, currentUser, activeTab]);
 
     const handleViewUserDetail = async (user) => {
         setSelectedUser(user);
@@ -107,145 +112,164 @@ export default function AdminUserManagement() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 relative">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div>
-                    <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-                        <Users className="w-7 h-7 text-brand-primary" /> 使用者管理
-                    </h1>
-                    <p className="text-sm font-medium text-slate-500 mt-1">
-                        管理系統註冊帳號、調整權限與查看用戶持股。總計 {total} 位使用者。
-                    </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="relative group">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
-                        <input 
-                            type="text" 
-                            placeholder="搜尋 Email 或暱稱..." 
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 focus:border-brand-primary focus:ring-1 focus:ring-brand-primary rounded-xl text-sm w-full md:w-64 transition-all"
-                        />
-                    </div>
-                    <select 
-                        value={roleFilter}
-                        onChange={(e) => setRoleFilter(e.target.value)}
-                        className="px-4 py-2 bg-slate-50 border border-slate-200 focus:border-brand-primary rounded-xl text-sm transition-all outline-none"
-                    >
-                        <option value="">所有角色</option>
-                        <option value="user">一般用戶</option>
-                        <option value="admin">管理員</option>
-                        <option value="vip1">VIP 1</option>
-                        <option value="vip2">VIP 2</option>
-                        <option value="vip3">VIP 3</option>
-                        <option value="vip4">VIP 4</option>
-                        <option value="vip5">VIP 5</option>
-                    </select>
-                </div>
+            {/* Tab Navigation */}
+            <div className="flex border-b border-slate-200">
+                <button 
+                    onClick={() => setActiveTab('users')}
+                    className={`px-6 py-3 text-sm font-black transition-all border-b-2 flex items-center gap-2 ${activeTab === 'users' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                >
+                    <Users className="w-4 h-4" /> 使用者清單
+                </button>
+                <button 
+                    onClick={() => setActiveTab('logs')}
+                    className={`px-6 py-3 text-sm font-black transition-all border-b-2 flex items-center gap-2 ${activeTab === 'logs' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                >
+                    <Activity className="w-4 h-4" /> 操作軌跡紀錄
+                </button>
             </div>
 
-            {/* 使用者表格 */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-slate-50 border-b border-slate-100">
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">使用者</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">角色</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">登入方式</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">註冊日期</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {loading ? (
-                                Array.from({ length: 5 }).map((_, i) => (
-                                    <tr key={i} className="animate-pulse">
-                                        <td colSpan="5" className="px-6 py-8"><div className="h-4 bg-slate-100 rounded w-full"></div></td>
-                                    </tr>
-                                ))
-                            ) : users.length === 0 ? (
-                                <tr>
-                                    <td colSpan="5" className="px-6 py-20 text-center text-slate-400">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <Search className="w-10 h-10 opacity-20" />
-                                            <span>找不到符合條件的使用者</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : users.map(u => (
-                                <tr key={u.id} className="hover:bg-slate-50/50 transition-colors group">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary font-bold">
-                                                {u.avatar_url ? <img src={u.avatar_url} className="w-full h-full rounded-full object-cover" /> : u.nickname?.[0] || u.email?.[0]}
-                                            </div>
-                                            <div>
-                                                <div className="text-sm font-bold text-slate-800">{u.nickname || u.name}</div>
-                                                <div className="text-xs text-slate-500 font-mono">{u.email}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter border ${
-                                            u.role === 'admin' ? 'bg-blue-50 text-blue-600 border-blue-200' : 
-                                            u.role.startsWith('vip') ? 'bg-amber-50 text-amber-600 border-amber-200' :
-                                            'bg-slate-100 text-slate-500 border-slate-200'
-                                        }`}>
-                                            {u.role}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="text-xs font-bold text-slate-600 uppercase">{u.provider}</span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="text-xs text-slate-500 flex items-center gap-1">
-                                            <Clock className="w-3 h-3" />
-                                            {new Date(u.created_at).toLocaleDateString()}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <button 
-                                            onClick={() => handleViewUserDetail(u)}
-                                            className="p-2 text-slate-400 hover:text-brand-primary hover:bg-brand-primary/5 rounded-lg transition-all"
-                                            title="查看詳情與持股"
-                                        >
-                                            <ChevronRight className="w-5 h-5" />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+            {activeTab === 'users' ? (
+                <>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div>
+                        <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
+                            <Users className="w-7 h-7 text-brand-primary" /> 使用者管理
+                        </h1>
+                        <p className="text-sm font-medium text-slate-500 mt-1">
+                            管理系統註冊帳號、調整權限與查看用戶持股。總計 {total} 位使用者。
+                        </p>
+                    </div>
 
-                {/* 分頁器 */}
-                {total > limit && (
-                    <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                        <div className="text-xs text-slate-500 font-bold">顯示第 {page * limit + 1} 至 {Math.min((page + 1) * limit, total)} 筆，共 {total} 筆</div>
-                        <div className="flex gap-2">
-                            <button 
-                                disabled={page === 0}
-                                onClick={() => setPage(p => p - 1)}
-                                className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold disabled:opacity-50 hover:border-brand-primary transition-all"
-                            >上一頁</button>
-                            <button 
-                                disabled={(page + 1) * limit >= total}
-                                onClick={() => setPage(p => p + 1)}
-                                className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold disabled:opacity-50 hover:border-brand-primary transition-all"
-                            >下一頁</button>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="relative group">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-brand-primary transition-colors" />
+                            <input 
+                                type="text" 
+                                placeholder="搜尋 Email 或暱稱..." 
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 focus:border-brand-primary focus:ring-1 focus:ring-brand-primary rounded-xl text-sm w-full md:w-64 transition-all"
+                            />
                         </div>
+                        <select 
+                            value={roleFilter}
+                            onChange={(e) => setRoleFilter(e.target.value)}
+                            className="px-4 py-2 bg-slate-50 border border-slate-200 focus:border-brand-primary rounded-xl text-sm transition-all outline-none"
+                        >
+                            <option value="">所有角色</option>
+                            <option value="user">一般用戶</option>
+                            <option value="admin">管理員</option>
+                            <option value="vip1">VIP 1</option>
+                            <option value="vip2">VIP 2</option>
+                            <option value="vip3">VIP 3</option>
+                            <option value="vip4">VIP 4</option>
+                            <option value="vip5">VIP 5</option>
+                        </select>
                     </div>
-                )}
-            </div>
+                </div>
 
-            {/* 詳情與持股抽屜面板 */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-slate-50 border-b border-slate-100">
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">使用者</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">角色</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">登入方式</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">註冊日期</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {loading ? (
+                                    Array.from({ length: 5 }).map((_, i) => (
+                                        <tr key={i} className="animate-pulse">
+                                            <td colSpan="5" className="px-6 py-8"><div className="h-4 bg-slate-100 rounded w-full"></div></td>
+                                        </tr>
+                                    ))
+                                ) : users.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="5" className="px-6 py-20 text-center text-slate-400">
+                                            <div className="flex flex-col items-center gap-2">
+                                                <Search className="w-10 h-10 opacity-20" />
+                                                <span>找不到符合條件的使用者</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : users.map(u => (
+                                    <tr key={u.id} className="hover:bg-slate-50/50 transition-colors group">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary font-bold">
+                                                    {u.avatar_url ? <img src={u.avatar_url} className="w-full h-full rounded-full object-cover" /> : u.nickname?.[0] || u.email?.[0]}
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-bold text-slate-800">{u.nickname || u.name}</div>
+                                                    <div className="text-xs text-slate-500 font-mono">{u.email}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter border ${
+                                                u.role === 'admin' ? 'bg-blue-50 text-blue-600 border-blue-200' : 
+                                                u.role.startsWith('vip') ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                                                'bg-slate-100 text-slate-500 border-slate-200'
+                                            }`}>
+                                                {u.role}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="text-xs font-bold text-slate-600 uppercase">{u.provider}</span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-xs text-slate-500 flex items-center gap-1">
+                                                <Clock className="w-3 h-3" />
+                                                {new Date(u.created_at).toLocaleDateString()}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <button 
+                                                onClick={() => handleViewUserDetail(u)}
+                                                className="p-2 text-slate-400 hover:text-brand-primary hover:bg-brand-primary/5 rounded-lg transition-all"
+                                                title="查看詳情與持股"
+                                            >
+                                                <ChevronRight className="w-5 h-5" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {total > limit && (
+                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                            <div className="text-xs text-slate-500 font-bold">顯示第 {page * limit + 1} 至 {Math.min((page + 1) * limit, total)} 筆，共 {total} 筆</div>
+                            <div className="flex gap-2">
+                                <button 
+                                    disabled={page === 0}
+                                    onClick={() => setPage(p => p - 1)}
+                                    className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold disabled:opacity-50 hover:border-brand-primary transition-all"
+                                >上一頁</button>
+                                <button 
+                                    disabled={(page + 1) * limit >= total}
+                                    onClick={() => setPage(p => p + 1)}
+                                    className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold disabled:opacity-50 hover:border-brand-primary transition-all"
+                                >下一頁</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+                </>
+            ) : (
+                <AdminAuditLogs />
+            )}
+
+            {/* 詳情與持股抽屜面板 (僅在 users 分頁時可能顯示，但放在外層以利動畫) */}
             {selectedUser && (
                 <div className="fixed inset-0 z-[60] flex justify-end animate-in fade-in duration-300">
                     <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedUser(null)}></div>
                     <div className="relative w-full max-w-lg bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-500">
-                        {/* 抽屜標題 */}
                         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
                             <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
                                 <User className="w-6 h-6 text-brand-primary" /> 使用者詳情
@@ -256,7 +280,6 @@ export default function AdminUserManagement() {
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                            {/* 基礎資料資訊卡 */}
                             <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 space-y-4">
                                 <div className="flex items-center gap-4">
                                     <div className="w-16 h-16 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-3xl text-brand-primary font-black">
@@ -299,7 +322,6 @@ export default function AdminUserManagement() {
                                 )}
                             </div>
 
-                            {/* 自選股與持股分析 */}
                             <div className="space-y-4">
                                 <h3 className="text-md font-black text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-2">
                                     <Shield className="w-5 h-5 text-brand-primary" /> 自選股與清單
@@ -342,7 +364,6 @@ export default function AdminUserManagement() {
                             </div>
                         </div>
 
-                        {/* 底部操作按鈕 */}
                         <div className="p-6 border-t border-slate-100 bg-slate-50 flex gap-3">
                             <button 
                                 onClick={() => setSelectedUser(null)}

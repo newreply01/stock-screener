@@ -11,19 +11,29 @@ router.get('/realtime-ticks', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Missing symbol parameter' });
         }
 
-        // If no date provided, find the most recent date available in the ticks
+        // 如果沒有提供日期，先尋找最新的日期
         let targetDate = date;
         if (!targetDate) {
-            const dateRes = await query(`
-                SELECT TO_CHAR(MAX(trade_time), 'YYYY-MM-DD') as max_date 
-                FROM realtime_ticks 
-                WHERE symbol = $1
-            `, [symbol]);
+            // 先從 Hot Table 找
+            const hotDateRes = await query(`SELECT TO_CHAR(MAX(trade_time AT TIME ZONE 'Asia/Taipei'), 'YYYY-MM-DD') as max_date FROM realtime_ticks WHERE symbol = $1`, [symbol]);
+            targetDate = hotDateRes.rows[0]?.max_date;
+            
+            // 如果 Hot Table 沒資料，再往 History 找
+            if (!targetDate) {
+                const histDateRes = await query(`SELECT TO_CHAR(MAX(trade_time AT TIME ZONE 'Asia/Taipei'), 'YYYY-MM-DD') as max_date FROM realtime_ticks_history WHERE symbol = $1`, [symbol]);
+                targetDate = histDateRes.rows[0]?.max_date;
+            }
 
-            targetDate = dateRes.rows[0]?.max_date;
             if (!targetDate) {
                 return res.json({ success: true, data: [], date: null });
             }
+        }
+
+        // 判斷該從哪張表讀取 (優先檢查 Hot Table 是否有該日期的資料)
+        let tableName = 'realtime_ticks_history';
+        const checkHotRes = await query(`SELECT 1 FROM realtime_ticks WHERE (trade_time AT TIME ZONE 'Asia/Taipei')::date = $1::date LIMIT 1`, [targetDate]);
+        if (checkHotRes.rows.length > 0) {
+            tableName = 'realtime_ticks';
         }
 
         // Query ticks for that entire day (Taipei time)
@@ -36,11 +46,19 @@ router.get('/realtime-ticks', async (req, res) => {
                 t.price, t.open_price, t.high_price, t.low_price, 
                 t.volume, t.trade_volume, 
                 t.buy_intensity, t.sell_intensity, t.five_levels,
-                COALESCE(t.previous_close, (SELECT close_price FROM daily_prices dp WHERE dp.symbol = t.symbol AND dp.trade_date < $2::date ORDER BY dp.trade_date DESC LIMIT 1)) as previous_close
-            FROM realtime_ticks t
+                COALESCE(
+                    CASE 
+                        WHEN $2::date >= CURRENT_DATE THEN sn.yest_close 
+                        ELSE NULL 
+                    END,
+                    (SELECT close_price FROM daily_prices dp WHERE dp.symbol = t.symbol AND dp.trade_date < $2::date ORDER BY dp.trade_date DESC LIMIT 1),
+                    t.previous_close
+                ) as previous_close
+            FROM ${tableName} t
             LEFT JOIN stocks s ON t.symbol = s.symbol
+            LEFT JOIN snapshot_last_close sn ON t.symbol = sn.symbol
             WHERE t.symbol = $1 
-              AND DATE(t.trade_time) = $2::date
+              AND (t.trade_time AT TIME ZONE 'Asia/Taipei')::date = $2::date
             ORDER BY t.trade_time ASC
         `;
 
@@ -69,8 +87,6 @@ router.get('/realtime-active', async (req, res) => {
         const topRes = await query(`
             SELECT symbol, COUNT(*) as ticks_count 
             FROM realtime_ticks 
-            WHERE DATE(trade_time) = CURRENT_DATE
-               OR DATE(trade_time) = (SELECT MAX(DATE(trade_time)) FROM realtime_ticks)
             GROUP BY symbol 
             ORDER BY ticks_count DESC 
             LIMIT 10
@@ -88,17 +104,16 @@ router.get('/realtime-active', async (req, res) => {
 // GET /api/debug/audit-crawler (Internal Audit)
 router.get('/debug/audit-crawler', async (req, res) => {
     try {
-        const total = await query('SELECT COUNT(*) FROM realtime_ticks');
+        const total = await query('SELECT (SELECT COUNT(*) FROM realtime_ticks) + (SELECT COUNT(*) FROM realtime_ticks_history) as count');
         const byDate = await query(`
-            SELECT 
-                TO_CHAR(DATE(trade_time AT TIME ZONE 'Asia/Taipei'), 'YYYY-MM-DD') as date, 
-                COUNT(*) as count 
-            FROM realtime_ticks 
-            GROUP BY DATE(trade_time AT TIME ZONE 'Asia/Taipei') 
-            ORDER BY date DESC 
-            LIMIT 10
+            SELECT date, SUM(count) as count FROM (
+                SELECT TO_CHAR(DATE(trade_time AT TIME ZONE 'Asia/Taipei'), 'YYYY-MM-DD') as date, COUNT(*) as count FROM realtime_ticks GROUP BY 1
+                UNION ALL
+                SELECT TO_CHAR(DATE(trade_time AT TIME ZONE 'Asia/Taipei'), 'YYYY-MM-DD') as date, COUNT(*) as count FROM realtime_ticks_history GROUP BY 1
+            ) s
+            GROUP BY date ORDER BY date DESC LIMIT 20
         `);
-        const latestRow = await query('SELECT MAX(trade_time) as max_time FROM realtime_ticks');
+        const latestRow = await query('SELECT MAX(trade_time) as max_time FROM (SELECT MAX(trade_time) as trade_time FROM realtime_ticks UNION ALL SELECT MAX(trade_time) FROM realtime_ticks_history) s');
         const uniqueSymbols = await query('SELECT COUNT(DISTINCT symbol) as count FROM realtime_ticks');
 
         res.json({
@@ -117,13 +132,26 @@ router.get('/debug/audit-crawler', async (req, res) => {
 router.get('/:symbol', async (req, res) => {
     try {
         const { symbol } = req.params;
-        const sql = `
+const sql = `
             SELECT 
                 t.*,
                 s.name,
-                TO_CHAR(t.trade_time, 'HH24:MI:SS') as time_str
-            FROM realtime_ticks t
+                TO_CHAR(t.trade_time, 'HH24:MI:SS') as time_str,
+                COALESCE(
+                    CASE 
+                        WHEN DATE(t.trade_time) >= CURRENT_DATE THEN sn.yest_close 
+                        ELSE NULL 
+                    END,
+                    (SELECT close_price FROM daily_prices dp WHERE dp.symbol = t.symbol AND dp.trade_date < DATE(t.trade_time) ORDER BY dp.trade_date DESC LIMIT 1),
+                    t.previous_close
+                ) as previous_close
+            FROM (
+                SELECT * FROM realtime_ticks WHERE symbol = $1
+                UNION ALL
+                SELECT * FROM realtime_ticks_history WHERE symbol = $1
+            ) t
             LEFT JOIN stocks s ON t.symbol = s.symbol
+            LEFT JOIN snapshot_last_close sn ON t.symbol = sn.symbol
             WHERE t.symbol = $1
             ORDER BY t.trade_time DESC
             LIMIT 1

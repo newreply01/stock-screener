@@ -56,12 +56,7 @@ import EventCalendar from './EventCalendar'
 
 const SIDEBAR_MENU = [
     { id: 'overview', label: '總覽' },
-    { id: 'health_check', label: '個股健診' },
-    { id: 'valuation_river', label: '估價模型' },
-    { id: 'stock_compare', label: '個股PK' },
     { id: 'realtime', label: '即時行情' },
-    { id: 'trend', label: '趨勢強弱' },
-    { id: 'price_vol', label: '股價量圖' },
     { type: 'header', label: '技術分析' },
     { id: 'kd', label: 'KD線圖' },
     { id: 'macd', label: 'MACD圖表' },
@@ -583,21 +578,9 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
                             <EventCalendar symbol={stock.symbol} />
                         ) : activeTab === 'realtime' ? (
                             <RealtimeView stock={stock} />
-                        ) : activeTab === 'trend' ? (
-                            <TrendView stock={stock} />
-                        ) : activeTab === 'signals' ? (
-                            <TradingSignalsView stock={stock} />
-                        ) : activeTab === 'wave' ? (
-                            <WaveView stock={stock} />
                         ) : activeTab === 'alerts' ? (
                             <AlertsView stock={stock} />
-                        ) : activeTab === 'health_check' ? (
-                            <HealthCheckView symbol={stock.symbol} />
-                        ) : activeTab === 'valuation_river' ? (
-                            <ValuationRiverView symbol={stock.symbol} />
-                        ) : activeTab === 'stock_compare' ? (
-                            <StockCompareView initialSymbols={[stock.symbol]} />
-                        ) : activeTab === 'pattern' || activeTab === 'price_vol' || activeTab === 'adv_pattern' ? (
+                        ) : activeTab === 'kd' || activeTab === 'macd' || activeTab === 'rsi' || activeTab === 'dmi' ? (
                             <div className="h-full w-full min-h-[600px] flex flex-col gap-6">
                                 <StockChart
                                     stock={stock}

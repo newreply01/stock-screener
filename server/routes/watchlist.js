@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { logActivity } = require('../utils/audit_logger');
 
 // GET /api/watchlists — 取得使用者的自選股清單
 router.get('/', requireAuth, async (req, res) => {
@@ -55,11 +56,14 @@ router.post('/:id/symbols', requireAuth, async (req, res) => {
         if (wl.rows.length === 0) {
             return res.status(403).json({ success: false, error: '無權操作此清單' });
         }
-
         await query(
             'INSERT INTO watchlist_items (watchlist_id, symbol) VALUES ($1, $2) ON CONFLICT DO NOTHING',
             [watchlistId, symbol]
         );
+
+        // 紀錄加入自選股
+        await logActivity(req.user.uuid, 'WATCHLIST_ADD', 'watchlist', watchlistId, { symbol }, req);
+
         res.json({ success: true, message: '已加入自選' });
     } catch (err) {
         if (err.code === '23503') {
@@ -80,11 +84,14 @@ router.delete('/:id/symbols/:symbol', requireAuth, async (req, res) => {
         if (wl.rows.length === 0) {
             return res.status(403).json({ success: false, error: '無權操作此清單' });
         }
-
         await query(
             'DELETE FROM watchlist_items WHERE watchlist_id = $1 AND symbol = $2',
             [watchlistId, symbol]
         );
+
+        // 紀錄移除自選股
+        await logActivity(req.user.uuid, 'WATCHLIST_REMOVE', 'watchlist', watchlistId, { symbol }, req);
+
         res.json({ success: true, message: '已移除自選' });
     } catch (err) {
         console.error('移除自選股失敗:', err);

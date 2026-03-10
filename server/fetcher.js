@@ -47,6 +47,19 @@ async function ensureStock(symbol, name = symbol) {
     );
 }
 
+const fs = require('fs');
+const path = require('path');
+
+// 日誌記錄器
+function logToFile(msg) {
+    const timestamp = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
+    const logMsg = `[${timestamp}] ${msg}\n`;
+    const logDir = path.join(__dirname, '..', 'logs');
+    if (!fs.existsSync(logDir)) fs.mkdirSync(logDir);
+    fs.appendFileSync(path.join(logDir, 'sync.log'), logMsg);
+    console.log(msg);
+}
+
 // 更新同步進度 (用於系統監控)
 async function updateProgress(dataset, stockId = '') {
     try {
@@ -56,9 +69,9 @@ async function updateProgress(dataset, stockId = '') {
              ON CONFLICT (dataset, stock_id) DO UPDATE SET last_sync_date = NOW(), status = 'done'`,
             [dataset, stockId]
         );
-        // console.log(`[Progress] Updated ${dataset} ${stockId}`);
+        logToFile(`[Progress] Updated ${dataset} ${stockId}`);
     } catch (e) {
-        console.error(`[Progress] Failed to update ${dataset}:`, e.message);
+        logToFile(`[Progress] Failed to update ${dataset}: ${e.message}`);
     }
 }
 
@@ -441,6 +454,41 @@ async function fetchRange(startDate, endDate) {
         await sleep(3000);
 
         current.setDate(current.getDate() + 1);
+    }
+    // 更新昨收快照
+    await updateLastCloseSnapshot();
+}
+
+// ===== 更新昨收快照 (用於即時行情基準) =====
+async function updateLastCloseSnapshot() {
+    console.log(`🚀 [Snapshot] 正在更新昨收價快照表 (snapshot_last_close)...`);
+    try {
+        await query(`
+            INSERT INTO snapshot_last_close (symbol, yest_close, today_close, last_update)
+            WITH ranked_prices AS (
+                SELECT 
+                    symbol, 
+                    close_price, 
+                    trade_date,
+                    ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY trade_date DESC) as rank
+                FROM daily_prices
+            )
+            SELECT 
+                t1.symbol,
+                t2.close_price as yest_close,
+                t1.close_price as today_close,
+                t1.trade_date as last_update
+            FROM ranked_prices t1
+            LEFT JOIN ranked_prices t2 ON t1.symbol = t2.symbol AND t2.rank = 2
+            WHERE t1.rank = 1
+            ON CONFLICT (symbol) DO UPDATE SET
+                yest_close = EXCLUDED.yest_close,
+                today_close = EXCLUDED.today_close,
+                last_update = EXCLUDED.last_update
+        `);
+        console.log(`✅ [Snapshot] 快照表更新完成！`);
+    } catch (e) {
+        console.error(`❌ [Snapshot] 快照表更新失敗:`, e.message);
     }
 }
 

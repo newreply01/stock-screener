@@ -177,7 +177,7 @@ function startScheduler() {
     if (syncHistoricalMinuteBatch) {
         const histTickTask = cron.schedule('30 16 * * 1-5', async () => {
             isTaskRunning['historical_tick_sync.js'] = true;
-            const today = new Date().toISOString().split('T')[0];
+            const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
             console.log(`📈 定時排程開始：補抓 ${today} 歷史 1 分K...`);
             await logScriptStatus('historical_tick_sync.js', 'RUNNING', `正在補抓 ${today} 歷史分時資料`);
             try {

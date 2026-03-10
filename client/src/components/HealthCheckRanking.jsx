@@ -1,8 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Heart, Search, Filter, ChevronLeft, ChevronRight, ArrowUpDown, TrendingUp, TrendingDown, Shield, Target, Coins, Users, Award, BarChart3 } from 'lucide-react';
+import { Heart, Search, Filter, ChevronLeft, ChevronRight, ArrowUpDown, TrendingUp, TrendingDown, Shield, Target, Coins, Users, Award, BarChart3, PieChart, Activity, Layout } from 'lucide-react';
 import { API_BASE } from '../utils/api';
 import { useGlobalFilters } from '../context/GlobalFilterContext';
 import GlobalFilterBar from './GlobalFilterBar';
+import StockSearchAutocomplete from './StockSearchAutocomplete';
+import HealthCheckView from './HealthCheckView';
+import ValuationRiverView from './ValuationRiverView';
+import StockCompareView from './StockCompareView';
+import TrendView from './TrendView';
+import StockChart from './StockChart';
 
 const GRADE_STYLES = {
     green: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-300', badge: 'bg-emerald-500' },
@@ -64,6 +69,19 @@ export default function HealthCheckRanking({ onSelectStock }) {
     const [industries, setIndustries] = useState([]);
     const [calcDate, setCalcDate] = useState(null);
 
+    // Tab & Stock Management
+    const [activeTab, setActiveTab] = useState('ranking'); // ranking, health, valuation, pk, trend, chart
+    const [selectedStock, setSelectedStock] = useState(null);
+
+    const TABS = [
+        { id: 'ranking', label: '健診排行', icon: Award },
+        { id: 'health', label: '個股健診', icon: Shield },
+        { id: 'valuation', label: '估價模型', icon: Coins },
+        { id: 'pk', label: '個股 PK', icon: Users },
+        { id: 'trend', label: '趨勢強弱', icon: Activity },
+        { id: 'chart', label: '股價量圖', icon: BarChart3 }
+    ];
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
@@ -111,12 +129,54 @@ export default function HealthCheckRanking({ onSelectStock }) {
     const goodCount = data.filter(d => d.grade === '良好').length;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-0 min-h-screen bg-slate-50/50 pb-20">
             <GlobalFilterBar />
 
+            {/* Sub Navigation Tabs */}
+            <div className="bg-white border-b border-slate-200 sticky top-0 z-40 px-4 pt-4 shadow-sm">
+                <div className="max-w-[1400px] mx-auto flex flex-wrap gap-1">
+                    {TABS.map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center gap-2 px-6 py-3 rounded-t-xl text-sm font-black transition-all relative ${activeTab === tab.id
+                                ? 'text-teal-600 bg-teal-50/50'
+                                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                                }`}
+                        >
+                            <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-teal-600' : 'text-slate-400'}`} />
+                            {tab.label}
+                            {activeTab === tab.id && (
+                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-500 rounded-t-full" />
+                            )}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             <div className="p-6 max-w-[1400px] mx-auto space-y-6">
-                {/* Header */}
-                <div className="flex items-center gap-4 mb-2">
+                {/* Search Bar for Analysis Tabs */}
+                {activeTab !== 'ranking' && (
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
+                        <div className="flex items-center gap-4">
+                            <div className="bg-teal-50 p-3 rounded-2xl">
+                                <Search className="w-6 h-6 text-teal-600" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-black text-slate-800 tracking-tight">切換分析標的</h2>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">切換目前正在分析的股票</p>
+                            </div>
+                        </div>
+                        <div className="w-full sm:w-96">
+                            <StockSearchAutocomplete onSelectStock={(s) => setSelectedStock(s)} />
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'ranking' ? (
+                    <>
+                        {/* Header */}
+                        <div className="flex items-center gap-4 mb-2">
                     <div className="bg-gradient-to-br from-teal-500 to-emerald-600 p-3 rounded-2xl shadow-lg shadow-teal-200/50">
                         <Heart className="w-7 h-7 text-white" />
                     </div>
@@ -266,7 +326,10 @@ export default function HealthCheckRanking({ onSelectStock }) {
                                             <tr
                                                 key={stock.symbol}
                                                 className={`border-b border-slate-100 hover:bg-teal-50/30 cursor-pointer transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
-                                                onClick={() => onSelectStock && onSelectStock({ symbol: stock.symbol, name: stock.name, industry: stock.industry, market: stock.market })}
+                                                onClick={() => {
+                                                    setSelectedStock({ symbol: stock.symbol, name: stock.name, industry: stock.industry, market: stock.market });
+                                                    setActiveTab('health');
+                                                }}
                                             >
                                                 <td className="px-4 py-3 font-black text-slate-400 text-xs sticky left-0 bg-inherit z-10">
                                                     {rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : rank}
@@ -362,9 +425,42 @@ export default function HealthCheckRanking({ onSelectStock }) {
                     )}
                 </div>
 
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-500 leading-relaxed font-medium">
-                    註：健診評分基於獲利能力、成長能力、安全性、價值衡量、配息能力、籌碼面六大面向自動化計算。評分結果每日隨數據更新，僅供投資參考，不構成投資建議。點擊個股可查看詳細健診報告。
-                </div>
+                ) : (
+                    <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden min-h-[700px]">
+                        {!selectedStock && activeTab !== 'pk' ? (
+                            <div className="h-[600px] flex flex-col items-center justify-center text-slate-400 p-10 text-center">
+                                <div className="w-20 h-20 bg-teal-50 rounded-full flex items-center justify-center mb-6 border border-teal-100 shadow-inner">
+                                    <Search className="w-10 h-10 text-teal-300" />
+                                </div>
+                                <h3 className="text-2xl font-black text-slate-700 mb-3 tracking-tight">尚未選擇分析標的</h3>
+                                <p className="text-sm font-bold text-slate-400 max-w-sm leading-relaxed mb-8">請在上方搜尋框輸入股票代號，<br />或從「健診排行」中點擊股票進行深入分析。</p>
+                                <div className="w-64">
+                                    <StockSearchAutocomplete onSelectStock={(s) => setSelectedStock(s)} />
+                                </div>
+                            </div>
+                        ) : activeTab === 'health' ? (
+                            <div className="p-0">
+                                <HealthCheckView symbol={selectedStock.symbol} />
+                            </div>
+                        ) : activeTab === 'valuation' ? (
+                            <div className="p-8">
+                                <ValuationRiverView symbol={selectedStock.symbol} />
+                            </div>
+                        ) : activeTab === 'pk' ? (
+                            <div className="p-0">
+                                <StockCompareView initialSymbols={selectedStock ? [selectedStock.symbol] : []} />
+                            </div>
+                        ) : activeTab === 'trend' ? (
+                            <div className="p-0">
+                                <TrendView stock={selectedStock} />
+                            </div>
+                        ) : activeTab === 'chart' ? (
+                            <div className="p-8 min-h-[800px]">
+                                <StockChart stock={selectedStock} />
+                            </div>
+                        ) : null}
+                    </div>
+                )}
             </div>
         </div>
     );

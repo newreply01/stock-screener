@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { logActivity } = require('../utils/audit_logger');
 
 // 所有 /api/admin/* 都需要管理員權限
 router.use(requireAuth, requireRole('admin'));
@@ -71,6 +72,44 @@ router.get('/users/:id/portfolio', async (req, res) => {
     }
 });
 
+// GET /api/admin/audit-logs — 取得操作軌跡紀錄
+router.get('/audit-logs', async (req, res) => {
+    const { user_id, action, limit = 50, offset = 0 } = req.query;
+    let sql = `
+        SELECT al.*, u.email as user_email, u.nickname as user_nickname 
+        FROM audit_logs al
+        LEFT JOIN users u ON al.user_id = u.uuid
+        WHERE 1=1
+    `;
+    const params = [];
+
+    if (user_id) {
+        params.push(user_id);
+        sql += ` AND al.user_id = $${params.length}`;
+    }
+
+    if (action) {
+        params.push(action);
+        sql += ` AND al.action = $${params.length}`;
+    }
+
+    sql += ` ORDER BY al.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
+
+    try {
+        const result = await query(sql, params);
+        const countRes = await query('SELECT count(*) FROM audit_logs');
+        res.json({ 
+            success: true, 
+            logs: result.rows,
+            total: parseInt(countRes.rows[0].count)
+        });
+    } catch (err) {
+        console.error('Admin Fetch Audit Logs Error:', err);
+        res.status(500).json({ success: false, error: '伺服器錯誤' });
+    }
+});
+
 // PUT /api/admin/users/:id — 更新使用者資訊（如變更權限角色）
 router.put('/users/:id', async (req, res) => {
     const { id } = req.params;
@@ -101,6 +140,19 @@ router.put('/users/:id', async (req, res) => {
         if (result.rows.length === 0) {
             return res.status(404).json({ success: false, error: '使用者不存在' });
         }
+
+        // 紀錄稽核軌跡
+        await logActivity(
+            req.user.id, 
+            'UPDATE_USER', 
+            'user', 
+            id, 
+            { 
+                changes: { role, nickname },
+                target_email: result.rows[0].email
+            }, 
+            req
+        );
 
         res.json({ success: true, user: result.rows[0] });
     } catch (err) {
