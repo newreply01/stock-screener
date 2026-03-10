@@ -1,3 +1,4 @@
+import React, { useState, useEffect, useCallback } from 'react';
 import { Heart, Search, Filter, ChevronLeft, ChevronRight, ArrowUpDown, TrendingUp, TrendingDown, Shield, Target, Coins, Users, Award, BarChart3, PieChart, Activity, Layout } from 'lucide-react';
 import { API_BASE } from '../utils/api';
 import { useGlobalFilters } from '../context/GlobalFilterContext';
@@ -421,12 +422,10 @@ export default function HealthCheckRanking({ onSelectStock }) {
                                     <ChevronRight className="w-4 h-4" />
                                 </button>
                             </div>
-                        </div>
-                    )}
                 </div>
-
-                ) : (
-                    <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden min-h-[700px]">
+            </>
+        ) : (
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden min-h-[700px]">
                         {!selectedStock && activeTab !== 'pk' ? (
                             <div className="h-[600px] flex flex-col items-center justify-center text-slate-400 p-10 text-center">
                                 <div className="w-20 h-20 bg-teal-50 rounded-full flex items-center justify-center mb-6 border border-teal-100 shadow-inner">
