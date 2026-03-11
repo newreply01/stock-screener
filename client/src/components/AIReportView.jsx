@@ -1,86 +1,56 @@
 import React, { useEffect, useState } from 'react';
-import { Bot, Sparkles, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
-import { getAIReport } from '../utils/api';
+import { Bot, Sparkles, TrendingUp, TrendingDown, AlertCircle, RefreshCcw } from 'lucide-react';
+import { getAIReport, generateAIReport } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function AIReportView({ symbol, name }) {
+    const { user } = useAuth();
     const [reportData, setReportData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [generating, setGenerating] = useState(false);
     const [error, setError] = useState(null);
 
-    useEffect(() => {
-        const fetchReport = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const data = await getAIReport(symbol);
-                setReportData(data);
-            } catch (err) {
-                console.error("AI 報告獲取失敗:", err);
-                setError("無法獲取 AI 分析報告，請稍後再試。");
-            } finally {
-                setLoading(false);
+    const fetchReport = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const data = await getAIReport(symbol);
+            if (data && data.success) {
+                setReportData(data.data);
+            } else {
+                setReportData(null);
             }
-        };
+        } catch (err) {
+            console.error("AI 報告獲取失敗:", err);
+            setError("無法獲取 AI 分析報告，請稍後再試。");
+        } finally {
+            setLoading(false);
+        }
+    };
 
+    useEffect(() => {
         if (symbol) {
             fetchReport();
         }
     }, [symbol]);
 
-    // 渲染情緒儀表板
-    const renderSentimentMeter = (score) => {
-        // score is 0.0 to 1.0 (0 = extreme bearish, 1 = extreme bullish)
-        const percentage = Math.max(0, Math.min(100, score * 100));
-
-        let sentimentText = '中性觀望';
-        let sentimentColor = 'text-slate-500';
-        let gradientClass = 'from-slate-400 to-slate-500';
-        let Icon = Minus;
-
-        if (score >= 0.7) {
-            sentimentText = '強烈看多';
-            sentimentColor = 'text-red-600';
-            gradientClass = 'from-red-400 to-red-600';
-            Icon = TrendingUp;
-        } else if (score >= 0.55) {
-            sentimentText = '偏向看多';
-            sentimentColor = 'text-red-500';
-            gradientClass = 'from-red-300 to-red-500';
-            Icon = TrendingUp;
-        } else if (score <= 0.3) {
-            sentimentText = '強烈看空';
-            sentimentColor = 'text-green-600';
-            gradientClass = 'from-green-400 to-green-600';
-            Icon = TrendingDown;
-        } else if (score <= 0.45) {
-            sentimentText = '偏向看空';
-            sentimentColor = 'text-green-500';
-            gradientClass = 'from-green-300 to-green-500';
-            Icon = TrendingDown;
+    const handleRegenerate = async () => {
+        if (generating) return;
+        setGenerating(true);
+        try {
+            const res = await generateAIReport(symbol);
+            if (res.success) {
+                // After generation, we can either use the returned content or just refetch
+                await fetchReport();
+            } else {
+                alert('生成失敗: ' + (res.error || '未知錯誤'));
+            }
+        } catch (err) {
+            console.error("生成報告出錯:", err);
+            alert('發生錯誤: ' + err.message);
+        } finally {
+            setGenerating(false);
         }
-
-        return (
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center relative overflow-hidden h-full">
-                <div className={`absolute -right-10 -top-10 w-32 h-32 rounded-full opacity-10 bg-gradient-to-br ${gradientClass}`}></div>
-                <div className="text-slate-500 text-xs font-bold mb-4 uppercase tracking-widest">AI 綜合多空情緒</div>
-
-                <div className="relative w-full max-w-[200px] h-4 bg-slate-100 rounded-full mb-6 overflow-hidden border border-slate-200/50 shadow-inner">
-                    <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-slate-300 z-10"></div>
-                    <div
-                        className={`h-full rounded-full bg-gradient-to-r ${gradientClass} transition-all duration-1000 ease-out`}
-                        style={{ width: `${percentage}%` }}
-                    ></div>
-                </div>
-
-                <div className={`text-2xl font-black ${sentimentColor} flex items-center gap-2 tracking-tight`}>
-                    <Icon className="w-6 h-6" />
-                    {sentimentText}
-                </div>
-                <div className="text-3xl font-black text-slate-800 tabular-nums mt-1">
-                    {(score * 100).toFixed(0)} <span className="text-sm text-slate-400 font-bold">/ 100</span>
-                </div>
-            </div>
-        );
     };
 
     // A simple minus icon for neutral state
@@ -90,16 +60,105 @@ export default function AIReportView({ symbol, name }) {
         </svg>
     );
 
+    // 渲染情緒儀表板
+    const renderSentimentMeter = (score) => {
+        // score is 0.0 to 1.0 (0 = extreme bearish, 1 = extreme bullish)
+        const percentage = Math.max(0, Math.min(100, score * 100));
+
+        let sentimentText = '中性觀望';
+        let sentimentColor = 'text-slate-500';
+        let bgGradient = 'from-slate-500/10 to-slate-400/5';
+        let progressGradient = 'from-slate-400 to-slate-500';
+        let Icon = Minus;
+
+        if (score >= 0.7) {
+            sentimentText = '強烈看多';
+            sentimentColor = 'text-red-600';
+            bgGradient = 'from-red-500/10 to-red-400/5';
+            progressGradient = 'from-red-400 to-red-600';
+            Icon = TrendingUp;
+        } else if (score >= 0.55) {
+            sentimentText = '偏向看多';
+            sentimentColor = 'text-red-500';
+            bgGradient = 'from-red-400/10 to-red-300/5';
+            progressGradient = 'from-red-300 to-red-500';
+            Icon = TrendingUp;
+        } else if (score <= 0.3) {
+            sentimentText = '強烈看空';
+            sentimentColor = 'text-green-600';
+            bgGradient = 'from-green-500/10 to-green-400/5';
+            progressGradient = 'from-green-400 to-green-600';
+            Icon = TrendingDown;
+        } else if (score <= 0.45) {
+            sentimentText = '偏向看空';
+            sentimentColor = 'text-green-500';
+            bgGradient = 'from-green-400/10 to-green-300/5';
+            progressGradient = 'from-green-300 to-green-500';
+            Icon = TrendingDown;
+        }
+
+        return (
+            <div className={`bg-white rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden`}>
+                <div className={`absolute inset-0 bg-gradient-to-r ${bgGradient} opacity-30`}></div>
+                
+                <div className="relative p-5 md:px-8 md:py-6 flex flex-col md:flex-row items-center gap-6 md:gap-12">
+                    <div className="flex flex-col items-center md:items-start min-w-[120px]">
+                        <div className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">AI 綜合多空情緒</div>
+                        <div className={`text-xl font-black ${sentimentColor} flex items-center gap-2 tracking-tight`}>
+                            <Icon className="w-5 h-5" />
+                            {sentimentText}
+                        </div>
+                    </div>
+
+                    <div className="flex-1 w-full">
+                        <div className="flex justify-between items-end mb-2">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Market Sentiment Scale</span>
+                            <div className="text-2xl font-black text-slate-800 tabular-nums">
+                                {(score * 100).toFixed(0)} <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">/ 100</span>
+                            </div>
+                        </div>
+                        <div className="relative w-full h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50 shadow-inner">
+                            <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-slate-300/50 z-10"></div>
+                            <div
+                                className={`h-full rounded-full bg-gradient-to-r ${progressGradient} transition-all duration-1000 ease-out shadow-sm`}
+                                style={{ width: `${percentage}%` }}
+                            ></div>
+                        </div>
+                        <div className="flex justify-between mt-2 text-[9px] font-bold text-slate-400 px-1 uppercase tracking-widest">
+                            <span>Extreme Fear</span>
+                            <span>Neutral</span>
+                            <span>Extreme Greed</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 h-full flex flex-col">
-            <div className="flex items-center gap-3">
-                <div className="bg-indigo-100 p-2.5 rounded-xl border border-indigo-200 shadow-inner">
-                    <Sparkles className="w-6 h-6 text-indigo-600" />
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="bg-indigo-100 p-2.5 rounded-xl border border-indigo-200 shadow-inner">
+                        <Sparkles className="w-6 h-6 text-indigo-600" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-black text-slate-900 tracking-tighter">AI 智能分析報告</h2>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Generative AI Insights</p>
+                    </div>
                 </div>
-                <div>
-                    <h2 className="text-xl font-black text-slate-900 tracking-tighter">AI 智能分析報告</h2>
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Generative AI Insights</p>
-                </div>
+
+                {user?.role === 'admin' && (
+                    <button
+                        onClick={handleRegenerate}
+                        disabled={generating}
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 text-indigo-600 text-xs font-black rounded-xl transition-all border border-indigo-100 shadow-sm"
+                    >
+                        <RefreshCcw className={`w-3.5 h-3.5 ${generating ? 'animate-spin' : ''}`} />
+                                {generating ? '生成中...' : '重新生成報告'}
+                    </button>
+                )}
             </div>
 
             {loading ? (
@@ -121,61 +180,83 @@ export default function AIReportView({ symbol, name }) {
                     <p className="font-bold">{error}</p>
                 </div>
             ) : reportData ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1">
+                <div className="flex flex-col gap-6 flex-1">
+                    {/* Sentiment Dashboard (Always at top, horizontal) */}
+                    {renderSentimentMeter(reportData.sentiment_score ?? 0.5)}
 
-                    {/* Sentiment Dashboard */}
-                    <div className="md:col-span-1 flex flex-col gap-6">
-                        <div className="flex-1">
-                            {renderSentimentMeter(reportData.sentiment_score ?? 0.5)}
-                        </div>
-
+                    <div className="grid grid-cols-1 gap-6 flex-1 min-h-0">
                         {reportData.is_fallback && (
-                            <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl text-amber-700 text-xs font-bold leading-relaxed flex gap-3 shadow-inner">
-                                <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                            <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl text-amber-800 text-xs font-bold leading-relaxed flex gap-3 shadow-inner">
+                                <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
                                 <div>
-                                    目前系統未設定 Gemini API 金鑰，此報告為基於既有規則引擎所自動產生的標準化特徵摘要，非生成式 AI 結果。
+                                    目前系統未設定 API 金鑰，此報告為基於既有規則引擎所自動產生的標準化特徵摘要，非生成式 AI 結果。
                                 </div>
                             </div>
                         )}
-                        {!reportData.is_fallback && (
-                            <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl text-indigo-700/80 text-xs font-medium leading-relaxed shadow-inner">
-                                此報告由 Google Gemini 模型即時生成，綜合考量了歷史價量、三大法人動向及最新新聞。AI 生成內容謹供參考，不構成投資建議。
+
+                        {/* Report Content */}
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                            <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+                                <h3 className="font-black text-slate-800 flex items-center gap-2">
+                                    <Bot className="w-5 h-5 text-indigo-500" />
+                                    綜合評析報告
+                                </h3>
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-indigo-50/50 px-3 py-1 rounded-full text-[10px] text-indigo-600 font-black border border-indigo-100 shadow-sm">
+                                        AI 智能即時生成
+                                    </div>
+                                    <span className="text-[10px] uppercase font-black tracking-widest text-slate-400 bg-white px-2 py-1 rounded border border-slate-200 shadow-sm">
+                                        {new Date().toLocaleDateString('zh-TW')}
+                                    </span>
+                                </div>
                             </div>
-                        )}
-                    </div>
 
-                    {/* Report Content */}
-                    <div className="md:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                        <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
-                            <h3 className="font-black text-slate-800 flex items-center gap-2">
-                                <Bot className="w-5 h-5 text-indigo-500" />
-                                綜合評析報告
-                            </h3>
-                            <span className="text-[10px] uppercase font-black tracking-widest text-slate-400 bg-white px-2 py-1 rounded border border-slate-200 shadow-sm">
-                                {new Date().toLocaleDateString('zh-TW')}
-                            </span>
-                        </div>
+                            <div className="p-6 md:p-8 flex-1 overflow-y-auto w-full custom-scrollbar">
+                                <div className="prose prose-slate prose-sm md:prose-base max-w-none w-full">
+                                    {reportData.report.split('\n').map((paragraph, idx) => {
+                                        if (!paragraph.trim()) return <br key={idx} />;
 
-                        <div className="p-6 md:p-8 flex-1 overflow-y-auto w-full custom-scrollbar">
-                            <div className="prose prose-slate prose-sm md:prose-base max-w-none w-full">
-                                {reportData.report.split('\n').map((paragraph, idx) => {
-                                    if (!paragraph.trim()) return <br key={idx} />;
+                                        // Step-by-step formatting to avoid HTML injection conflicts
+                                        let formattedText = paragraph;
 
-                                    // Make some common patterns bold for better reading
-                                    const formattedText = paragraph
-                                        .replace(/\*/g, '') // Remove Markdown bold/italic chars if any
-                                        .replace(/(技術面強弱總結|籌碼面法人動向分析|綜合投資建議|結論)：?/g, '<br/><strong class="text-indigo-900 text-lg border-l-4 border-indigo-500 pl-3 block mt-6 mb-3">$1</strong>')
-                                        // Highlight numbers and percentages
-                                        .replace(/([+-]?\d+(?:\.\d+)?%?)/g, '<span class="font-black text-slate-800">$1</span>');
+                                        // 1. Process Headings (Start with #### or specific keywords)
+                                        if (paragraph.trim().startsWith('####') || /^(技術面.*?分析|基本面.*?分析|行情綜述|綜合結論|綜合評析|投資建議|籌碼面.*?分析|近期新聞分析|最終評語|分析模型|綜合分析)/.test(paragraph.trim())) {
+                                            const title = paragraph.replace(/^####\s*/, '').replace(/\*/g, '');
+                                            // Highlight numbers in title if any
+                                            const highlightedTitle = title.replace(/([+-]?\d+(?:\.\d+)?%?)/g, '<span class="font-black text-slate-800">$1</span>');
+                                            formattedText = `<strong class="text-indigo-900 text-lg border-l-4 border-indigo-500 pl-3 block mt-6 mb-3">${highlightedTitle}</strong>`;
+                                        } else {
+                                            // 2. Process non-heading lines
+                                            // Highlight numbers (BEFORE adding HTML classes to prevent regex collision)
+                                            formattedText = formattedText.replace(/([+-]?\d+(?:\.\d+)?%?)/g, '<span class=\"font-black text-slate-900\">$1</span>');
+                                            
+                                            // Highlight Positive/Negative Keywords
+                                            // Positive: 成長|強勢|多頭|看多|獲利|增加|提升|領先|收益|紅盤|買進
+                                            formattedText = formattedText.replace(/(成長|強勢|多頭|看多|獲利|增加|提升|領先|收益|紅盤|買進)/g, '<span class=\"text-indigo-600 font-black\">$1</span>');
+                                            // Negative: 衰退|弱勢|空頭|看空|虧損|減少|下降|滯後|損益|平盤|賣出
+                                            formattedText = formattedText.replace(/(衰退|弱勢|空頭|看空|虧損|減少|下降|滯後|損益|平盤|賣出)/g, '<span class=\"text-red-600 font-black\">$1</span>');
 
-                                    return (
-                                        <p
-                                            key={idx}
-                                            className="text-slate-600 leading-loose text-[15px] mb-4 text-justify"
-                                            dangerouslySetInnerHTML={{ __html: formattedText }}
-                                        />
-                                    );
-                                })}
+                                            // Handle bold (**text**)
+                                            formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong class=\"text-slate-900 font-bold bg-indigo-50/50 px-1 rounded\">$1</strong>');
+                                            // Remove remaining single stars
+                                            formattedText = formattedText.replace(/\*/g, '');
+                                        }
+
+                                        return (
+                                            <p
+                                                key={idx}
+                                                className="text-slate-800 leading-loose text-[15px] mb-4 text-justify font-medium"
+                                                dangerouslySetInnerHTML={{ __html: formattedText }}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            
+                            <div className="bg-slate-50 border-t border-slate-100 px-6 py-4">
+                                <p className="text-[11px] font-bold text-slate-400 leading-relaxed text-center">
+                                    此報告由 AI 智能即時生成，綜合考量了歷史價量、三大法人動向及最新新聞。AI 生成內容謹供參考，不構成投資建議。
+                                </p>
                             </div>
                         </div>
                     </div>

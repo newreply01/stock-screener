@@ -49,8 +49,9 @@ router.get('/realtime-ticks', async (req, res) => {
                 COALESCE(
                     NULLIF(t.previous_close, 0),
                     CASE 
-                        WHEN $2::date >= CURRENT_DATE THEN sn.today_close 
-                        ELSE (SELECT close_price FROM daily_prices dp WHERE dp.symbol = t.symbol AND dp.trade_date < $2::date ORDER BY dp.trade_date DESC LIMIT 1)
+                        WHEN (t.trade_time AT TIME ZONE 'Asia/Taipei')::date = sn.last_update THEN sn.yest_close 
+                        WHEN (t.trade_time AT TIME ZONE 'Asia/Taipei')::date > sn.last_update THEN sn.today_close
+                        ELSE (SELECT close_price FROM daily_prices dp WHERE dp.symbol = t.symbol AND dp.trade_date < (t.trade_time AT TIME ZONE 'Asia/Taipei')::date ORDER BY dp.trade_date DESC LIMIT 1)
                     END
                 ) as previous_close
             FROM ${tableName} t
@@ -139,7 +140,8 @@ const sql = `
                 COALESCE(
                     NULLIF(t.previous_close, 0),
                     CASE 
-                        WHEN DATE(t.trade_time) >= CURRENT_DATE THEN sn.today_close 
+                        WHEN DATE(t.trade_time) = sn.last_update THEN sn.yest_close 
+                        WHEN DATE(t.trade_time) > sn.last_update THEN sn.today_close
                         ELSE (SELECT close_price FROM daily_prices dp WHERE dp.symbol = t.symbol AND dp.trade_date < DATE(t.trade_time) ORDER BY dp.trade_date DESC LIMIT 1)
                     END
                 ) as previous_close

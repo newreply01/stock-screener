@@ -101,6 +101,8 @@ const SIDEBAR_MENU = [
     },
     { id: 'news', label: '新聞公告' },
     { id: 'events', label: '重要大事' },
+    { type: 'header', label: '健診分析' },
+    { id: 'health_index', label: '健診報告' },
     { id: 'ai_report', label: 'AI分析報告' }
 ];
 
@@ -572,6 +574,8 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
                             <div className="h-full min-h-[600px] flex flex-col">
                                 <NewsBoard />
                             </div>
+                        ) : activeTab === 'health_index' ? (
+                            <HealthCheckView symbol={stock.symbol} />
                         ) : activeTab === 'ai_report' ? (
                             <AIReportView symbol={stock.symbol} name={stock.name} />
                         ) : activeTab === 'events' ? (

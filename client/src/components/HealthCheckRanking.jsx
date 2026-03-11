@@ -9,6 +9,7 @@ import ValuationRiverView from './ValuationRiverView';
 import StockCompareView from './StockCompareView';
 import TrendView from './TrendView';
 import StockChart from './StockChart';
+import AIReportView from './AIReportView';
 
 const GRADE_STYLES = {
     green: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-300', badge: 'bg-emerald-500' },
@@ -76,7 +77,8 @@ export default function HealthCheckRanking({ onSelectStock }) {
 
     const TABS = [
         { id: 'ranking', label: '健診排行', icon: Award },
-        { id: 'health', label: '個股健診', icon: Shield },
+        { id: 'health', label: '健診分析', icon: Shield },
+        { id: 'ai_report', label: 'AI分析報告', icon: Activity },
         { id: 'valuation', label: '估價模型', icon: Coins },
         { id: 'pk', label: '個股 PK', icon: Users },
         { id: 'trend', label: '趨勢強弱', icon: Activity },
@@ -447,6 +449,10 @@ export default function HealthCheckRanking({ onSelectStock }) {
                     ) : activeTab === 'health' ? (
                         <div className="p-0">
                             <HealthCheckView symbol={selectedStock.symbol} />
+                        </div>
+                    ) : activeTab === 'ai_report' ? (
+                        <div className="p-0">
+                            <AIReportView symbol={selectedStock.symbol} name={selectedStock.name} />
                         </div>
                     ) : activeTab === 'valuation' ? (
                         <div className="p-8">
