@@ -121,7 +121,7 @@ export default function MarketMarginChart() {
                             axisLine={false}
                             tickLine={false}
                             width={45}
-                            tickFormatter={(v) => `${Math.round(v)}`}
+                            tickFormatter={(v) => `${Math.round(v)}億`}
                         />
                         {/* 右 Y 軸 2：大盤指數 (紅色，偏移) */}
                         <YAxis

@@ -63,7 +63,7 @@ async function exportSlimDB() {
             'institutional_2025': `WHERE symbol IN ${SYMBOL_FILTER}`,
             'institutional_2026': `WHERE symbol IN ${SYMBOL_FILTER}`,
             'fm_stock_price': `WHERE symbol IN ${SYMBOL_FILTER} AND date >= '2025-01-01'`,
-            'realtime_ticks': `WHERE symbol IN ${SYMBOL_FILTER}`,
+            'realtime_ticks': `WHERE symbol IN ${SYMBOL_FILTER} AND trade_time::date = (SELECT MAX(trade_time::date) FROM realtime_ticks)`,
             'snapshot_last_close': `WHERE symbol IN ${SYMBOL_FILTER}`
         };
 

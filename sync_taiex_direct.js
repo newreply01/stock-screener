@@ -18,16 +18,20 @@ async function syncIndex(dateStr) {
             console.log(`No data for ${dateStr}: ${json.stat}`);
             return;
         }
-        const indexTable = json.tables.find(t => t.title && t.title.includes('大盤統計'));
+        const indexTable = json.tables.find(t => t.title && t.title.includes('價格指數'));
         if (indexTable && indexTable.data) {
-            const taiexRow = indexTable.data.find(r => r[0] === '發行量加權股價指數');
+            const taiexRow = indexTable.data.find(r => r[0] && r[0].includes('發行量加權股價指數'));
             if (taiexRow) {
                 const taiexClose = parseNumber(taiexRow[1]);
                 const hyphenDate = `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`;
                 await query(
                     `INSERT INTO daily_prices (symbol, trade_date, close_price, open_price, high_price, low_price)
                      VALUES ($1, $2, $3, $3, $3, $3)
-                     ON CONFLICT (symbol, trade_date) DO UPDATE SET close_price = EXCLUDED.close_price`,
+                     ON CONFLICT (symbol, trade_date) DO UPDATE SET 
+                        close_price = EXCLUDED.close_price,
+                        open_price = EXCLUDED.open_price,
+                        high_price = EXCLUDED.high_price,
+                        low_price = EXCLUDED.low_price`,
                     ['TAIEX', hyphenDate, taiexClose]
                 );
                 console.log(`Updated TAIEX for ${hyphenDate}: ${taiexClose}`);
@@ -43,10 +47,10 @@ async function syncIndex(dateStr) {
 }
 
 async function run() {
-    // Sync last 30 working days
+    // Sync last 120 working days
     const dates = [];
     const d = new Date();
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 120; i++) {
         const target = new Date(d);
         target.setDate(d.getDate() - i);
         if (target.getDay() !== 0 && target.getDay() !== 6) {

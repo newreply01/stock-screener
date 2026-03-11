@@ -35,8 +35,6 @@ import RevenueView from './RevenueView'
 import ValuationView from './ValuationView'
 import MACDView from './MACDView'
 import KDView from './KDView'
-import AIReportView from './AIReportView'
-import ChipAnalysisChart from './ChipAnalysisChart'
 import NewsBoard from './NewsBoard'
 import RSIView from './RSIView'
 import DMIView from './DMIView'
@@ -49,7 +47,6 @@ import AlertsView from './AlertsView'
 import MainForceView from './MainForceView'
 import FinancialStatementsView from './FinancialStatementsView'
 import StockSearchAutocomplete from './StockSearchAutocomplete'
-import HealthCheckView from './HealthCheckView'
 import ValuationRiverView from './ValuationRiverView'
 import StockCompareView from './StockCompareView'
 import EventCalendar from './EventCalendar'
@@ -100,10 +97,7 @@ const SIDEBAR_MENU = [
         ]
     },
     { id: 'news', label: '新聞公告' },
-    { id: 'events', label: '重要大事' },
-    { type: 'header', label: '健診分析' },
-    { id: 'health_index', label: '健診報告' },
-    { id: 'ai_report', label: 'AI分析報告' }
+    { id: 'events', label: '重要大事' }
 ];
 
 const CLASSIC_PATTERNS = [
@@ -574,10 +568,6 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
                             <div className="h-full min-h-[600px] flex flex-col">
                                 <NewsBoard />
                             </div>
-                        ) : activeTab === 'health_index' ? (
-                            <HealthCheckView symbol={stock.symbol} />
-                        ) : activeTab === 'ai_report' ? (
-                            <AIReportView symbol={stock.symbol} name={stock.name} />
                         ) : activeTab === 'events' ? (
                             <EventCalendar symbol={stock.symbol} />
                         ) : activeTab === 'realtime' ? (
