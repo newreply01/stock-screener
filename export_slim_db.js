@@ -46,13 +46,17 @@ async function exportSlimDB() {
         const dumpCmd = `pg_dump -h ${pgHost} -p ${pgPort} -U ${pgUser} -d ${pgDb} -O -x --clean --if-exists --no-security-labels --no-privileges --no-comments ${excludeFlags} -f ${OUTPUT_FILE}`;
         execSync(dumpCmd, { stdio: 'inherit', env });
 
-        // 2. 追加 Header (優化導入)
+        // 2. 追加 Header (使用串流避免記憶體溢出)
+        console.log("📝 1.5/2 加入自定義 Header...");
         const header = `-- Stock Screener Slim DB (Hot/Cold & Smart Filter Optimized)\n` +
                        `SET statement_timeout = 0;\n` +
                        `SET client_encoding = 'UTF8';\n` +
                        `SET session_replication_role = 'replica';\n\n`;
-        const currentSql = fs.readFileSync(OUTPUT_FILE, 'utf8');
-        fs.writeFileSync(OUTPUT_FILE, header + currentSql);
+        
+        const TEMP_SQL = OUTPUT_FILE + '.tmp';
+        fs.writeFileSync(TEMP_SQL, header);
+        execSync(`cat ${OUTPUT_FILE} >> ${TEMP_SQL}`, { env });
+        fs.renameSync(TEMP_SQL, OUTPUT_FILE);
 
         // 3. 追加手動數據 (使用智慧過濾)
         console.log("📦 2/2 追加過濾後的標的與歷史數據...");

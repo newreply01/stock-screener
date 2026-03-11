@@ -47,23 +47,40 @@ async function syncIndex(dateStr) {
 }
 
 async function run() {
-    // Sync last 120 working days
-    const dates = [];
-    const d = new Date();
-    for (let i = 0; i < 120; i++) {
-        const target = new Date(d);
-        target.setDate(d.getDate() - i);
-        if (target.getDay() !== 0 && target.getDay() !== 6) {
-            const y = target.getFullYear();
-            const m = String(target.getMonth() + 1).padStart(2, '0');
-            const day = String(target.getDate()).padStart(2, '0');
-            dates.push(`${y}${m}${day}`);
+    try {
+        const res = await query("SELECT MIN(trade_date) as min_date FROM daily_prices");
+        const minDate = res.rows[0].min_date;
+        if (!minDate) {
+            console.log("No price data found in database. Exiting.");
+            process.exit(0);
         }
-    }
 
-    for (const dateStr of dates) {
-        await syncIndex(dateStr);
-        await new Promise(r => setTimeout(r, 1000));
+        const startDate = new Date(minDate);
+        const endDate = new Date();
+        const dates = [];
+        
+        let current = new Date(startDate);
+        while (current <= endDate) {
+            if (current.getDay() !== 0 && current.getDay() !== 6) {
+                const y = current.getFullYear();
+                const m = String(current.getMonth() + 1).padStart(2, '0');
+                const day = String(current.getDate()).padStart(2, '0');
+                dates.push(`${y}${m}${day}`);
+            }
+            current.setDate(current.getDate() + 1);
+        }
+
+        console.log(`Preparing to sync ${dates.length} trading days from ${minDate.toISOString().split('T')[0]}...`);
+        
+        // Sync in reverse (newest first) to get latest data quickly if interrupted
+        dates.reverse();
+
+        for (const dateStr of dates) {
+            await syncIndex(dateStr);
+            await new Promise(r => setTimeout(r, 1000));
+        }
+    } catch (err) {
+        console.error("Run error:", err);
     }
     process.exit(0);
 }
