@@ -21,7 +21,7 @@ export function GlobalFilterProvider({ children }) {
         return {
             market: 'all',          // 'all', 'twse', 'tpex'
             industry: 'all',        // 'all' or specific industry
-            stockTypes: ['stock']   // ['stock', 'etf', 'warrant'] 預設只有個股
+            stockTypes: ['stock']   // ['stock', 'etf'] 預設只有個股
         };
     });
 

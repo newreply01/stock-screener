@@ -64,8 +64,7 @@ export default function GlobalFilterBar() {
                     <div className="flex bg-gray-50 p-1.5 rounded-xl border border-gray-200">
                         {[
                             { id: 'stock', label: '股' },
-                            { id: 'etf', label: 'ETF' },
-                            { id: 'warrant', label: '權證' }
+                            { id: 'etf', label: 'ETF' }
                         ].map(type => {
                             const isSelected = hasStockType(type.id);
                             return (

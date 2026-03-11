@@ -118,11 +118,9 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
               key={stock.symbol}
               className="group bg-white border border-slate-100 hover:border-brand-primary/30 rounded-2xl p-5 transition-all hover:shadow-lg hover:-translate-y-1 relative overflow-hidden"
             >
-              {idx < 3 && (
-                <div className="absolute -top-1 -right-1 w-12 h-12 flex items-center justify-center bg-brand-primary/10 rounded-bl-3xl">
-                  <span className="text-brand-primary font-black italic text-lg opacity-80">#{idx + 1}</span>
-                </div>
-              )}
+              <div className={`absolute -top-1 -right-1 w-12 h-12 flex items-center justify-center rounded-bl-3xl ${idx < 3 ? 'bg-brand-primary/10' : 'bg-slate-100'}`}>
+                <span className={`font-black italic text-lg opacity-80 ${idx < 3 ? 'text-brand-primary' : 'text-slate-400'}`}>#{idx + 1}</span>
+              </div>
 
               <div className="flex justify-between items-start mb-4">
                 <div className="flex flex-col gap-1">

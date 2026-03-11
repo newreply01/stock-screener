@@ -173,7 +173,7 @@ async function bulkUpsert(client, table, columns, conflictKeys, rows) {
 async function getAllStockSymbols() {
     const res = await pool.query(`
         SELECT symbol FROM stocks 
-        WHERE symbol ~ '^[0-9]{4}$' 
+        WHERE symbol ~ '^\\d{4}$' OR symbol ~ '^00\\d{4}$'
         OR symbol IN ('TAIEX', 'TSE', 'OTC') 
         ORDER BY symbol ASC
     `);
@@ -793,9 +793,9 @@ async function syncTaiwanStockInfoWithWarrant() {
     if (await isCompleted(ds)) { console.log(`?? ${ds} ???`); return; }
     console.log(`?? [${ds}] ??????? (?? 4 ???)...`);
     const data = await fetchFinMind(ds);
-    // Filter: only keep 4-digit numeric stock IDs (skip 100K+ warrants)
-    const stocks = data.filter(d => /^[0-9]{4}$/.test(d.stock_id));
-    console.log(`  ?? ???: ${stocks.length}/${data.length} ? (4???)`);
+    // Filter: only keep 4-digit numeric stock IDs and 00- ETFs (skip 100K+ warrants)
+    const stocks = data.filter(d => /^\\d{4}$|^00\\d{4}$/.test(d.stock_id));
+    console.log(`  ?? ???: ${stocks.length}/${data.length} ? (4??? & ETF)`);
 
     const client = await pool.connect();
     try {

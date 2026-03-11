@@ -27,8 +27,8 @@ export default function FilterPanel({ onFilter, onClear, filters }) {
         dealer_net_min: '', dealer_net_max: '',
         total_net_min: '', total_net_max: '',
         type_stock: true,
+        type_stock: true,
         type_etf: false,
-        type_warrant: false,
         ...filters
     })
 
@@ -57,8 +57,8 @@ export default function FilterPanel({ onFilter, onClear, filters }) {
         // Construct stock_types string
         const types = [];
         if (localFilters.type_stock) types.push('stock');
+        if (localFilters.type_stock) types.push('stock');
         if (localFilters.type_etf) types.push('etf');
-        if (localFilters.type_warrant) types.push('warrant');
         if (types.length > 0) cleaned.stock_types = types.join(',');
 
         onFilter(cleaned)
@@ -79,8 +79,8 @@ export default function FilterPanel({ onFilter, onClear, filters }) {
             dealer_net_min: '', dealer_net_max: '',
             total_net_min: '', total_net_max: '',
             type_stock: true,
+            type_stock: true,
             type_etf: false,
-            type_warrant: false,
         }
         setLocalFilters(empty)
         onClear()
@@ -158,8 +158,7 @@ export default function FilterPanel({ onFilter, onClear, filters }) {
                         <div className="grid grid-cols-3 gap-2">
                             {[
                                 { id: 'type_stock', label: '個股' },
-                                { id: 'type_etf', label: 'ETF' },
-                                { id: 'type_warrant', label: '權證' }
+                                { id: 'type_etf', label: 'ETF' }
                             ].map((t) => (
                                 <button
                                     key={t.id}

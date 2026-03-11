@@ -142,7 +142,6 @@ router.get('/screen', async (req, res) => {
         let typeConditions = [];
         if (types.includes('stock')) typeConditions.push("(s.symbol ~ '^[0-9]{4}$' AND s.symbol !~ '^00')");
         if (types.includes('etf')) typeConditions.push("(s.symbol ~ '^00' OR s.name ILIKE '%ETF%')");
-        if (types.includes('warrant')) typeConditions.push("(s.symbol ~ '^[0-9]{6}$' AND s.symbol !~ '^00' AND s.symbol !~ '^02')");
 
         if (typeConditions.length > 0) {
             whereClause += ` AND (${typeConditions.join(' OR ')})`;
@@ -585,7 +584,6 @@ router.get('/market-summary', async (req, res) => {
         let typeConditions = [];
         if (types.includes('stock')) typeConditions.push("(s.symbol ~ '^[0-9]{4}$' AND s.symbol !~ '^00')");
         if (types.includes('etf')) typeConditions.push("(s.symbol ~ '^00' OR s.name ILIKE '%ETF%')");
-        if (types.includes('warrant')) typeConditions.push("(s.symbol ~ '^[0-9]{6}$' AND s.symbol !~ '^00' AND s.symbol !~ '^02')");
 
         const typeFilter = typeConditions.length > 0 ? `AND (${typeConditions.join(' OR ')})` : '';
 
@@ -858,7 +856,7 @@ router.get('/institutional-rank', async (req, res) => {
             SELECT trade_date 
             FROM institutional 
             GROUP BY trade_date
-            HAVING count(*) > 5000
+            HAVING count(*) > 1000
             ORDER BY trade_date DESC 
             LIMIT $1`, [days]);
         if (datesRes.rows.length === 0) return res.json({ success: true, data: [] });
@@ -878,7 +876,6 @@ router.get('/institutional-rank', async (req, res) => {
         let typeConditions = [];
         if (types.includes('stock')) typeConditions.push("(s.symbol ~ '^[0-9]{4}$' AND s.symbol !~ '^00')");
         if (types.includes('etf')) typeConditions.push("(s.symbol ~ '^00' OR s.name ILIKE '%ETF%')");
-        if (types.includes('warrant')) typeConditions.push("(s.symbol ~ '^[0-9]{6}$' AND s.symbol !~ '^00' AND s.symbol !~ '^02')");
 
         if (typeConditions.length > 0) {
             whereClause += ` AND (${typeConditions.join(' OR ')})`;
@@ -1064,7 +1061,6 @@ router.get('/health-check-ranking', async (req, res) => {
             const typeConditions = [];
             if (types.includes('stock')) typeConditions.push("(symbol ~ '^[0-9]{4}$')");
             if (types.includes('etf')) typeConditions.push("(symbol ~ '^00[0-9]{4}')");
-            if (types.includes('warrant')) typeConditions.push("(symbol ~ '^[0-9]{6}$' AND symbol !~ '^00' AND symbol !~ '^02')");
             if (typeConditions.length > 0) conditions.push(`(${typeConditions.join(' OR ')})`);
         }
         if (grade) { conditions.push(`grade = $${paramIdx}`); params.push(grade); paramIdx++; }
