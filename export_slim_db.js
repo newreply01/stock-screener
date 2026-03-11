@@ -20,6 +20,14 @@ async function exportSlimDB() {
     try {
         const SYMBOL_FILTER = "(SELECT symbol FROM stocks WHERE industry IS NOT NULL AND industry NOT LIKE '%權證%' AND industry NOT LIKE '%牛證%' AND industry NOT LIKE '%熊證%')";
 
+        const ptRes = await pool.query("SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'realtime_ticks_%' ORDER BY table_name DESC");
+        const allPartitions = ptRes.rows.map(r => r.table_name);
+        // Exclude the history table from partitions logic
+        const datePartitions = allPartitions.filter(t => t !== 'realtime_ticks_history' && t !== 'realtime_ticks_old' && t !== 'realtime_ticks_old_backup');
+        
+        const latestPartition = datePartitions.length > 0 ? datePartitions[0] : null;
+        const oldPartitions = datePartitions.length > 0 ? datePartitions.slice(1) : [];
+
         const manualTables = [
             'stocks',
             'daily_prices_2025',
@@ -27,7 +35,6 @@ async function exportSlimDB() {
             'institutional_2025',
             'institutional_2026',
             'fm_stock_price',
-            'realtime_ticks',
             'snapshot_last_close',
             'fundamentals',
             'fm_financial_statements',
@@ -44,12 +51,16 @@ async function exportSlimDB() {
             'ai_reports',
             'stock_daily_analysis_results'
         ];
-
-        const ptRes = await pool.query("SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'realtime_ticks_%'");
-        const partitionTables = ptRes.rows.map(r => r.table_name);
+        
+        if (latestPartition) {
+            manualTables.push(latestPartition);
+        }
 
         const noDataTables = [
+            'realtime_ticks', // 已經透過 partition 直接備份
             'realtime_ticks_history',
+            'realtime_ticks_old',
+            'realtime_ticks_old_backup',
             'fm_sync_progress',
             'audit_logs',
             'institutional_2024',
@@ -62,7 +73,7 @@ async function exportSlimDB() {
             'daily_prices_2021',
             'broker_trades',
             'realtime_statistics',
-            ...partitionTables
+            ...oldPartitions
         ];
 
         // 1. 匯出結構與除大型表外的數據
@@ -100,8 +111,7 @@ async function exportSlimDB() {
             'institutional_2025': `WHERE symbol IN ${SYMBOL_FILTER_INNER} AND trade_date >= (CURRENT_DATE - INTERVAL '30 days')`,
             'institutional_2026': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`,
             'fm_stock_price': `WHERE stock_id IN ${SYMBOL_FILTER_INNER} AND date >= '2025-01-01'`,
-            // 即時資料：僅保留最新一天且進行 1 分鐘抽樣 (減少數據量)
-            'realtime_ticks': `WHERE symbol IN ${SYMBOL_FILTER_INNER} AND trade_time::date = (SELECT MAX(trade_time::date) FROM realtime_ticks) AND EXTRACT(SECOND FROM trade_time) = 0`,
+            // 移除舊的 realtime_ticks 採樣邏輯，改由後續動態加入
             'snapshot_last_close': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`,
             'fundamentals': `WHERE symbol IN ${SYMBOL_FILTER_INNER} AND trade_date >= '2025-01-01'`,
             'fm_financial_statements': `WHERE stock_id IN ${SYMBOL_FILTER_INNER} AND date >= '2024-01-01'`, // 財報需往前抓一年算 YoY
@@ -118,6 +128,10 @@ async function exportSlimDB() {
             'ai_reports': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`,
             'stock_daily_analysis_results': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`
         };
+
+        if (latestPartition) {
+            filters[latestPartition] = `WHERE symbol IN ${SYMBOL_FILTER_INNER}`;
+        }
 
         for (const tableName of manualTables) {
             console.log(`   - 處理並追加: ${tableName}`);
