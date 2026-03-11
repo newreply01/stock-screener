@@ -1059,8 +1059,8 @@ router.get('/health-check-ranking', async (req, res) => {
         if (stock_types) {
             const types = stock_types.split(',');
             const typeConditions = [];
-            if (types.includes('stock')) typeConditions.push("(symbol ~ '^[0-9]{4}$')");
-            if (types.includes('etf')) typeConditions.push("(symbol ~ '^00[0-9]{4}')");
+            if (types.includes('stock')) typeConditions.push("(symbol ~ '^[0-9]{4}$' AND symbol !~ '^00')");
+            if (types.includes('etf')) typeConditions.push("(symbol ~ '^00' OR name ILIKE '%ETF%')");
             if (typeConditions.length > 0) conditions.push(`(${typeConditions.join(' OR ')})`);
         }
         if (grade) { conditions.push(`grade = $${paramIdx}`); params.push(grade); paramIdx++; }
