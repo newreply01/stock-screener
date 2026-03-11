@@ -136,4 +136,8 @@ async function calculateAndStoreIndicators() {
     }
 }
 
-calculateAndStoreIndicators();
+if (require.main === module) {
+    calculateAndStoreIndicators();
+}
+
+module.exports = { calculateAndStoreIndicators };

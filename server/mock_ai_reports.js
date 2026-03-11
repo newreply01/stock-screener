@@ -95,11 +95,49 @@ async function bulkGenerateReports() {
       // 快速獲取基本資料、價格與技術指標
       const contextRes = await query(`
         SELECT p.close_price, p.change_percent, p.volume, 
-               i.rsi_14, i.ma_20,
-               f.pe_ratio, f.pb_ratio, f.dividend_yield
+               i.rsi_14, i.macd_value, i.macd_hist, i.ma_5, i.ma_10, i.ma_20, i.ma_60, i.patterns,
+               f.pe_ratio, f.pb_ratio, f.dividend_yield,
+               inst.foreign_buy, inst.foreign_sell, inst.foreign_net, inst.trust_net, inst.dealer_net, inst.total_net,
+               mr.revenue_year, mr.revenue_month, mr.revenue,
+               mt.margin_purchase_buy, mt.margin_purchase_sell, mt.short_sale_buy, mt.short_sale_sell,
+               sh.foreign_invest_ratio
         FROM daily_prices p
-        LEFT JOIN indicators i ON p.symbol = i.symbol AND p.trade_date = i.trade_date
-        LEFT JOIN fundamentals f ON p.symbol = f.symbol AND p.trade_date = f.trade_date
+        LEFT JOIN LATERAL (
+          SELECT rsi_14, macd_value, macd_hist, ma_5, ma_10, ma_20, ma_60, patterns
+          FROM indicators
+          WHERE symbol = p.symbol AND trade_date <= p.trade_date
+          ORDER BY trade_date DESC LIMIT 1
+        ) i ON true
+        LEFT JOIN LATERAL (
+          SELECT pe_ratio, pb_ratio, dividend_yield
+          FROM fundamentals
+          WHERE symbol = p.symbol AND trade_date <= p.trade_date
+          ORDER BY trade_date DESC LIMIT 1
+        ) f ON true
+        LEFT JOIN LATERAL (
+          SELECT foreign_buy, foreign_sell, foreign_net, trust_net, dealer_net, total_net
+          FROM institutional
+          WHERE symbol = p.symbol AND trade_date <= p.trade_date
+          ORDER BY trade_date DESC LIMIT 1
+        ) inst ON true
+        LEFT JOIN LATERAL (
+          SELECT revenue_year, revenue_month, revenue
+          FROM monthly_revenue
+          WHERE symbol = p.symbol
+          ORDER BY revenue_year DESC, revenue_month DESC LIMIT 1
+        ) mr ON true
+        LEFT JOIN LATERAL (
+          SELECT margin_purchase_buy, margin_purchase_sell, short_sale_buy, short_sale_sell
+          FROM fm_margin_trading
+          WHERE stock_id = p.symbol AND date <= p.trade_date
+          ORDER BY date DESC LIMIT 1
+        ) mt ON true
+        LEFT JOIN LATERAL (
+          SELECT foreign_invest_ratio
+          FROM fm_shareholding
+          WHERE stock_id = p.symbol AND date <= p.trade_date
+          ORDER BY date DESC LIMIT 1
+        ) sh ON true
         WHERE p.symbol = $1 AND p.trade_date = $2
         LIMIT 1
       `, [symbol, latestDate]);
@@ -108,35 +146,40 @@ async function bulkGenerateReports() {
       
       const sentimentScore = Math.floor(Math.random() * 30) + 45;
 
+      const formatNumber = (num) => num ? Number(num).toLocaleString() : 'N/A';
+      
+      const patternDesc = data.patterns ? 
+        (typeof data.patterns === 'string' ? JSON.parse(data.patterns) : data.patterns).join(', ') : '無明顯型態';
+
       const reportContent = `
 # ${name} (${symbol}) 深度投資分析報告
 **資料基準日：${dateStr}**  
 **報告生成日：${nowStr}**
 
 #### 1. 個股摘要與現狀 (Stock Summary)
-${name} (${symbol}) 於資料基準日報價為 ${data.close_price || '資料更新中'}，漲跌幅 ${data.change_percent || '0'}%。
-成交量為 ${data.volume || '0'}，市場流動性${(data.volume || 0) > 1000000 ? '充足' : '偏低'}。
+${name} (${symbol}) 收盤價為 **${data.close_price || '更新中'}**，變動幅 **${data.change_percent || '0'}%**，成交量達 **${formatNumber(data.volume)}** 股。
 
-#### 2. 基本面深度分析 (Fundamental Deep Dive)
-本益比 (PE) 為 ${data.pe_ratio || 'N/A'}，淨值比 (PB) 為 ${data.pb_ratio || 'N/A'}。
-現金殖利率約 ${data.dividend_yield || '0'}%。
-目前基本面顯示，${name} 在產業鏈中扮演著重要的角色，營運穩定度受市場肯定。
+#### 2. 技術面分析 (Technical Analysis)
+- **均線排列**：5日線(${data.ma_5||'-'}) / 10日線(${data.ma_10||'-'}) / 20日月線(${data.ma_20||'-'}) / 60日季線(${data.ma_60||'-'})。
+- **動能指標**：RSI(14) 約處於 **${data.rsi_14 || '中性'}** 位階。MACD 柱狀體為 **${data.macd_hist || '-'}** (MACD值: ${data.macd_value||'-'})。
+- **K線型態**：偵測到近期潛在型態包含「**${patternDesc || '無'}**」。
 
-#### 3. 籌碼面法人動向 (Institutional & Money Flow)
-近期三大法人對該標的持股動向穩定。從權益變動觀察，長線資金仍看好其未來獲利增長空間，短線雖有波動，但整體籌碼面未見鬆動跡象。
+#### 3. 基本面深度分析 (Fundamental Deep Dive)
+- **估值評價**：本益比 (PE) 為 **${data.pe_ratio || 'N/A'}**，淨值比 (PB) 為 **${data.pb_ratio || 'N/A'}**。
+- **股利率**：約 **${data.dividend_yield || 'N/A'}%**。
+- **近期營收**：${data.revenue_year || '-'}年${data.revenue_month || '-'}月營收達 **${formatNumber(data.revenue)}**。
 
-#### 4. 技術面指標解讀 (Technical Analysis)
-- **指標數值**：RSI(14) 約為 ${data.rsi_14 || '50'}，位處中性偏強帶。
-- **均線基準**：月線 (MA20) 支撐力道明顯，目前股價運行於均線之上。
-- **技術形態**：目前呈現持續探頂或橫盤築底後的表態，技術圖形具備多頭架構潛力。
+#### 4. 籌碼面法人動向 (Institutional & Money Flow)
+- **三大法人**：外資買賣超 **${formatNumber(data.foreign_net)}** 股，外資持股比例約 **${data.foreign_invest_ratio || 'N/A'}%**。投信買賣超 **${formatNumber(data.trust_net)}** 股，自營商買賣超 **${formatNumber(data.dealer_net)}** 股。三大法人合計 **${formatNumber(data.total_net)}** 股。
+- **信用交易**：昨日融資買進 **${formatNumber(data.margin_purchase_buy)}** / 賣出 **${formatNumber(data.margin_purchase_sell)}**；融券買進 **${formatNumber(data.short_sale_buy)}** / 賣出 **${formatNumber(data.short_sale_sell)}**。
 
-#### 5. 綜合結論與投資建议 (Summary & Recommend)
-- **綜合多空評分**：${sentimentScore} / 100
-- **投資策略建議**：建議投資者關注後續營收放榜狀況。股價如有回檔至支撐位，不失為佈局良機。
-- **風險提醒**：應密切注意大盤系統性風險及匯率變動對出口相關項目之影響。
+#### 5. 綜合結論與投資建議 (Summary & Recommendation)
+- **綜合多空評分**：**${sentimentScore} / 100**
+- **投資策略建議**：依多面向指標評分，建議可結合均線支撐與法人籌碼動向來決定進出場邏輯。若法人持續買超且基本面穩健，逢低可留意。
+- **風險提醒**：技術指標若處於高檔超買區或籌碼出現鬆動，建議嚴設停損點，密切注意總體總經數據對盤勢的擾動。
 
 ---
-此報告由 AI 智能即時生成，綜合考量了歷史價量、三大法人動向及最新新聞。AI 生成內容謹供參考，不構成投資建議。
+此報告由 AI 智能即時生成，綜合考量了歷史價量、技術線型、三大法人動向與基本財務分數。AI 生成內容謹供參考，不構成任何真實交易與投資買賣建議。
 `;
 
       await query(

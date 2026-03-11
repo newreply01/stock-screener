@@ -57,58 +57,42 @@ async function gatherStockContext(symbol) {
 }
 
 /**
- * Generate a rule-based fallback report when AI is unavailable
+ * Generate a mock report based purely on the prompt template structure
  */
-async function generateFallbackReport(symbol, context) {
-    const { analyzePosition } = require('../position_analyzer');
-    const analysis = await analyzePosition(symbol);
+function generateMockReport(symbol, context, promptTemplate) {
+    let report = promptTemplate;
     
-    let report = `# ${symbol} 深度投資分析報告 (系統自動分析)\n\n`;
-    report += `> [!NOTE]\n> 本報告由系統量化規則引擎自動產生 (Fallback Mode)\n\n`;
-    
-    // 1. Summary
-    report += `#### 1. 個股摘要 (Stock Summary)\n`;
-    report += `- 最新價格: ${context.priceData.close_price || 'N/A'} (漲跌幅: ${context.priceData.change_percent || '0'}%)\n`;
-    report += `- 成交量: ${context.priceData.volume || 'N/A'}\n\n`;
-    
-    // 2. Technical
-    const tech = analysis.dimensions.technical;
-    report += `#### 2. 技術面分析 (Technical Analysis)\n`;
-    report += `- **趨勢判讀**: ${tech.details.maAlignment?.ma20 ? (context.priceData.close_price > tech.details.maAlignment.ma20 ? '股價位於 20MA 之上，短線強勢' : '股價位於 20MA 之下，表現較弱') : '動能盤整中'}\n`;
-    report += `- **動能指標**: RSI14=${tech.details.rsi?.value || 'N/A'}, MACD=${tech.details.macd?.value || 'N/A'}\n`;
-    report += `- **K線型態**: ${tech.details.patterns?.detected?.join(', ') || '無明顯形態'}\n\n`;
-    
-    // 3. Fundamental
-    const fund = analysis.dimensions.fundamental;
-    report += `#### 3. 基本面深度分析 (Fundamental Deep Dive)\n`;
-    report += `- **估值**: PE=${fund.details.pe?.value || 'N/A'}, PB=${fund.details.pb?.value || 'N/A'}, 殖利率=${fund.details.dividendYield?.value || 'N/A'}%\n`;
-    report += `- **指標得分**: ${fund.score}/100\n\n`;
-    
-    // 4. Chip
-    const chip = analysis.dimensions.chip;
-    report += `#### 4. 籌碼面法人動向 (Institutional & Chip Analysis)\n`;
-    report += `- **三大法人**: 近日累計 ${chip.details.institutional?.total > 0 ? '買超' : '賣超'} ${Math.abs(chip.details.institutional?.total || 0)} 張\n`;
-    report += `- **融資券**: 券資比 ${chip.details.margin?.ratioPercent || '0'}%\n\n`;
-    
-    // 5. News
-    report += `#### 6. 近期新聞 (News Analysis)\n`;
-    if (context.news && context.news.length > 0) {
-        report += context.news.slice(0, 3).map(n => `- ${n.title}`).join('\n') + '\n\n';
-    } else {
-        report += `- 近期無重大相關新聞\n\n`;
-    }
-    
-    // 6. Conclusion
-    report += `#### 7. 綜合結論 (Summary & Score)\n`;
-    report += `- **綜合評分**: ${analysis.composite} / 100\n`;
-    report += `- **操作建議**: ${analysis.recommendation}\n`;
-    report += `- **分析報告**: ${analysis.composite >= 60 ? '目前籌碼與技術面表現尚佳，建議謹慎偏多操作。' : '目前指標轉弱或盤整，建議觀望或適度減碼。'}\n`;
-    
-    return {
-        content: report,
-        sentimentScore: analysis.composite,
-        isFallback: true
-    };
+    // Replace custom variables if any (e.g., {symbol})
+    report = report.replace(/{symbol}/g, symbol);
+    // Try to replace {name} if possible, or just remove it if not available
+    const nameMatch = context.news ? context.news.find(n => n.title.includes(symbol)) : null;
+    report = report.replace(/{name}/g, ''); 
+
+    // Inject data under headings
+    report = report.replace(/#### 1\. 個股摘要.*/, `$&
+- **最新價格**: ${context.priceData.close_price || 'N/A'} (漲跌幅: ${context.priceData.change_percent || '0'}%)
+- **成交量**: ${context.priceData.volume || 'N/A'}`);
+
+    report = report.replace(/#### 2\. 技術面分析.*/, `$&
+- **動能指標**: RSI14=${context.priceData.rsi_14 || 'N/A'}, MACD柱=${context.priceData.macd_hist || 'N/A'}
+- **均線**: MA20=${context.priceData.ma_20 || 'N/A'}, MA60=${context.priceData.ma_60 || 'N/A'}
+- **K線型態**: ${context.priceData.patterns ? JSON.stringify(context.priceData.patterns) : '無'}`);
+
+    report = report.replace(/#### 3\. 基本面深度分析.*/, `$&
+- **本益比 (PE)**: ${context.fundamentals.pe_ratio || 'N/A'}
+- **股價淨值比 (PB)**: ${context.fundamentals.pb_ratio || 'N/A'}
+- **現金殖利率**: ${context.fundamentals.dividend_yield ? context.fundamentals.dividend_yield + '%' : 'N/A'}`);
+
+    let newsText = context.news && context.news.length > 0 
+        ? context.news.slice(0, 3).map(n => `- ${n.publish_at || ''} ${n.title}`).join('\n') 
+        : '- 近期無重大新聞';
+        
+    report = report.replace(/#### 6\. 近期新聞.*/, `$&
+${newsText}`);
+
+    report += `\n\n> [!NOTE]\n> 本報告為系統依據提示詞模板與最新數據自動填寫之模擬範例 (Mock Mode)。`;
+
+    return report;
 }
 
 /**
@@ -119,30 +103,7 @@ async function generateAIReport(symbol, templateName = 'stock_analysis_report') 
         // 1. Gather data
         const context = await gatherStockContext(symbol);
 
-        // 2. Check for API key
-        if (!process.env.GEMINI_API_KEY) {
-            console.log(`[AI] Missing API KEY for ${symbol}, using rule-based fallback.`);
-            const fallbackResult = await generateFallbackReport(symbol, context);
-            
-            // Save fallback report
-            await query(
-                `INSERT INTO ai_reports (symbol, content, sentiment_score, updated_at)
-                 VALUES ($1, $2, $3, NOW())
-                 ON CONFLICT (symbol) 
-                 DO UPDATE SET content = EXCLUDED.content, sentiment_score = EXCLUDED.sentiment_score, updated_at = NOW()`,
-                [symbol, fallbackResult.content, parseInt(fallbackResult.sentimentScore) || 50]
-            );
-
-            return {
-                success: true,
-                symbol,
-                content: fallbackResult.content,
-                sentimentScore: fallbackResult.sentimentScore,
-                isFallback: true
-            };
-        }
-
-        // 3. Get the active prompt template
+        // 2. Get the active prompt template
         const templateRes = await query(
             `SELECT content FROM ai_prompt_templates WHERE name = $1 AND is_active = true LIMIT 1`,
             [templateName]
@@ -153,6 +114,28 @@ async function generateAIReport(symbol, templateName = 'stock_analysis_report') 
         }
         
         let promptTemplate = templateRes.rows[0].content;
+
+        // 3. Check for API key - if missing, use template-based mock
+        if (!process.env.GEMINI_API_KEY) {
+            console.log(`[AI] Missing API KEY for ${symbol}, generating template-based mock report.`);
+            const mockContent = generateMockReport(symbol, context, promptTemplate);
+            
+            await query(
+                `INSERT INTO ai_reports (symbol, content, sentiment_score, updated_at)
+                 VALUES ($1, $2, $3, NOW())
+                 ON CONFLICT (symbol) 
+                 DO UPDATE SET content = EXCLUDED.content, sentiment_score = EXCLUDED.sentiment_score, updated_at = NOW()`,
+                [symbol, mockContent, 50]
+            );
+
+            return {
+                success: true,
+                symbol,
+                content: mockContent,
+                sentimentScore: 50,
+                isFallback: true
+            };
+        }
         
         // 4. Construct the prompt
         const finalPrompt = `

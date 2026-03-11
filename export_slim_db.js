@@ -28,13 +28,34 @@ async function exportSlimDB() {
             'institutional_2026',
             'fm_stock_price',
             'realtime_ticks',
-            'snapshot_last_close'
+            'snapshot_last_close',
+            'fundamentals',
+            'fm_financial_statements',
+            'fm_balance_sheet',
+            'fm_cash_flows',
+            'monthly_revenue',
+            'dividend_policy',
+            'fm_holding_shares_per',
+            'user_holdings',
+            'watchlist_items',
+            'indicators',
+            'fm_broker_trading'
         ];
 
         const noDataTables = [
             'realtime_ticks_history',
             'fm_sync_progress',
-            'audit_logs'
+            'audit_logs',
+            'institutional_2024',
+            'institutional_2023',
+            'institutional_2022',
+            'institutional_2021',
+            'daily_prices_2024',
+            'daily_prices_2023',
+            'daily_prices_2022',
+            'daily_prices_2021',
+            'broker_trades',
+            'realtime_statistics'
         ];
 
         // 1. 匯出結構與除大型表外的數據
@@ -48,7 +69,7 @@ async function exportSlimDB() {
 
         // 2. 追加 Header (使用串流避免記憶體溢出)
         console.log("📝 1.5/2 加入自定義 Header...");
-        const header = `-- Stock Screener Slim DB (Hot/Cold & Smart Filter Optimized)\n` +
+        const header = `-- Stock Screener Slim DB (Optimized for 500MB Limit & 2025+ Data)\n` +
                        `SET statement_timeout = 0;\n` +
                        `SET client_encoding = 'UTF8';\n` +
                        `SET session_replication_role = 'replica';\n\n`;
@@ -60,15 +81,32 @@ async function exportSlimDB() {
 
         // 3. 追加手動數據 (使用智慧過濾)
         console.log("📦 2/2 追加過濾後的標的與歷史數據...");
+        
+        // 更健全的股票過濾：包含熱門股、ETF，但不包含權證
+        const STOCK_FILTER = "WHERE (industry IS NULL OR (industry NOT LIKE '%權證%' AND industry NOT LIKE '%牛證%' AND industry NOT LIKE '%熊證%'))";
+        const SYMBOL_FILTER_INNER = "(SELECT symbol FROM stocks " + STOCK_FILTER + ")";
+
         const filters = {
-            'stocks': "WHERE industry IS NOT NULL AND industry NOT LIKE '%權證%' AND industry NOT LIKE '%牛證%' AND industry NOT LIKE '%熊證%'",
-            'daily_prices_2025': `WHERE symbol IN ${SYMBOL_FILTER}`,
-            'daily_prices_2026': `WHERE symbol IN ${SYMBOL_FILTER}`,
-            'institutional_2025': `WHERE symbol IN ${SYMBOL_FILTER}`,
-            'institutional_2026': `WHERE symbol IN ${SYMBOL_FILTER}`,
-            'fm_stock_price': `WHERE symbol IN ${SYMBOL_FILTER} AND date >= '2025-01-01'`,
-            'realtime_ticks': `WHERE symbol IN ${SYMBOL_FILTER} AND trade_time::date = (SELECT MAX(trade_time::date) FROM realtime_ticks)`,
-            'snapshot_last_close': `WHERE symbol IN ${SYMBOL_FILTER}`
+            'stocks': STOCK_FILTER,
+            'daily_prices_2025': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`,
+            'daily_prices_2026': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`,
+            'institutional_2025': `WHERE symbol IN ${SYMBOL_FILTER_INNER} AND trade_date >= (CURRENT_DATE - INTERVAL '30 days')`,
+            'institutional_2026': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`,
+            'fm_stock_price': `WHERE stock_id IN ${SYMBOL_FILTER_INNER} AND date >= '2025-01-01'`,
+            // 即時資料：僅保留最新一天且進行 1 分鐘抽樣 (減少數據量)
+            'realtime_ticks': `WHERE symbol IN ${SYMBOL_FILTER_INNER} AND trade_time::date = (SELECT MAX(trade_time::date) FROM realtime_ticks) AND EXTRACT(SECOND FROM trade_time) = 0`,
+            'snapshot_last_close': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`,
+            'fundamentals': `WHERE symbol IN ${SYMBOL_FILTER_INNER} AND trade_date >= '2025-01-01'`,
+            'fm_financial_statements': `WHERE stock_id IN ${SYMBOL_FILTER_INNER} AND date >= '2024-01-01'`, // 財報需往前抓一年算 YoY
+            'fm_balance_sheet': `WHERE stock_id IN ${SYMBOL_FILTER_INNER} AND date >= '2024-01-01'`,
+            'fm_cash_flows': `WHERE stock_id IN ${SYMBOL_FILTER_INNER} AND date >= '2024-01-01'`,
+            'monthly_revenue': `WHERE symbol IN ${SYMBOL_FILTER_INNER} AND revenue_year >= 2024`,
+            'dividend_policy': `WHERE symbol IN ${SYMBOL_FILTER_INNER} AND year >= 2020`,
+            'fm_holding_shares_per': `WHERE stock_id IN ${SYMBOL_FILTER_INNER} AND date >= '2025-01-01'`,
+            'user_holdings': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`,
+            'watchlist_items': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`,
+            'indicators': `WHERE symbol IN ${SYMBOL_FILTER_INNER} AND trade_date >= '2025-01-01'`,
+            'fm_broker_trading': `WHERE stock_id IN ${SYMBOL_FILTER_INNER} AND date >= (CURRENT_DATE - INTERVAL '15 days')`
         };
 
         for (const tableName of manualTables) {
@@ -76,6 +114,7 @@ async function exportSlimDB() {
             const filterClause = filters[tableName] || "";
             const csvFile = `${TMP_DATA_DIR}/${tableName}.csv`;
             
+            // 使用正確的雙引號處理表名，並動態判斷欄位名稱 (有些是 stock_id)
             const psqlCopy = `psql -h ${pgHost} -p ${pgPort} -U ${pgUser} -d ${pgDb} -c \"COPY (SELECT * FROM \\\"${tableName}\\\" ${filterClause}) TO STDOUT WITH CSV\" > ${csvFile}`;
             execSync(psqlCopy, { env });
 

@@ -13,6 +13,7 @@ const filterRoutes = require('./routes/filters');
 const portfolioRoutes = require('./routes/portfolio');
 const streamRoutes = require('./routes/stream');
 const adminRoutes = require('./routes/admin');
+const brokerRoutes = require('./routes/broker_analysis');
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use('/api/filters', filterRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/stream', streamRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/broker', brokerRoutes);
 app.use('/api', screenerRoutes);
 
 const distPath = path.join(__dirname, '..', 'client', 'dist');

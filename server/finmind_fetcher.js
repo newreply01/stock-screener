@@ -65,6 +65,7 @@ async function fetchFinMind(dataset, data_id, start_date = START_DATE) {
     if (token) {
         url += `&token=${token}`;
     }
+    console.log(`🔍 [FinMind] Requesting: ${url}`);
     try {
         const res = await nodeFetch(url);
         if (!res.ok) {
@@ -88,7 +89,8 @@ async function fetchFinMind(dataset, data_id, start_date = START_DATE) {
                 exhaustedTokens.clear();
                 return fetchFinMind(dataset, data_id, start_date);
             }
-            throw new Error(`HTTP ${res.status}`);
+            const errorBody = await res.text();
+            throw new Error(`HTTP ${res.status}: ${errorBody}`);
         }
         const json = await res.json();
         const data = json.data || [];
@@ -155,6 +157,29 @@ async function syncMarginTrading(symbol) {
         console.log(`✅ [FinMind] Synced margin trading for ${symbol}: ${data.length} records.`);
     } catch (err) {
         console.error(`❌ [FinMind] Failed to sync margin trading for ${symbol}:`, err.message);
+    } finally {
+        client.release();
+    }
+}
+
+async function syncInstitutional(symbol) {
+    const client = await pool.connect();
+    try {
+        const start_date = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        console.log(`🔄 [FinMind] Syncing institutional investors for ${symbol} from ${start_date}...`);
+        const data = await fetchFinMind('TaiwanStockInstitutionalInvestorsBuySell', symbol, start_date);
+        for (const item of data) {
+            await client.query(`
+                INSERT INTO fm_institutional (stock_id, date, name, buy, sell)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (stock_id, date, name) DO UPDATE SET
+                    buy = EXCLUDED.buy,
+                    sell = EXCLUDED.sell
+            `, [item.stock_id, item.date, item.name, item.buy, item.sell]);
+        }
+        console.log(`✅ [FinMind] Synced institutional for ${symbol}: ${data.length} records.`);
+    } catch (err) {
+        console.error(`❌ [FinMind] Failed to sync institutional for ${symbol}:`, err.message);
     } finally {
         client.release();
     }
@@ -304,6 +329,14 @@ async function syncStockFinancials(symbol) {
                 ON CONFLICT (symbol, revenue_year, revenue_month) 
                 DO UPDATE SET revenue = EXCLUDED.revenue
             `, [symbol, item.revenue_year, item.revenue_month, item.revenue]);
+            
+            // Also write to fm_month_revenue for the analyzer
+            await client.query(`
+                INSERT INTO fm_month_revenue (stock_id, date, country, revenue, revenue_month, revenue_year)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (stock_id, date) DO UPDATE SET
+                    revenue = EXCLUDED.revenue
+            `, [symbol, item.date, item.country, item.revenue, item.revenue_month, item.revenue_year]);
         }
         if (revenues.length > 0) await updateProgress('TaiwanStockMonthRevenue', symbol);
 
@@ -333,14 +366,14 @@ async function syncStockFinancials(symbol) {
             if (perData && perData.length > 0) {
                 const latest = perData[perData.length - 1];
                 await client.query(`
-                    INSERT INTO fundamentals (symbol, trade_date, pe_ratio, dividend_yield)
-                    VALUES ($1, $2, $3, $4)
-                    ON CONFLICT (symbol) 
+                    INSERT INTO fundamentals (symbol, trade_date, pe_ratio, pb_ratio, dividend_yield)
+                    VALUES ($1, $2, $3, $4, $5)
+                    ON CONFLICT (symbol, trade_date) 
                     DO UPDATE SET 
-                        trade_date = EXCLUDED.trade_date,
                         pe_ratio = EXCLUDED.pe_ratio,
+                        pb_ratio = EXCLUDED.pb_ratio,
                         dividend_yield = EXCLUDED.dividend_yield
-                `, [symbol, latest.date, parseFloat(latest.PE) || 0, parseFloat(latest.DividendYield) || 0]);
+                `, [symbol, latest.date, parseFloat(latest.PER) || 0, parseFloat(latest.PBR) || 0, parseFloat(latest.dividend_yield) || 0]);
                 console.log(`✅ [FinMind] Updated fundamentals for ${symbol}`);
             }
         } catch (err) {
@@ -349,6 +382,8 @@ async function syncStockFinancials(symbol) {
 
         await syncBrokerTrading(symbol);
         await syncMarginTrading(symbol);
+        await syncInstitutional(symbol);
+        await syncHoldingSharesPer(symbol);
         await syncDetailedFinancials(symbol);
         await syncFinancialRatios(symbol);
 
@@ -398,6 +433,34 @@ async function syncAllStocksFinancials() {
     }
 }
 
+async function syncHoldingSharesPer(symbol, date) {
+    const client = await pool.connect();
+    try {
+        const start_date = date || START_DATE;
+        console.log(`🔄 [FinMind] Syncing shareholding distribution for ${symbol}...`);
+        // TaiwanStockHoldingSharesPer might not support start_date in same way, try fetching without or with recent
+        const data = await fetchFinMind('TaiwanStockHoldingSharesPer', symbol);
+        
+        let count = 0;
+        for (const item of data) {
+            await client.query(`
+                INSERT INTO fm_holding_shares_per (stock_id, date, level, people, percent, unit)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (stock_id, date, level) DO UPDATE SET
+                    people = EXCLUDED.people,
+                    percent = EXCLUDED.percent,
+                    unit = EXCLUDED.unit
+            `, [symbol, item.date, item.HoldingSharesLevel, item.people, item.percent, item.unit]);
+            count++;
+        }
+        console.log(`✅ [FinMind] Synced shareholding dist for ${symbol}: ${count} records.`);
+    } catch (err) {
+        console.error(`❌ [FinMind] Failed to sync shareholding dist for ${symbol}:`, err.message);
+    } finally {
+        client.release();
+    }
+}
+
 module.exports = { 
     syncStockFinancials, 
     syncAllStocksFinancials, 
@@ -405,5 +468,6 @@ module.exports = {
     syncMarginTrading, 
     syncFinancialRatios, 
     syncDetailedFinancials, 
-    syncStockPER 
+    syncStockPER,
+    syncHoldingSharesPer
 };
