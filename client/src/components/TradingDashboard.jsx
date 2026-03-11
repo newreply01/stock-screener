@@ -1,12 +1,47 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE } from '../utils/api';
+import { API_BASE, getUserSettings, updateUserSettings } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 const TradingDashboard = () => {
+    const { user } = useAuth();
     const defaultSymbols = ['2330', '2317', '2454']; // Taiwan Semi, Hon Hai, MediaTek
-    const [watchSymbols, setWatchSymbols] = useState(defaultSymbols);
+    
+    const [watchSymbols, setWatchSymbols] = useState(() => {
+        const saved = localStorage.getItem('tradingWatchlist');
+        return saved ? JSON.parse(saved) : defaultSymbols;
+    });
+    
+    const [selectedSymbol, setSelectedSymbol] = useState(() => {
+        const saved = localStorage.getItem('tradingWatchlist');
+        const symbols = saved ? JSON.parse(saved) : defaultSymbols;
+        return symbols.length > 0 ? symbols[0] : '2330';
+    });
+
     const [tickData, setTickData] = useState({});
-    const [selectedSymbol, setSelectedSymbol] = useState(defaultSymbols[0]);
     const [isConnected, setIsConnected] = useState(false);
+
+    // Initial load from cloud settings if user is logged in
+    useEffect(() => {
+        if (user) {
+            getUserSettings().then(res => {
+                if (res.success && res.settings?.tradingWatchlist) {
+                    setWatchSymbols(res.settings.tradingWatchlist);
+                    if (res.settings.tradingWatchlist.length > 0) {
+                        setSelectedSymbol(res.settings.tradingWatchlist[0]);
+                    }
+                }
+            }).catch(e => console.error("Failed to load user settings", e));
+        }
+    }, [user]);
+
+    // Save changes to localStorage (always) and cloud (if logged in)
+    useEffect(() => {
+        localStorage.setItem('tradingWatchlist', JSON.stringify(watchSymbols));
+        if (user) {
+            updateUserSettings({ tradingWatchlist: watchSymbols }).catch(e => console.error("Failed to sync settings", e));
+        }
+    }, [watchSymbols, user]);
+
 
     useEffect(() => {
         // Build query string

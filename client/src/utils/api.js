@@ -108,6 +108,22 @@ export async function getAIReport(symbol) {
     return res.json();
 }
 
+export async function getUserSettings() {
+    const res = await authFetch(`${API_BASE}/auth/settings`);
+    if (!res.ok) throw new Error('獲取使用者設定失敗');
+    return res.json();
+}
+
+export async function updateUserSettings(settings) {
+    const res = await authFetch(`${API_BASE}/auth/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+    });
+    if (!res.ok) throw new Error('更新使用者設定失敗');
+    return res.json();
+}
+
 export async function getWatchlists() {
     const res = await authFetch(`${API_BASE}/watchlists`);
     if (!res.ok) throw new Error('獲取自選股失敗');
@@ -210,38 +226,57 @@ export async function getHealthHistory(symbol) {
 }
 
 export async function getPromptTemplates() {
-    const res = await fetch(`${API_BASE}/admin/prompts`);
+    const res = await authFetch(`${API_BASE}/admin/prompts`);
     if (!res.ok) throw new Error('獲取提示詞模板列表失敗');
     return res.json();
 }
 
 export async function getPromptTemplate(name) {
-    const res = await fetch(`${API_BASE}/admin/prompts/${name}`);
+    const res = await authFetch(`${API_BASE}/admin/prompts/${name}`);
     if (!res.ok) throw new Error(`獲取提示詞模板 ${name} 失敗`);
     return res.json();
 }
 
-export async function updatePromptTemplate(name, content) {
-    const res = await fetch(`${API_BASE}/admin/prompts/${name}`, {
+export async function updatePromptTemplate(name, content, note) {
+    const res = await authFetch(`${API_BASE}/admin/prompts/${name}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content })
+        body: JSON.stringify({ content, note })
     });
     if (!res.ok) throw new Error(`更新提示詞模板 ${name} 失敗`);
     return res.json();
 }
 
 export async function getPromptHistory(name) {
-    const res = await fetch(`${API_BASE}/admin/prompts/${name}/history`);
+    const res = await authFetch(`${API_BASE}/admin/prompts/${name}/history`);
     if (!res.ok) throw new Error(`獲取提示詞歷史 ${name} 失敗`);
     return res.json();
 }
 
 export async function getPromptVersion(id) {
-    const res = await fetch(`${API_BASE}/admin/prompts/version/${id}`);
-    if (!res.ok) throw new Error(`獲取特定版本提示詞失敗`);
+    const res = await authFetch(`${API_BASE}/admin/prompts/version/${id}`);
+    if (!res.ok) throw new Error('獲取提示詞單一版本失敗');
     return res.json();
 }
+
+export async function overwritePromptVersion(id, content, note) {
+    const res = await authFetch(`${API_BASE}/admin/prompts/version/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, note })
+    });
+    if (!res.ok) throw new Error('覆蓋提示詞版本失敗');
+    return res.json();
+}
+
+export async function deletePromptVersion(id) {
+    const res = await authFetch(`${API_BASE}/admin/prompts/version/${id}`, {
+        method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('刪除提示詞版本失敗');
+    return res.json();
+}
+
 
 export async function generateAIReport(symbol) {
     const res = await fetch(`${API_BASE}/stock/${symbol}/generate-ai-report`, {
@@ -250,3 +285,46 @@ export async function generateAIReport(symbol) {
     if (!res.ok) throw new Error(`生成 AI 報告失敗`);
     return res.json();
 }
+
+// ==================== 持倉分析 API ====================
+export async function analyzePositionAPI(symbol) {
+    const res = await fetch(`${API_BASE}/position/analyze/${symbol}`);
+    if (!res.ok) throw new Error('持倉分析失敗');
+    return res.json();
+}
+
+export async function analyzeBatchPositions(symbols) {
+    const res = await fetch(`${API_BASE}/position/analyze-batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbols })
+    });
+    if (!res.ok) throw new Error('批量持倉分析失敗');
+    return res.json();
+}
+
+// ==================== 分析權重設定 API ====================
+export async function getAnalysisSettings() {
+    const res = await authFetch(`${API_BASE}/position/settings`);
+    if (!res.ok) throw new Error('獲取分析權重設定失敗');
+    return res.json();
+}
+
+export async function updateAnalysisSettings(weights) {
+    const res = await authFetch(`${API_BASE}/position/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(weights)
+    });
+    if (!res.ok) throw new Error('更新分析權重設定失敗');
+    return res.json();
+}
+
+// ==================== 歷史評分走勢 API ====================
+export async function getPositionHistory(symbol, days = 30) {
+    if (!symbol) return { data: [] };
+    const res = await fetch(`${API_BASE}/position/history/${symbol}?days=${days}`);
+    if (!res.ok) throw new Error('獲取歷史評分失敗');
+    return res.json();
+}
+

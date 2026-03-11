@@ -73,7 +73,7 @@ export default function HealthCheckRanking({ onSelectStock }) {
 
     // Tab & Stock Management
     const [activeTab, setActiveTab] = useState('ranking'); // ranking, health, valuation, pk, trend, chart
-    const [selectedStock, setSelectedStock] = useState(null);
+    const [selectedStock, setSelectedStock] = useState({ symbol: '2330', name: '台積電', industry: '半導體業', market: '上市' });
 
     const TABS = [
         { id: 'ranking', label: '健診排行', icon: Award },

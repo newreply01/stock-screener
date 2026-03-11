@@ -30,19 +30,18 @@ async function gatherStockContext(symbol) {
         );
         const priceData = priceRes.rows[0] || {};
         
-        // 3. Get recent news
+        // 3. Get recent news (Corrected columns: summary, publish_at)
         const newsRes = await query(
-            `SELECT title, description, published_at 
+            `SELECT title, summary, publish_at 
              FROM news 
-             WHERE symbol = $1 OR description ILIKE $2
-             ORDER BY published_at DESC 
+             WHERE (title ILIKE $1 OR summary ILIKE $1)
+             ORDER BY publish_at DESC 
              LIMIT 10`,
-            [symbol, `%${symbol}%`]
+            [`%${symbol}%`]
         );
         const news = newsRes.rows;
 
-        // 4. Get financial statements summary (Mocking or simple query if available)
-        // For now, we use fundamentals table which usually contains PE/PB/Yield
+        // 4. Get financial statements summary
         
         return {
             symbol,
@@ -58,15 +57,92 @@ async function gatherStockContext(symbol) {
 }
 
 /**
+ * Generate a rule-based fallback report when AI is unavailable
+ */
+async function generateFallbackReport(symbol, context) {
+    const { analyzePosition } = require('../position_analyzer');
+    const analysis = await analyzePosition(symbol);
+    
+    let report = `# ${symbol} 深度投資分析報告 (系統自動分析)\n\n`;
+    report += `> [!NOTE]\n> 本報告由系統量化規則引擎自動產生 (Fallback Mode)\n\n`;
+    
+    // 1. Summary
+    report += `#### 1. 個股摘要 (Stock Summary)\n`;
+    report += `- 最新價格: ${context.priceData.close_price || 'N/A'} (漲跌幅: ${context.priceData.change_percent || '0'}%)\n`;
+    report += `- 成交量: ${context.priceData.volume || 'N/A'}\n\n`;
+    
+    // 2. Technical
+    const tech = analysis.dimensions.technical;
+    report += `#### 2. 技術面分析 (Technical Analysis)\n`;
+    report += `- **趨勢判讀**: ${tech.details.maAlignment?.ma20 ? (context.priceData.close_price > tech.details.maAlignment.ma20 ? '股價位於 20MA 之上，短線強勢' : '股價位於 20MA 之下，表現較弱') : '動能盤整中'}\n`;
+    report += `- **動能指標**: RSI14=${tech.details.rsi?.value || 'N/A'}, MACD=${tech.details.macd?.value || 'N/A'}\n`;
+    report += `- **K線型態**: ${tech.details.patterns?.detected?.join(', ') || '無明顯形態'}\n\n`;
+    
+    // 3. Fundamental
+    const fund = analysis.dimensions.fundamental;
+    report += `#### 3. 基本面深度分析 (Fundamental Deep Dive)\n`;
+    report += `- **估值**: PE=${fund.details.pe?.value || 'N/A'}, PB=${fund.details.pb?.value || 'N/A'}, 殖利率=${fund.details.dividendYield?.value || 'N/A'}%\n`;
+    report += `- **指標得分**: ${fund.score}/100\n\n`;
+    
+    // 4. Chip
+    const chip = analysis.dimensions.chip;
+    report += `#### 4. 籌碼面法人動向 (Institutional & Chip Analysis)\n`;
+    report += `- **三大法人**: 近日累計 ${chip.details.institutional?.total > 0 ? '買超' : '賣超'} ${Math.abs(chip.details.institutional?.total || 0)} 張\n`;
+    report += `- **融資券**: 券資比 ${chip.details.margin?.ratioPercent || '0'}%\n\n`;
+    
+    // 5. News
+    report += `#### 6. 近期新聞 (News Analysis)\n`;
+    if (context.news && context.news.length > 0) {
+        report += context.news.slice(0, 3).map(n => `- ${n.title}`).join('\n') + '\n\n';
+    } else {
+        report += `- 近期無重大相關新聞\n\n`;
+    }
+    
+    // 6. Conclusion
+    report += `#### 7. 綜合結論 (Summary & Score)\n`;
+    report += `- **綜合評分**: ${analysis.composite} / 100\n`;
+    report += `- **操作建議**: ${analysis.recommendation}\n`;
+    report += `- **分析報告**: ${analysis.composite >= 60 ? '目前籌碼與技術面表現尚佳，建議謹慎偏多操作。' : '目前指標轉弱或盤整，建議觀望或適度減碼。'}\n`;
+    
+    return {
+        content: report,
+        sentimentScore: analysis.composite,
+        isFallback: true
+    };
+}
+
+/**
  * Generate AI report using the active template and gathered data
  */
 async function generateAIReport(symbol, templateName = 'stock_analysis_report') {
     try {
+        // 1. Gather data
+        const context = await gatherStockContext(symbol);
+
+        // 2. Check for API key
         if (!process.env.GEMINI_API_KEY) {
-            throw new Error("Missing GEMINI_API_KEY in environment variables");
+            console.log(`[AI] Missing API KEY for ${symbol}, using rule-based fallback.`);
+            const fallbackResult = await generateFallbackReport(symbol, context);
+            
+            // Save fallback report
+            await query(
+                `INSERT INTO ai_reports (symbol, content, sentiment_score, updated_at)
+                 VALUES ($1, $2, $3, NOW())
+                 ON CONFLICT (symbol) 
+                 DO UPDATE SET content = EXCLUDED.content, sentiment_score = EXCLUDED.sentiment_score, updated_at = NOW()`,
+                [symbol, fallbackResult.content, parseInt(fallbackResult.sentimentScore) || 50]
+            );
+
+            return {
+                success: true,
+                symbol,
+                content: fallbackResult.content,
+                sentimentScore: fallbackResult.sentimentScore,
+                isFallback: true
+            };
         }
 
-        // 1. Get the active prompt template
+        // 3. Get the active prompt template
         const templateRes = await query(
             `SELECT content FROM ai_prompt_templates WHERE name = $1 AND is_active = true LIMIT 1`,
             [templateName]
@@ -78,17 +154,12 @@ async function generateAIReport(symbol, templateName = 'stock_analysis_report') 
         
         let promptTemplate = templateRes.rows[0].content;
         
-        // 2. Gather data
-        const context = await gatherStockContext(symbol);
-        
-        // 3. Construct the prompt by injecting data
-        // We pass the data JSON to the AI and ask it to follow the template
+        // 4. Construct the prompt
         const finalPrompt = `
 你是一位專業的股票投資分析師。請根據以下提供的個股數據和新聞，按照指定的【模板格式】生成一份深度的個股分析報告。
 
 【個股概況與數據】
 股票代號: ${context.symbol}
-生成時間: ${context.generatedAt}
 最新價格: ${context.priceData.close_price || 'N/A'} (漲跌幅: ${context.priceData.change_percent || '0'}%)
 成交量: ${context.priceData.volume || 'N/A'}
 本益比 (PE): ${context.fundamentals.pe_ratio || 'N/A'}
@@ -98,7 +169,7 @@ async function generateAIReport(symbol, templateName = 'stock_analysis_report') 
 識別形態: ${JSON.stringify(context.priceData.patterns || [])}
 
 【近期新聞】
-${context.news.map(n => `- [${n.published_at}] ${n.title}: ${n.description}`).join('\n')}
+${context.news.map(n => `- [${n.publish_at}] ${n.title}: ${n.summary}`).join('\n')}
 
 【報告生成模板】
 ${promptTemplate}
@@ -106,19 +177,19 @@ ${promptTemplate}
 請嚴格遵守上述模板的架構、標題格式與語氣進行撰寫。不要輸出模板之外的解釋性文字。
 `;
 
-        // 4. Call Gemini API
+        // 5. Call Gemini API
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const result = await model.generateContent(finalPrompt);
         const responseText = result.response.text();
 
-        // 5. Try to extract a sentiment score if possible (Simple heuristic)
+        // 6. Sentiment score
         let sentimentScore = 50;
         const scoreMatch = responseText.match(/評分[^\d]*(\d+)/) || responseText.match(/Score[^\d]*(\d+)/);
         if (scoreMatch) {
             sentimentScore = parseInt(scoreMatch[1]);
         }
 
-        // 6. Save/Update the report in the database
+        // 7. Save report
         await query(
             `INSERT INTO ai_reports (symbol, content, sentiment_score, updated_at)
              VALUES ($1, $2, $3, NOW())

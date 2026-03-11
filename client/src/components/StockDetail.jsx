@@ -50,6 +50,7 @@ import StockSearchAutocomplete from './StockSearchAutocomplete'
 import ValuationRiverView from './ValuationRiverView'
 import StockCompareView from './StockCompareView'
 import EventCalendar from './EventCalendar'
+import BrokerTracking from './BrokerTracking'
 
 const SIDEBAR_MENU = [
     { id: 'overview', label: '總覽' },
@@ -67,7 +68,7 @@ const SIDEBAR_MENU = [
             { id: 'institutional', label: '三大法人' },
             { id: 'force_detail', label: '主力明細' },
             { id: 'margin_trade', label: '融資融券' },
-            { id: 'broker_trace', label: '分點進跡' }
+            { id: 'broker_trace', label: '分點追蹤' }
         ]
     },
     {
@@ -572,6 +573,8 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
                             <EventCalendar symbol={stock.symbol} />
                         ) : activeTab === 'realtime' ? (
                             <RealtimeView stock={stock} />
+                        ) : activeSubTab === 'broker_trace' ? (
+                            <BrokerTracking symbol={stock.symbol} />
                         ) : activeTab === 'alerts' ? (
                             <AlertsView stock={stock} />
                         ) : activeTab === 'kd' || activeTab === 'macd' || activeTab === 'rsi' || activeTab === 'dmi' ? (

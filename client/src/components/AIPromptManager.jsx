@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Save, History, Check, AlertCircle, RefreshCcw, FileText, ChevronRight } from 'lucide-react';
-import { getPromptTemplate, updatePromptTemplate, getPromptHistory, getPromptVersion } from '../utils/api';
+import { Save, History, Check, AlertCircle, RefreshCcw, FileText, ChevronRight, Trash2 } from 'lucide-react';
+import { getPromptTemplate, updatePromptTemplate, getPromptHistory, getPromptVersion, deletePromptVersion, overwritePromptVersion } from '../utils/api';
 
 export default function AIPromptManager() {
     const [templateName, setTemplateName] = useState('stock_analysis_report');
@@ -11,6 +11,8 @@ export default function AIPromptManager() {
     const [message, setMessage] = useState(null);
     const [activeVersion, setActiveVersion] = useState(null);
     const [viewingVersion, setViewingVersion] = useState(null);
+    const [viewingVersionId, setViewingVersionId] = useState(null);
+    const [note, setNote] = useState('');
 
     const fetchData = async () => {
         setLoading(true);
@@ -20,10 +22,27 @@ export default function AIPromptManager() {
                 getPromptHistory(templateName)
             ]);
 
+            let loadedVersion = null;
+            if (historyRes.success && historyRes.data.length > 0) {
+                const latestId = historyRes.data[0].id;
+                const latestRes = await getPromptVersion(latestId);
+                if (latestRes.success) {
+                    loadedVersion = latestRes.data;
+                }
+            }
+            if (!loadedVersion && templateRes.success) {
+                loadedVersion = templateRes.data;
+            }
+            
+            if (loadedVersion) {
+                setContent(loadedVersion.content);
+                setNote(loadedVersion.note || '');
+                setViewingVersion(loadedVersion.version);
+                setViewingVersionId(loadedVersion.id);
+            }
+
             if (templateRes.success) {
-                setContent(templateRes.data.content);
                 setActiveVersion(templateRes.data.version);
-                setViewingVersion(templateRes.data.version);
             }
             if (historyRes.success) {
                 setHistory(historyRes.data);
@@ -45,9 +64,10 @@ export default function AIPromptManager() {
         setSaving(true);
         setMessage(null);
         try {
-            const res = await updatePromptTemplate(templateName, content);
+            const res = await updatePromptTemplate(templateName, content, note);
             if (res.success) {
                 setMessage({ type: 'success', text: `成功儲存新版本 (v${res.data.version})` });
+                setNote(''); // Clear note after new version
                 fetchData();
             }
         } catch (err) {
@@ -63,11 +83,51 @@ export default function AIPromptManager() {
             const res = await getPromptVersion(versionId);
             if (res.success) {
                 setContent(res.data.content);
+                setNote(res.data.note || '');
                 setViewingVersion(res.data.version);
+                setViewingVersionId(res.data.id);
                 setMessage({ type: 'info', text: `正在預覽版本 v${res.data.version} (未儲存)` });
             }
         } catch (err) {
             setMessage({ type: 'error', text: '獲取版本內容失敗' });
+        } finally {
+            setLoading(false);
+        }
+    };
+    const handleOverwrite = async () => {
+        if (!content.trim() || !viewingVersionId) return;
+        if (!window.confirm('確定要直接覆蓋此版本內容嗎？此動作將修改歷史紀錄。')) return;
+        setSaving(true);
+        setMessage(null);
+        try {
+            const res = await overwritePromptVersion(viewingVersionId, content, note);
+            if (res.success) {
+                setMessage({ type: 'success', text: `成功覆蓋版本 (v${viewingVersion})${note ? ' 並更新備註' : ''}` });
+                fetchData();
+            } else {
+                setMessage({ type: 'error', text: res.message || '覆蓋失敗' });
+            }
+        } catch (err) {
+            setMessage({ type: 'error', text: err.message || '覆蓋失敗' });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDeleteVersion = async (e, versionId) => {
+        e.stopPropagation();
+        if (!window.confirm('確定要刪除此版本嗎？(刪除後無法恢復)')) return;
+        setLoading(true);
+        try {
+            const res = await deletePromptVersion(versionId);
+            if (res.success) {
+                setMessage({ type: 'success', text: `已成功刪除舊版本` });
+                fetchData();
+            } else {
+                setMessage({ type: 'error', text: res.message || '刪除失敗' });
+            }
+        } catch (err) {
+            setMessage({ type: 'error', text: err.message || '刪除失敗' });
         } finally {
             setLoading(false);
         }
@@ -103,14 +163,34 @@ export default function AIPromptManager() {
                                 </span>
                             )}
                             <button
+                                onClick={handleOverwrite}
+                                disabled={saving || !viewingVersionId}
+                                title="直接覆蓋目前正在編輯的版本"
+                                className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 disabled:opacity-50 text-sm font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition-all"
+                            >
+                                {saving ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 text-slate-500" />}
+                                覆蓋目前版本
+                            </button>
+                            <button
                                 onClick={handleSave}
                                 disabled={saving}
+                                title="將目前的內容發佈為全新的版本並生效"
                                 className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition-all"
                             >
                                 {saving ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                 儲存為新版本
                             </button>
                         </div>
+                    </div>
+                    <div className="bg-white px-6 py-3 border-b border-slate-100 flex items-center gap-4">
+                        <span className="text-xs font-black text-slate-500 uppercase tracking-wider">版本備註:</span>
+                        <input 
+                            type="text"
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                            placeholder="輸入此版本的變動說明或主題 (例如：優化法人分析邏輯)..."
+                            className="flex-1 bg-slate-50 border-none focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-1.5 text-sm text-slate-700 font-bold"
+                        />
                     </div>
                     
                     <div className="flex-1 p-0 relative">
@@ -174,8 +254,24 @@ export default function AIPromptManager() {
                                             minute: '2-digit' 
                                         })}
                                     </span>
+                                    {item.note && (
+                                        <span className="text-[10px] text-slate-600 font-bold block truncate max-w-[150px]" title={item.note}>
+                                            📝 {item.note}
+                                        </span>
+                                    )}
                                 </div>
-                                <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${viewingVersion === item.version ? 'text-indigo-500' : 'text-slate-300'}`} />
+                                <div className="flex items-center gap-1 relative z-10">
+                                    {!item.is_active && (
+                                        <button 
+                                            onClick={(e) => handleDeleteVersion(e, item.id)}
+                                            className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                                            title="刪除這個版本"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
+                                    <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${viewingVersion === item.version ? 'text-indigo-500' : 'text-slate-300'}`} />
+                                </div>
                             </button>
                         ))}
                     </div>

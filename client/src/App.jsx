@@ -20,6 +20,7 @@ import MonitorPage from './components/MonitorPage'
 import PortfolioDashboard from './components/PortfolioDashboard'
 import AdminUserManagement from './components/AdminUserManagement'
 import AIPromptManager from './components/AIPromptManager'
+import PositionAnalysis from './components/PositionAnalysis'
 import { screenStocks, getStats, getWatchlists, addStockToWatchlist, removeStockFromWatchlist } from './utils/api'
 import { useAuth } from './context/AuthContext';
 import { useGlobalFilters } from './context/GlobalFilterContext'
@@ -228,6 +229,8 @@ function App() {
           <AdminUserManagement />
         ) : currentView === 'admin-prompts' ? (
           <AIPromptManager />
+        ) : currentView === 'position-analysis' ? (
+          <PositionAnalysis />
         ) : currentView === 'stock-detail' ? (
           <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
             <StockDetail stock={mainStock} isInline={true} />

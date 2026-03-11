@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
 const { generateAIReport } = require('../utils/ai_service');
+const { analyzePosition, analyzeMultiple } = require('../position_analyzer');
 
 // 日期格式化助手 (解決時區偏移問題)
 const formatLocalDate = (date) => {
@@ -390,7 +391,7 @@ router.get('/admin/prompts/:name', async (req, res) => {
 router.get('/admin/prompts/:name/history', async (req, res) => {
     try {
         const { name } = req.params;
-        const result = await query('SELECT id, version, is_active, created_at FROM ai_prompt_templates WHERE name = $1 ORDER BY version DESC', [name]);
+        const result = await query('SELECT id, version, is_active, note, created_at FROM ai_prompt_templates WHERE name = $1 ORDER BY version DESC', [name]);
         res.json({ success: true, data: result.rows });
     } catch (err) {
         console.error('Failed to fetch prompt history:', err);
@@ -402,7 +403,7 @@ router.get('/admin/prompts/:name/history', async (req, res) => {
 router.post('/admin/prompts/:name', async (req, res) => {
     try {
         const { name } = req.params;
-        const { content } = req.body;
+        const { content, note } = req.body;
 
         if (!content) {
             return res.status(400).json({ success: false, message: '提示詞內容不能為空' });
@@ -417,8 +418,8 @@ router.post('/admin/prompts/:name', async (req, res) => {
 
         // 3. 插入新版本並設為生效
         const result = await query(
-            'INSERT INTO ai_prompt_templates (name, content, version, is_active) VALUES ($1, $2, $3, $4) RETURNING *',
-            [name, content, nextVersion, true]
+            'INSERT INTO ai_prompt_templates (name, content, version, is_active, note) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [name, content, nextVersion, true, note || null]
         );
 
         res.json({ success: true, data: result.rows[0] });
@@ -439,6 +440,39 @@ router.get('/admin/prompts/version/:id', async (req, res) => {
         res.json({ success: true, data: result.rows[0] });
     } catch (err) {
         console.error('Failed to fetch specific prompt version:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// PUT /api/admin/prompts/version/:id - 覆蓋特定 ID 的模板內容
+router.put('/admin/prompts/version/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { content, note } = req.body;
+        if (!content) return res.status(400).json({ success: false, message: '內容不能為空' });
+
+        const result = await query('UPDATE ai_prompt_templates SET content = $1, note = $2 WHERE id = $3 RETURNING *', [content, note || null, id]);
+        if (result.rows.length === 0) {
+            return res.status(400).json({ success: false, message: '找不到該版本' });
+        }
+        res.json({ success: true, data: result.rows[0], message: '成功覆蓋版本' });
+    } catch (err) {
+        console.error('Failed to overwrite prompt version:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// DELETE /api/admin/prompts/version/:id - 刪除特定 ID 的模板 (僅允許刪除未生效的版本)
+router.delete('/admin/prompts/version/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await query('DELETE FROM ai_prompt_templates WHERE id = $1 AND is_active = false RETURNING id', [id]);
+        if (result.rows.length === 0) {
+            return res.status(400).json({ success: false, message: '找不到該版本，或無法刪除正在生效中的版本' });
+        }
+        res.json({ success: true, message: '版本刪除成功' });
+    } catch (err) {
+        console.error('Failed to delete prompt version:', err);
         res.status(500).json({ success: false, error: err.message });
     }
 });
@@ -1264,4 +1298,173 @@ router.get('/debug-db', async (req, res) => {
     }
 });
 
+// ==================== 持倉分析 API ====================
+
+const { requireAuth: posAuth } = require('../middleware/auth');
+
+// Helper: 取得使用者自訂權重 (若有登入且有設定)
+async function getUserWeights(req) {
+    try {
+        if (req.user && req.user.id) {
+            const res = await query(
+                'SELECT tech_weight, fund_weight, chip_weight, mom_weight FROM user_analysis_settings WHERE user_id = $1',
+                [req.user.id]
+            );
+            if (res.rows.length > 0) {
+                const r = res.rows[0];
+                return {
+                    technical: parseFloat(r.tech_weight),
+                    fundamental: parseFloat(r.fund_weight),
+                    chip: parseFloat(r.chip_weight),
+                    momentum: parseFloat(r.mom_weight)
+                };
+            }
+        }
+    } catch (e) {
+        // Silent fallback to defaults
+    }
+    return null;
+}
+
+// 可選認證中間件 — 嘗試解析 token 但不強制要求
+function optionalAuth(req, res, next) {
+    const auth = req.headers.authorization;
+    if (auth && auth.startsWith('Bearer ')) {
+        try {
+            const jwt = require('jsonwebtoken');
+            const token = auth.split(' ')[1];
+            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret');
+            req.user = decoded;
+        } catch (e) {
+            // Token invalid, proceed without user
+        }
+    }
+    next();
+}
+
+// GET /api/position/analyze/:symbol — 單一股票持倉分析
+router.get('/position/analyze/:symbol', optionalAuth, async (req, res) => {
+    try {
+        const { symbol } = req.params;
+        const customWeights = await getUserWeights(req);
+        const result = await analyzePosition(symbol, customWeights);
+        res.json({ success: true, data: result });
+    } catch (err) {
+        console.error('Position analyze error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// POST /api/position/analyze-batch — 批量股票持倉分析
+router.post('/position/analyze-batch', optionalAuth, async (req, res) => {
+    try {
+        const { symbols } = req.body;
+        if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
+            return res.status(400).json({ success: false, error: '請提供股票代號陣列' });
+        }
+        // Limit to 30 symbols at a time
+        const limitedSymbols = symbols.slice(0, 30);
+        const customWeights = await getUserWeights(req);
+        const results = await analyzeMultiple(limitedSymbols, customWeights);
+        res.json({ success: true, data: results });
+    } catch (err) {
+        console.error('Position batch analyze error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET /api/position/settings — 取得使用者分析權重設定
+router.get('/position/settings', posAuth, async (req, res) => {
+    try {
+        const result = await query(
+            'SELECT tech_weight, fund_weight, chip_weight, mom_weight, updated_at FROM user_analysis_settings WHERE user_id = $1',
+            [req.user.id]
+        );
+        if (result.rows.length > 0) {
+            res.json({ success: true, data: result.rows[0] });
+        } else {
+            // 回傳預設值
+            res.json({
+                success: true,
+                data: {
+                    tech_weight: 0.30,
+                    fund_weight: 0.25,
+                    chip_weight: 0.25,
+                    mom_weight: 0.20,
+                    updated_at: null
+                }
+            });
+        }
+    } catch (err) {
+        console.error('Get analysis settings error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// POST /api/position/settings — 更新使用者分析權重設定
+router.post('/position/settings', posAuth, async (req, res) => {
+    try {
+        const { tech_weight, fund_weight, chip_weight, mom_weight } = req.body;
+        
+        // 驗證權重
+        const weights = [
+            parseFloat(tech_weight) || 0,
+            parseFloat(fund_weight) || 0,
+            parseFloat(chip_weight) || 0,
+            parseFloat(mom_weight) || 0
+        ];
+        
+        if (weights.some(w => w < 0 || w > 1)) {
+            return res.status(400).json({ success: false, error: '權重必須介於 0 到 1 之間' });
+        }
+        
+        const sum = weights.reduce((a, b) => a + b, 0);
+        if (Math.abs(sum - 1) > 0.05) {
+            return res.status(400).json({ success: false, error: `權重總和必須為 1 (目前: ${sum.toFixed(2)})` });
+        }
+
+        await query(`
+            INSERT INTO user_analysis_settings (user_id, tech_weight, fund_weight, chip_weight, mom_weight, updated_at)
+            VALUES ($1, $2, $3, $4, $5, NOW())
+            ON CONFLICT (user_id) DO UPDATE SET
+                tech_weight = EXCLUDED.tech_weight,
+                fund_weight = EXCLUDED.fund_weight,
+                chip_weight = EXCLUDED.chip_weight,
+                mom_weight = EXCLUDED.mom_weight,
+                updated_at = NOW()
+        `, [req.user.id, weights[0], weights[1], weights[2], weights[3]]);
+
+        res.json({ success: true, message: '權重設定已更新' });
+    } catch (err) {
+        console.error('Update analysis settings error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET /api/position/history/:symbol — 取得個股歷史評分走勢
+router.get('/position/history/:symbol', async (req, res) => {
+    try {
+        const { symbol } = req.params;
+        const { days = 30 } = req.query;
+        const result = await query(`
+            SELECT 
+                TO_CHAR(calc_date, 'YYYY-MM-DD') as date,
+                overall_score, tech_score, fund_score, chip_score, mom_score,
+                recommendation, signal
+            FROM stock_daily_analysis_results
+            WHERE symbol = $1
+            ORDER BY calc_date DESC
+            LIMIT $2
+        `, [symbol, parseInt(days)]);
+        
+        // 倒序回傳 (日期由舊到新)
+        res.json({ success: true, data: result.rows.reverse() });
+    } catch (err) {
+        console.error('Position history error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 module.exports = router;
+
+

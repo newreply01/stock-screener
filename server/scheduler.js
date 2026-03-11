@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const { catchUp } = require('./fetcher');
 const { syncAllNews } = require('./news_fetcher');
 const { syncAllStocksFinancials } = require('./finmind_fetcher');
+const { calculateAndStoreIndicators } = require('./calculate_indicators');
 const { runAll: runHealthCheck } = require('./scripts/calc_health_scores');
 let syncHistoricalMinuteBatch;
 try {
@@ -151,6 +152,27 @@ function startScheduler() {
         timezone: 'Asia/Taipei'
     });
     initTaskTracking('calc_health_scores.js_1530', healthTask1530);
+
+    // 每交易日 15:45 計算技術指標 (價格同步後)
+    const indicatorsTask = cron.schedule('45 15 * * 1-5', async () => {
+        isTaskRunning['calculate_indicators.js'] = true;
+        console.log('📈 定時排程開始 (15:45)：計算技術指標...');
+        await logScriptStatus('calculate_indicators.js', 'RUNNING', '正在計算技術指標');
+        try {
+            await calculateAndStoreIndicators();
+            console.log('📈 (15:45) 技術指標計算完成');
+            await logScriptStatus('calculate_indicators.js', 'SUCCESS', '技術指標計算完成');
+        } catch (err) {
+            console.error('📈 (15:45) 技術指標計算失敗:', err.message);
+            await logScriptStatus('calculate_indicators.js', 'FAILED', `計算失敗: ${err.message}`);
+        } finally {
+            isTaskRunning['calculate_indicators.js'] = false;
+        }
+    }, {
+        scheduled: true,
+        timezone: 'Asia/Taipei'
+    });
+    initTaskTracking('calculate_indicators.js', indicatorsTask);
 
     // 每交易日 22:15 第二次計算全股健診排行 (籌碼資料補全後)
     const healthTask2215 = cron.schedule('15 22 * * 1-5', async () => {

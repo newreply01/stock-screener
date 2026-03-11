@@ -227,4 +227,51 @@ router.put('/me/email', requireAuth, async (req, res) => {
     }
 });
 
+// GET /api/auth/settings — 取得使用者個人設定 (JSON)
+router.get('/settings', requireAuth, async (req, res) => {
+    try {
+        const { rows } = await query('SELECT settings FROM user_settings WHERE user_id = $1', [req.user.id]);
+        if (rows.length === 0) {
+            return res.json({ success: true, settings: {} });
+        }
+        res.json({ success: true, settings: rows[0].settings || {} });
+    } catch (err) {
+        console.error('Fetch settings error:', err);
+        res.status(500).json({ success: false, error: '伺服器錯誤' });
+    }
+});
+
+// PUT /api/auth/settings — 更新使用者個人設定 (合併 JSON)
+router.put('/settings', requireAuth, async (req, res) => {
+    const newSettings = req.body;
+    if (!newSettings || typeof newSettings !== 'object') {
+        return res.status(400).json({ success: false, error: '無效的設定格式' });
+    }
+
+    try {
+        // 先檢查是否存在
+        const check = await query('SELECT settings FROM user_settings WHERE user_id = $1', [req.user.id]);
+        
+        if (check.rows.length === 0) {
+            // 不存在則建立
+            await query(
+                'INSERT INTO user_settings (user_id, settings) VALUES ($1, $2)',
+                [req.user.id, newSettings]
+            );
+            return res.json({ success: true, settings: newSettings });
+        } else {
+            // 存在則合併
+            const merged = { ...check.rows[0].settings, ...newSettings };
+            await query(
+                'UPDATE user_settings SET settings = $1 WHERE user_id = $2',
+                [merged, req.user.id]
+            );
+            return res.json({ success: true, settings: merged });
+        }
+    } catch (err) {
+        console.error('Update settings error:', err);
+        res.status(500).json({ success: false, error: '伺服器錯誤' });
+    }
+});
+
 module.exports = router;

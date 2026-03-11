@@ -91,6 +91,12 @@ export default function Header({ currentView = 'dashboard' }) {
                             財經新聞
                         </button>
                         <button
+                            onClick={() => dispatchView('position-analysis')}
+                            className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'position-analysis' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
+                        >
+                            持倉分析
+                        </button>
+                        <button
                             onClick={() => dispatchView('explorer')}
                             className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'explorer' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-gray-300 hover:text-white border-transparent hover:border-white/20'}`}
                         >
@@ -201,6 +207,7 @@ export default function Header({ currentView = 'dashboard' }) {
                         <button onClick={() => { dispatchView('health-ranking'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'health-ranking' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>個股健診</button>
                         <button onClick={() => { dispatchView('news'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'news' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>財經新聞</button>
                         <button onClick={() => { dispatchView('explorer'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'explorer' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>歷史交易</button>
+                        <button onClick={() => { dispatchView('position-analysis'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'position-analysis' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>持倉分析</button>
                         {!isZeabur && (
                             <button onClick={() => { dispatchView('monitor'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'monitor' ? 'bg-brand-primary text-white shadow-lg' : 'text-gray-300 bg-white/5 hover:bg-white/10'}`}>系統監控</button>
                         )}
