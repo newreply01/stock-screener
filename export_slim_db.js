@@ -39,8 +39,14 @@ async function exportSlimDB() {
             'user_holdings',
             'watchlist_items',
             'indicators',
-            'fm_broker_trading'
+            'fm_broker_trading',
+            'stock_health_scores',
+            'ai_reports',
+            'stock_daily_analysis_results'
         ];
+
+        const ptRes = await pool.query("SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'realtime_ticks_%'");
+        const partitionTables = ptRes.rows.map(r => r.table_name);
 
         const noDataTables = [
             'realtime_ticks_history',
@@ -55,7 +61,8 @@ async function exportSlimDB() {
             'daily_prices_2022',
             'daily_prices_2021',
             'broker_trades',
-            'realtime_statistics'
+            'realtime_statistics',
+            ...partitionTables
         ];
 
         // 1. 匯出結構與除大型表外的數據
@@ -106,7 +113,10 @@ async function exportSlimDB() {
             'user_holdings': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`,
             'watchlist_items': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`,
             'indicators': `WHERE symbol IN ${SYMBOL_FILTER_INNER} AND trade_date >= '2025-01-01'`,
-            'fm_broker_trading': `WHERE stock_id IN ${SYMBOL_FILTER_INNER} AND date >= (CURRENT_DATE - INTERVAL '15 days')`
+            'fm_broker_trading': `WHERE stock_id IN ${SYMBOL_FILTER_INNER} AND date >= (CURRENT_DATE - INTERVAL '15 days')`,
+            'stock_health_scores': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`,
+            'ai_reports': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`,
+            'stock_daily_analysis_results': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`
         };
 
         for (const tableName of manualTables) {
