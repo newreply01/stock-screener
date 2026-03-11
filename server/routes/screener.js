@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
+const { generateAIReport } = require('../utils/ai_service');
 
 // 日期格式化助手 (解決時區偏移問題)
 const formatLocalDate = (date) => {
@@ -324,7 +325,142 @@ router.get('/screen', async (req, res) => {
     }
 });
 
-// GET /api/stocks/industries - 取得所有產業清單
+// GET /api/stock/:symbol/ai-report
+router.get('/stock/:symbol/ai-report', async (req, res) => {
+    try {
+
+
+        const { symbol } = req.params;
+        const result = await query('SELECT content as report, sentiment_score FROM ai_reports WHERE symbol = $1', [symbol]);
+        
+        if (result.rows.length === 0) {
+            return res.json({
+                success: true,
+                data: {
+                    report: "目前尚無此個股的 AI 分析報告。",
+                    sentiment_score: 0.5
+                }
+            });
+        }
+
+        const data = result.rows[0];
+        // Scale sentiment_score from 0-100 integer to 0.0-1.0 float if it's > 1
+        if (data.sentiment_score > 1) {
+            data.sentiment_score = data.sentiment_score / 100;
+        }
+
+        res.json({
+            success: true,
+            data: data
+        });
+    } catch (err) {
+        console.error('Failed to fetch AI report:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+// --- AI Prompt Management APIs ---
+
+// GET /api/admin/prompts - 獲取所有提示詞模板列表 (去重)
+router.get('/admin/prompts', async (req, res) => {
+    try {
+        const result = await query('SELECT DISTINCT name FROM ai_prompt_templates ORDER BY name');
+        res.json({ success: true, data: result.rows.map(r => r.name) });
+    } catch (err) {
+        console.error('Failed to fetch prompt names:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET /api/admin/prompts/:name - 獲取特定模板的當前生效版本
+router.get('/admin/prompts/:name', async (req, res) => {
+    try {
+        const { name } = req.params;
+        const result = await query('SELECT * FROM ai_prompt_templates WHERE name = $1 AND is_active = true ORDER BY version DESC LIMIT 1', [name]);
+        if (result.rows.length === 0) {
+            return res.json({ success: false, message: '未找到生效中的模板' });
+        }
+        res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+        console.error('Failed to fetch active prompt:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET /api/admin/prompts/:name/history - 獲取特定模板的所有版本紀錄
+router.get('/admin/prompts/:name/history', async (req, res) => {
+    try {
+        const { name } = req.params;
+        const result = await query('SELECT id, version, is_active, created_at FROM ai_prompt_templates WHERE name = $1 ORDER BY version DESC', [name]);
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Failed to fetch prompt history:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// POST /api/admin/prompts/:name - 建立新版本的模板 (並將其設為生效)
+router.post('/admin/prompts/:name', async (req, res) => {
+    try {
+        const { name } = req.params;
+        const { content } = req.body;
+
+        if (!content) {
+            return res.status(400).json({ success: false, message: '提示詞內容不能為空' });
+        }
+
+        // 1. 獲取當前最高版本
+        const versionRes = await query('SELECT MAX(version) as current_version FROM ai_prompt_templates WHERE name = $1', [name]);
+        const nextVersion = (versionRes.rows[0].current_version || 0) + 1;
+
+        // 2. 將舊的生效版本設為不生效
+        await query('UPDATE ai_prompt_templates SET is_active = false WHERE name = $1', [name]);
+
+        // 3. 插入新版本並設為生效
+        const result = await query(
+            'INSERT INTO ai_prompt_templates (name, content, version, is_active) VALUES ($1, $2, $3, $4) RETURNING *',
+            [name, content, nextVersion, true]
+        );
+
+        res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+        console.error('Failed to update prompt:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET /api/admin/prompts/version/:id - 獲取特定 ID 的模板內容
+router.get('/admin/prompts/version/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await query('SELECT * FROM ai_prompt_templates WHERE id = $1', [id]);
+        if (result.rows.length === 0) {
+            return res.json({ success: false, message: '未找到該版本的模板' });
+        }
+        res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+        console.error('Failed to fetch specific prompt version:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// POST /api/stock/:symbol/generate-ai-report - 手動觸發 AI 報告生成
+router.post('/stock/:symbol/generate-ai-report', async (req, res) => {
+    try {
+        const { symbol } = req.params;
+        // 這裡可以檢查權限，暫時允許所有請求
+        const result = await generateAIReport(symbol);
+        if (result.success) {
+            res.json(result);
+        } else {
+            res.status(500).json(result);
+        }
+    } catch (err) {
+        console.error('API Generation Error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// ---------------------------------
 router.get('/stocks/industries', async (req, res) => {
     try {
         const sql = `

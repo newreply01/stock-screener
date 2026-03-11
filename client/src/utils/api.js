@@ -208,3 +208,45 @@ export async function getHealthHistory(symbol) {
     if (!res.ok) throw new Error('獲取健診歷史失敗');
     return res.json();
 }
+
+export async function getPromptTemplates() {
+    const res = await fetch(`${API_BASE}/admin/prompts`);
+    if (!res.ok) throw new Error('獲取提示詞模板列表失敗');
+    return res.json();
+}
+
+export async function getPromptTemplate(name) {
+    const res = await fetch(`${API_BASE}/admin/prompts/${name}`);
+    if (!res.ok) throw new Error(`獲取提示詞模板 ${name} 失敗`);
+    return res.json();
+}
+
+export async function updatePromptTemplate(name, content) {
+    const res = await fetch(`${API_BASE}/admin/prompts/${name}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+    });
+    if (!res.ok) throw new Error(`更新提示詞模板 ${name} 失敗`);
+    return res.json();
+}
+
+export async function getPromptHistory(name) {
+    const res = await fetch(`${API_BASE}/admin/prompts/${name}/history`);
+    if (!res.ok) throw new Error(`獲取提示詞歷史 ${name} 失敗`);
+    return res.json();
+}
+
+export async function getPromptVersion(id) {
+    const res = await fetch(`${API_BASE}/admin/prompts/version/${id}`);
+    if (!res.ok) throw new Error(`獲取特定版本提示詞失敗`);
+    return res.json();
+}
+
+export async function generateAIReport(symbol) {
+    const res = await fetch(`${API_BASE}/stock/${symbol}/generate-ai-report`, {
+        method: 'POST'
+    });
+    if (!res.ok) throw new Error(`生成 AI 報告失敗`);
+    return res.json();
+}

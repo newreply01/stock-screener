@@ -227,17 +227,15 @@ export default function AIReportView({ symbol, name }) {
                                             formattedText = `<strong class="text-indigo-900 text-lg border-l-4 border-indigo-500 pl-3 block mt-6 mb-3">${highlightedTitle}</strong>`;
                                         } else {
                                             // 2. Process non-heading lines
-                                            // Highlight numbers (BEFORE adding HTML classes to prevent regex collision)
-                                            formattedText = formattedText.replace(/([+-]?\d+(?:\.\d+)?%?)/g, '<span class=\"font-black text-slate-900\">$1</span>');
+                                            // Highlight numbers
+                                            formattedText = formattedText.replace(/([+-]?\d+(?:\.\d+)?%?)/g, '<span class="font-black text-slate-900">$1</span>');
                                             
                                             // Highlight Positive/Negative Keywords
-                                            // Positive: 成長|強勢|多頭|看多|獲利|增加|提升|領先|收益|紅盤|買進
-                                            formattedText = formattedText.replace(/(成長|強勢|多頭|看多|獲利|增加|提升|領先|收益|紅盤|買進)/g, '<span class=\"text-indigo-600 font-black\">$1</span>');
-                                            // Negative: 衰退|弱勢|空頭|看空|虧損|減少|下降|滯後|損益|平盤|賣出
-                                            formattedText = formattedText.replace(/(衰退|弱勢|空頭|看空|虧損|減少|下降|滯後|損益|平盤|賣出)/g, '<span class=\"text-red-600 font-black\">$1</span>');
+                                            formattedText = formattedText.replace(/(成長|強勢|多頭|看多|獲利|增加|提升|領先|收益|紅盤|買進)/g, '<span class="text-indigo-600 font-black">$1</span>');
+                                            formattedText = formattedText.replace(/(衰退|弱勢|空頭|看空|虧損|減少|下降|滯後|損益|平盤|賣出)/g, '<span class="text-red-600 font-black">$1</span>');
 
                                             // Handle bold (**text**)
-                                            formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong class=\"text-slate-900 font-bold bg-indigo-50/50 px-1 rounded\">$1</strong>');
+                                            formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-900 font-bold bg-indigo-50/50 px-1 rounded">$1</strong>');
                                             // Remove remaining single stars
                                             formattedText = formattedText.replace(/\*/g, '');
                                         }

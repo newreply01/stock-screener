@@ -19,8 +19,9 @@ import HealthCheckRanking from './components/HealthCheckRanking'
 import MonitorPage from './components/MonitorPage'
 import PortfolioDashboard from './components/PortfolioDashboard'
 import AdminUserManagement from './components/AdminUserManagement'
+import AIPromptManager from './components/AIPromptManager'
 import { screenStocks, getStats, getWatchlists, addStockToWatchlist, removeStockFromWatchlist } from './utils/api'
-import { useAuth } from './context/AuthContext'
+import { useAuth } from './context/AuthContext';
 import { useGlobalFilters } from './context/GlobalFilterContext'
 
 function App() {
@@ -34,9 +35,27 @@ function App() {
   const [sortDir, setSortDir] = useState('desc')
   const [page, setPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState('')
-  const [mainStock, setMainStock] = useState({ symbol: '2330', name: '台積電', industry: '半導體業' })
+  const [mainStock, setMainStock] = useState(() => {
+    try {
+      const saved = localStorage.getItem('muchstock-main-stock');
+      return saved ? JSON.parse(saved) : { symbol: '2330', name: '台積電', industry: '半導體業' };
+    } catch { return { symbol: '2330', name: '台積電', industry: '半導體業' }; }
+  })
   const [detailStock, setDetailStock] = useState(null)
-  const [currentView, setCurrentView] = useState('market-overview')
+  const [currentView, setCurrentView] = useState(() => {
+    return localStorage.getItem('muchstock-current-view') || 'market-overview';
+  });
+
+  // Persist view and stock state
+  useEffect(() => {
+    localStorage.setItem('muchstock-current-view', currentView);
+  }, [currentView]);
+
+  useEffect(() => {
+    if (mainStock) {
+      localStorage.setItem('muchstock-main-stock', JSON.stringify(mainStock));
+    }
+  }, [mainStock]);
   const [activeCompareSymbols, setActiveCompareSymbols] = useState([])
   const [watchlists, setWatchlists] = useState([])
   const [activePatterns, setActivePatterns] = useState([])
@@ -132,7 +151,9 @@ function App() {
   }, [filters, sortBy, sortDir, page, searchTerm, marketForApi, stockTypesForApi, industryForApi])
 
   useEffect(() => {
-    if (results?.data?.length > 0 && !mainStock) setMainStock(results.data[0])
+    if (results?.data?.length > 0 && !mainStock && !localStorage.getItem('muchstock-main-stock')) {
+      setMainStock(results.data[0])
+    }
   }, [results, mainStock])
 
   const fetchStats = useCallback(async () => {
@@ -205,6 +226,8 @@ function App() {
           <MonitorPage />
         ) : currentView === 'admin-users' ? (
           <AdminUserManagement />
+        ) : currentView === 'admin-prompts' ? (
+          <AIPromptManager />
         ) : currentView === 'stock-detail' ? (
           <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
             <StockDetail stock={mainStock} isInline={true} />

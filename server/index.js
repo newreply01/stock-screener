@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const screenerRoutes = require('./routes/screener');
 const authRoutes = require('./routes/auth');
+
 const monitorRoutes = require('./routes/monitor');
 const watchlistRoutes = require('./routes/watchlist');
 const realtimeRoutes = require('./routes/realtime_query');

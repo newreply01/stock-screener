@@ -80,9 +80,9 @@ export default function HealthCheckRanking({ onSelectStock }) {
         { id: 'health', label: '健診分析', icon: Shield },
         { id: 'ai_report', label: 'AI分析報告', icon: Activity },
         { id: 'valuation', label: '估價模型', icon: Coins },
-        { id: 'pk', label: '個股 PK', icon: Users },
         { id: 'trend', label: '趨勢強弱', icon: Activity },
-        { id: 'chart', label: '股價量圖', icon: BarChart3 }
+        { id: 'chart', label: '股價量圖', icon: BarChart3 },
+        { id: 'pk', label: '個股 PK', icon: Users }
     ];
 
     const fetchData = useCallback(async () => {
