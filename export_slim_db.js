@@ -123,14 +123,15 @@ async function exportSlimDB() {
             'user_holdings': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`,
             'watchlist_items': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`,
             'indicators': `WHERE symbol IN ${SYMBOL_FILTER_INNER} AND trade_date >= '2025-01-01'`,
-            'fm_broker_trading': `WHERE stock_id IN ${SYMBOL_FILTER_INNER} AND date >= (CURRENT_DATE - INTERVAL '15 days')`,
+            'fm_broker_trading': `WHERE stock_id IN ${SYMBOL_FILTER_INNER} AND date >= (CURRENT_DATE - INTERVAL '30 days')`,
             'stock_health_scores': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`,
             'ai_reports': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`,
             'stock_daily_analysis_results': `WHERE symbol IN ${SYMBOL_FILTER_INNER}`
         };
 
         if (latestPartition) {
-            filters[latestPartition] = `WHERE symbol IN ${SYMBOL_FILTER_INNER}`;
+            // 優化：realtime_ticks 僅保留 1 天並採樣為 1 分鐘一筆
+            filters[latestPartition] = `WHERE symbol IN ${SYMBOL_FILTER_INNER} AND created_at >= (SELECT MAX(created_at) - INTERVAL '1 day' FROM ${latestPartition}) AND id IN (SELECT MIN(id) FROM ${latestPartition} GROUP BY symbol, date_trunc('minute', created_at))`;
         }
 
         for (const tableName of manualTables) {
