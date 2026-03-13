@@ -114,8 +114,8 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
 
                 // --- Pattern Detection (Historical Markers & Recent Active) ---
                 const markers = [];
-                const recentPatterns = []; // patterns detected in last 5 trading days
-                const RECENT_WINDOW = 5; // number of recent candles to check for active patterns
+                const recentPatterns = []; // patterns detected in last X trading days
+                const RECENT_WINDOW = 20; // extended from 5 to 20 to capture more technical patterns
 
                 // Helper: safely check a pattern (some functions require different data lengths)
                 const safeCheck = (fn, input) => {
@@ -155,12 +155,18 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
                         patternsFound.forEach(p => {
                             if (p.type === 'bullish') {
                                 markers.push({ time, position: 'belowBar', color: '#ef4444', shape: 'arrowUp', text: p.name });
-                            } else {
+                            } else if (p.type === 'bearish') {
                                 markers.push({ time, position: 'aboveBar', color: '#22c55e', shape: 'arrowDown', text: p.name });
                             }
-                            // Track patterns in the recent window (deduplicated by name)
-                            if (isRecent && !recentPatterns.some(rp => rp.name === p.name)) {
-                                recentPatterns.push({ ...p, date: time });
+                            // Track patterns in the recent window (deduplicated by name, keeping latest)
+                            if (isRecent) {
+                                const existingIdx = recentPatterns.findIndex(rp => rp.name === p.name);
+                                if (existingIdx > -1) {
+                                    // Update to latest date if found again
+                                    recentPatterns[existingIdx].date = time;
+                                } else {
+                                    recentPatterns.push({ ...p, date: time });
+                                }
                             }
                         });
                     }

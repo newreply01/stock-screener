@@ -47,3 +47,21 @@ node server/start_finmind_sync.js
 -   **頻率限制**: FinMind API 每小時有 **600 筆** 請求限制。
 -   **WSL 網路**: 埠號會自動從 WSL 轉發至 Windows localhost。
 
+
+## 6. Vercel 部署與時區處理
+
+由於 Vercel 伺服器預設使用 UTC 時區，本專案已實施以下時區處理方案：
+
+### 時區配置
+- **環境變數**: 在 Vercel 專案設定中，請務必加入 `TZ=Asia/Taipei`。
+- **程式邏輯**: 核心邏輯已全面透過 `server/utils/timeUtils.js` 強制轉換為台灣時間（Asia/Taipei）。
+
+### 定時排程 (Cron Jobs)
+Vercel 不支援長時間運行的 `node-cron`。請在 Vercel 專案中配置 `vercel.json` 或透過 Vercel Dashboard 設定 Cron Jobs 來觸發以下 API：
+
+- **盤後行情抓取 (15:05)**: `https://your-app.vercel.app/api/admin/system/init-sync`
+- **每日新聞同步 (每小時)**: (建議串接 Vercel Cron 觸發特定新聞同步端點)
+
+### 時間診斷
+您可以透過以下 API 確認 Vercel 上的當前伺服器時間：
+- `GET /api/diag/time`

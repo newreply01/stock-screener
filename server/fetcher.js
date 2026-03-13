@@ -49,10 +49,12 @@ async function ensureStock(symbol, name = symbol) {
 
 const fs = require('fs');
 const path = require('path');
+const { getTaiwanDate, formatTaiwanTime } = require('./utils/timeUtils');
+const pool = require('./db').pool;
 
 // 日誌記錄器
 function logToFile(msg) {
-    const timestamp = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
+    const timestamp = formatTaiwanTime();
     const logMsg = `[${timestamp}] ${msg}\n`;
     const logDir = path.join(__dirname, '..', 'logs');
     if (!fs.existsSync(logDir)) fs.mkdirSync(logDir);
@@ -494,7 +496,7 @@ async function updateLastCloseSnapshot() {
 
 // ===== 主流程：自動補齊 =====
 async function catchUp() {
-    const today = new Date();
+    const today = getTaiwanDate();
     today.setHours(0, 0, 0, 0);
     console.log(`[CatchUp] Today is ${toDateHyphen(today)}`);
     const threeYearsAgo = new Date();

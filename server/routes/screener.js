@@ -3,6 +3,7 @@ const router = express.Router();
 const { query } = require('../db');
 const { generateAIReport } = require('../utils/ai_service');
 const { analyzePosition, analyzeMultiple } = require('../position_analyzer');
+const { getTaiwanDate, formatTaiwanTime, TZ, getTaiwanDateString } = require('../utils/timeUtils');
 
 // 日期格式化助手 (解決時區偏移問題)
 const formatLocalDate = (date) => {
@@ -23,14 +24,18 @@ router.get('/stock/:symbol/events', async (req, res) => {
     try {
         const { symbol } = req.params;
         const sql = `
-            SELECT 'corporate' as category, event_type as type, TO_CHAR(event_date, 'YYYY-MM-DD') as date, description
-            FROM corp_events
-            WHERE symbol = $1
-            UNION ALL
-            SELECT 'dividend' as category, '除息日' as type, TO_CHAR(year::date, 'YYYY-MM-DD') as date, '配發現金股利 ' || cash_dividend || ' 元' as description
-            FROM dividend_policy
-            WHERE symbol = $1 AND year ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
-            ORDER BY date DESC
+            SELECT category, type, date, description FROM (
+                SELECT 'corporate' as category, event_type as type, TO_CHAR(event_date, 'YYYY-MM-DD') as date, description
+                FROM corp_events
+                WHERE symbol = $1
+                UNION ALL
+                SELECT 'dividend' as category, '除息日' as type, 
+                       (year + 1911)::text || '-01-01' as date, 
+                       '配發現金股利 ' || cash_dividend || ' 元' as description
+                FROM dividend_policy
+                WHERE symbol = $1
+            ) s
+            ORDER BY s.date DESC
             LIMIT 20
         `;
         const result = await query(sql, [symbol]);
@@ -695,22 +700,70 @@ router.get('/market-summary', async (req, res) => {
 // GET /api/stats
 router.get('/stats', async (req, res) => {
     try {
+        // 1. Get latest historical date
         const dateRes = await query("SELECT trade_date FROM daily_prices ORDER BY trade_date DESC LIMIT 1");
-        const latestDate = dateRes.rows[0]?.trade_date;
-        if (!latestDate) return res.json({});
+        const histDate = dateRes.rows[0]?.trade_date;
+
+        // 2. Get latest realtime date
+        const realtimeRes = await query("SELECT MAX(trade_time AT TIME ZONE 'Asia/Taipei') as max_time FROM realtime_ticks");
+        const rtMaxTime = realtimeRes.rows[0]?.max_time;
+        const rtDateStr = rtMaxTime ? new Date(rtMaxTime).toISOString().split('T')[0] : null;
+
+        const histDateStr = histDate ? new Date(histDate).toISOString().split('T')[0] : null;
+
+        // Determine if we should use realtime stats (rtDate is today and potentially newer than histDate)
+        // Note: trade_date in daily_prices is often set to start of day, so we compare strings
+        if (rtDateStr && (!histDateStr || rtDateStr >= histDateStr)) {
+            // Check if we have enough realtime data to bother recalculating
+            const countRes = await query("SELECT COUNT(*) FROM realtime_ticks WHERE (trade_time AT TIME ZONE 'Asia/Taipei')::date = $1", [rtDateStr]);
+            if (parseInt(countRes.rows[0].count) > 100) {
+                // Calculate breadth from realtime ticks vs snapshot closer
+                const breadthSql = `
+                    WITH latest_ticks AS (
+                        SELECT DISTINCT ON (symbol) symbol, price
+                        FROM realtime_ticks
+                        WHERE (trade_time AT TIME ZONE 'Asia/Taipei')::date = $1
+                        ORDER BY symbol, trade_time DESC
+                    ),
+                    universe AS (
+                        SELECT s.symbol, sn.yest_close, t.price
+                        FROM stocks s
+                        LEFT JOIN snapshot_last_close sn ON s.symbol = sn.symbol
+                        LEFT JOIN latest_ticks t ON s.symbol = t.symbol
+                        WHERE (s.symbol ~ '^[0-9]{4}$' OR s.symbol ~ '^[0-9]{5,6}$')
+                    )
+                    SELECT 
+                        COUNT(*) FILTER (WHERE price > yest_close AND yest_close > 0) as up_count,
+                        COUNT(*) FILTER (WHERE price < yest_close AND yest_close > 0) as down_count,
+                        COUNT(*) FILTER (WHERE (price = yest_close) OR (price IS NULL) OR (yest_close IS NULL OR yest_close = 0)) as flat_count,
+                        AVG(CASE WHEN price IS NOT NULL AND yest_close > 0 THEN ((price - yest_close) / yest_close) * 100 END) as avg_change
+                    FROM universe
+                `;
+                const breadthRes = await query(breadthSql, [rtDateStr]);
+                const stats = breadthRes.rows[0];
+                return res.json({
+                    ...stats,
+                    latestDate: rtDateStr
+                });
+            }
+        }
+
+        // Fallback to historical if no realtime data or it's older
+        if (!histDate) return res.json({});
         const sql = `
-        SELECT
-            COUNT(*) filter(where change_percent > 0) as up_count,
-            COUNT(*) filter(where change_percent < 0) as down_count,
-            COUNT(*) filter(where change_percent = 0) as flat_count,
-            AVG(change_percent) as avg_change,
-            TO_CHAR($1::date, 'YYYY-MM-DD') as "latestDate"
-        FROM daily_prices
-        WHERE trade_date = $1
+            SELECT
+                COUNT(*) filter(where change_percent > 0) as up_count,
+                COUNT(*) filter(where change_percent < 0) as down_count,
+                COUNT(*) filter(where change_percent = 0) as flat_count,
+                AVG(change_percent) as avg_change,
+                TO_CHAR($1::date, 'YYYY-MM-DD') as "latestDate"
+            FROM daily_prices
+            WHERE trade_date = $1
         `;
-        const result = await query(sql, [latestDate]);
+        const result = await query(sql, [histDate]);
         res.json(result.rows[0]);
     } catch (err) {
+        console.error('Stats API error:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -957,7 +1010,7 @@ SELECT s.symbol, s.name, s.industry, s.market, p.close_price, p.change_percent, 
 router.get('/stock/:symbol/health-check', async (req, res) => {
     try {
         const { symbol } = req.params;
-        console.log(`[DEBUG] Health check requested for: ${symbol} at ${new Date().toISOString()}`);
+        console.log(`[DEBUG] Health check requested for: ${symbol} at ${formatTaiwanTime()}`);
         const result = await query('SELECT * FROM stock_health_scores WHERE symbol = $1 ORDER BY calc_date DESC LIMIT 1', [symbol]);
         if (result.rows.length === 0) return res.status(404).json({ success: false, error: '找不到該個股健診資料' });
 
@@ -1459,6 +1512,17 @@ router.get('/position/history/:symbol', async (req, res) => {
         console.error('Position history error:', err);
         res.status(500).json({ success: false, error: err.message });
     }
+});
+
+// GET /api/diag/time - 診斷伺服器時間與時區
+router.get('/diag/time', (req, res) => {
+    res.json({
+        success: true,
+        serverTime: new Date().toISOString(),
+        taiwanTime: formatTaiwanTime(),
+        envTZ: process.env.TZ || 'Not Set',
+        configTZ: TZ
+    });
 });
 
 module.exports = router;

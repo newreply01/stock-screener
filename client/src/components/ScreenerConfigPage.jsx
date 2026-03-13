@@ -55,7 +55,6 @@ export default function ScreenerConfigPage({
     const [activeTab, setActiveTab] = useState('strategies')
     const [localFilters, setLocalFilters] = useState({
         strategy: '',
-        patterns: [],
         price_min: '', price_max: '',
         change_min: '', change_max: '',
         volume_min: '', volume_max: '',
@@ -176,31 +175,15 @@ export default function ScreenerConfigPage({
         })
     }
 
-
-    const togglePattern = (patternId) => {
-        setLocalFilters(prev => {
-            const current = prev.patterns || [];
-            let nextPatterns = [];
-            if (current.includes(patternId)) {
-                nextPatterns = current.filter(id => id !== patternId);
-            } else {
-                nextPatterns = [...current, patternId];
-            }
-            // 型態選擇與智慧策略互斥，選擇型態則清除策略
-            const next = { ...prev, patterns: nextPatterns, strategy: '' };
-            return next;
-        });
-    }
-
     const handleStrategySelect = (stratId) => {
         setLocalFilters(prev => {
             const isSelected = prev.strategy === stratId;
             const nextStrategy = isSelected ? '' : stratId;
 
             // 智慧策略為獨立模式，選擇時清除所有其他手動過濾條件
-            const empty = { patterns: [], strategy: nextStrategy, date: prev.date };
+            const empty = { strategy: nextStrategy, date: prev.date };
             Object.keys(prev).forEach(k => {
-                if (!['patterns', 'strategy', 'date'].includes(k)) {
+                if (!['strategy', 'date'].includes(k)) {
                     empty[k] = '';
                 }
             });
@@ -225,9 +208,9 @@ export default function ScreenerConfigPage({
     }
 
     const handleClear = () => {
-        const empty = { patterns: [], strategy: '' }
+        const empty = { strategy: '' }
         Object.keys(localFilters).forEach(k => {
-            if (k !== 'patterns' && k !== 'strategy') empty[k] = ''
+            if (k !== 'strategy') empty[k] = ''
         })
         setLocalFilters(empty)
         onClear()
@@ -388,46 +371,6 @@ export default function ScreenerConfigPage({
 
                     {/* Tab Panels */}
                     <div className="min-h-[400px]">
-                        {activeTab === 'patterns' && (
-                            <div className="space-y-6 animate-in fade-in duration-300">
-                                <div>
-                                    <h3 className="text-lg font-black text-gray-900 mb-1">特定K線型態偵測</h3>
-                                    <p className="text-gray-500 text-sm mb-6">勾選您想篩選的經典多日型態，系統將自動尋找符合條件的標的。</p>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                                        {CLASSIC_PATTERNS.map(pat => {
-                                            const isSelected = (localFilters.patterns || []).includes(pat.id);
-                                            return (
-                                                <button
-                                                    key={pat.id}
-                                                    onClick={() => togglePattern(pat.id)}
-                                                    className={`flex items-start gap-4 p-4 rounded-xl border-2 text-left transition-all relative overflow-hidden group
-                                                        ${isSelected ? 'bg-red-50/50 border-brand-primary shadow-sm' : 'bg-white border-gray-200 hover:border-gray-300'}
-                                                    `}
-                                                >
-                                                    <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded border ${isSelected ? 'bg-brand-primary border-brand-primary text-white flex items-center justify-center' : 'bg-white border-gray-300 group-hover:border-brand-primary/50'}`}>
-                                                        {isSelected && <CheckSquare className="w-3.5 h-3.5" />}
-                                                    </div>
-                                                    <div>
-                                                        <h4 className={`font-bold text-[15px] ${isSelected ? 'text-gray-900' : 'text-gray-700 group-hover:text-gray-900'}`}>{pat.name}</h4>
-                                                        <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">{pat.desc}</p>
-                                                        <div className="flex items-center gap-2 mt-2">
-                                                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded uppercase
-                                                                ${pat.type === 'bullish' ? 'bg-red-100 text-red-700' :
-                                                                    pat.type === 'bearish' ? 'bg-green-100 text-green-700' :
-                                                                        'bg-gray-100 text-gray-700'}
-                                                            `}>
-                                                                {pat.type === 'bullish' ? 'BULLISH 看漲' : pat.type === 'bearish' ? 'BEARISH 看跌' : 'NEUTRAL 中性'}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                         {activeTab === 'strategies' && (
                             <div className="space-y-6 animate-in fade-in duration-300">
                                 <div>

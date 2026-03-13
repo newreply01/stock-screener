@@ -364,12 +364,7 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
                             </div>
 
                             <div className="flex items-center gap-3">
-                                <button className="flex items-center gap-2 px-4 py-2 border border-slate-300 bg-white text-slate-700 rounded-lg text-sm font-semibold hover:border-slate-400 hover:shadow-sm transition-all focus:outline-none shrink-0">
-                                    <FileText className="w-4 h-4 text-red-500" /> 匯出 PDF
-                                </button>
-                                <button className="flex items-center gap-2 px-4 py-2 border border-slate-300 bg-white text-slate-700 rounded-lg text-sm font-semibold hover:border-slate-400 hover:shadow-sm transition-all focus:outline-none shrink-0">
-                                    <Download className="w-4 h-4 text-green-600" /> 匯出 Excel
-                                </button>
+                                {/* Export buttons removed as per cleanup request */}
                             </div>
                         </div>
 
@@ -400,7 +395,16 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
                                                 <span className={indicatorStatus.rsi > 70 ? 'text-red-500' : indicatorStatus.rsi < 30 ? 'text-green-500' : ''}>RSI:{indicatorStatus.rsi?.toFixed(0) || '--'}</span>
                                                 <span className={indicatorStatus.close > indicatorStatus.ma20 ? 'text-red-500' : 'text-green-500'}>MA:{indicatorStatus.close > indicatorStatus.ma20 ? '多' : '空'}</span>
                                             </div>
-                                        ) : card.count}
+                                        ) : card.count > 0 ? (
+                                            <div className="flex flex-col items-end leading-none">
+                                                <span>{card.count}</span>
+                                                <span className="text-[7px] font-bold mt-0.5 opacity-80">
+                                                    最近: {activePatterns.filter(p => p.type === card.id).sort((a,b) => new Date(b.date) - new Date(a.date))[0]?.date.split('-').slice(1).join('/') || '--'}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <span>0</span>
+                                        )}
                                     </div>
                                 </div>
                             ))}
