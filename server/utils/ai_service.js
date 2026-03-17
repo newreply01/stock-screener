@@ -1,6 +1,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { pool } = require('../db');
 const { getTaiwanDate, formatTaiwanTime } = require('./timeUtils');
+const query = (text, params) => pool.query(text, params);
 require("dotenv").config();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "no_key");
@@ -14,7 +15,7 @@ async function gatherStockContext(symbol) {
         const stockInfo = stockRes.rows[0] || { name: '', industry: '' };
 
         const priceRes = await query(
-            `SELECT p.*, i.rsi_14, i.macd_hist, i.ma_5, i.ma_10, i.ma_20, i.ma_60, i.patterns
+            `SELECT p.*, i.rsi_14, i.macd_hist, i.ma_5, i.ma_10, i.ma_20, i.ma_60, i.patterns, i.upper_band, i.lower_band
              FROM daily_prices p
              LEFT JOIN indicators i ON p.symbol = i.symbol AND p.trade_date = i.trade_date
              WHERE p.symbol = $1
@@ -94,6 +95,10 @@ function generateSmartEngineReport(symbol, context, promptTemplate) {
     const ma_bullish = ma5 > ma20 && ma20 > ma60;
     const ma_反彈 = context.priceData.close_price > ma20;
     const rsi = parseFloat(context.priceData.rsi_14 || 50);
+    const upper = parseFloat(context.priceData.upper_band || 0);
+    const lower = parseFloat(context.priceData.lower_band || 0);
+    const b_percent = (upper - lower) > 0 ? (context.priceData.close_price - lower) / (upper - lower) : 0.5;
+
     const macd_hist = parseFloat(context.priceData.macd_hist || 0);
     const y_rev = parseFloat(context.revenue.revenue || 0);
     const py_rev = parseFloat(context.revenue.prev_y_revenue || 0);
@@ -119,7 +124,7 @@ function generateSmartEngineReport(symbol, context, promptTemplate) {
 - RSI14: ${rsi.toFixed(2)} (${rsi > 70 ? '入超買區' : (rsi < 35 ? '入超跌區' : '位階中性偏強，未入超買區')})。
 - MACD: 柱狀圖趨勢為 ${macd_hist.toFixed(2)}，${macd_hist >= 0 ? '動能持續轉強。' : '雖仍為負值但已有收斂跡象，暗示跌勢放緩。'}
 K線型態: ${context.priceData.patterns && context.priceData.patterns.length > 0 ? context.priceData.patterns.join(', ') : '近期出現長紅K棒吞噬掉前幾日的盤整區間，動能轉強。'}
-波動度: 位元布林通道中軸${ma_反彈 ? '之上，目前正向上緣挑戰。' : '之下，回測支撐中。'}`;
+波動度 (Bollinger %b): ${b_percent.toFixed(2)} (${b_percent > 0.8 ? '處於超買上限' : (b_percent < 0.2 ? '處於超跌下限' : '位階適中')})。目前正${b_percent > 0.5 ? '在中軸之上運行' : '在中軸之下震盪'}。`;
 
     // Fundamental Analysis
     const fundamentalText = `估值: PE ${context.fundamentals.pe_ratio || 'N/A'}, PB ${context.fundamentals.pb_ratio || 'N/A'}, 殖利率 ${context.fundamentals.dividend_yield || 'N/A'}%。目前本益比${parseFloat(context.fundamentals.pe_ratio) > 25 ? '較歷史均位略高，反映市場對 2026 年成長之預期。' : '處於合理區間。'}
@@ -222,9 +227,9 @@ ${newsSection}
 /**
  * Generate AI report using the active template and gathered data
  */
-async function generateAIReport(symbol, templateName = 'stock_analysis_report') {
+async function generateAIReport(symbol, templateName = 'stock_analysis_report', manualContext = null) {
     try {
-        const context = await gatherStockContext(symbol);
+        const context = manualContext || await gatherStockContext(symbol);
 
         const templateRes = await query(
             `SELECT content FROM ai_prompt_templates WHERE name = $1 AND is_active = true LIMIT 1`,
@@ -247,7 +252,7 @@ async function generateAIReport(symbol, templateName = 'stock_analysis_report') 
             finalContent = generateSmartEngineReport(symbol, context, promptTemplate);
             isFallback = true;
             
-            const scoreMatch = finalContent.match(/評分: \*\*(\d+) /);
+            const scoreMatch = finalContent.match(/\*\*(\d+) \/ 100\*\*/);
             if (scoreMatch) sentimentScore = parseInt(scoreMatch[1]);
         } else {
             const inst_dir = (parseFloat(context.institutional.foreign_sum || 0) + parseFloat(context.institutional.trust_sum || 0)) > 0 ? "偏多買進" : "偏空賣出";
@@ -256,7 +261,7 @@ async function generateAIReport(symbol, templateName = 'stock_analysis_report') 
 
 股票: ${context.name} (${context.symbol})
 最新收盤: ${context.priceData.close_price} (漲跌: ${context.priceData.change_amount}, ${parseFloat(context.priceData.change_percent || 0).toFixed(2)}%)
-技術面: RSI14=${context.priceData.rsi_14}, MACD柱=${context.priceData.macd_hist}, MA5=${context.priceData.ma_5}, MA20=${context.priceData.ma_20}, MA60=${context.priceData.ma_60}
+技術面: RSI14=${context.priceData.rsi_14}, Bollinger%b=${((parseFloat(context.priceData.close_price) - parseFloat(context.priceData.lower_band)) / (parseFloat(context.priceData.upper_band) - parseFloat(context.priceData.lower_band))).toFixed(2)}, MACD柱=${context.priceData.macd_hist}, MA5=${context.priceData.ma_5}, MA20=${context.priceData.ma_20}, MA60=${context.priceData.ma_60}
 基本面: PE=${context.fundamentals.pe_ratio}, PB=${context.fundamentals.pb_ratio}, 殖利率=${context.fundamentals.dividend_yield}%
 營收: 最新月營收 ${context.revenue.revenue} (YoY約 ${context.revenue.prev_y_revenue ? ((parseFloat(context.revenue.revenue)/parseFloat(context.revenue.prev_y_revenue)-1)*100).toFixed(1) : '未知'}%)
 籌碼面: 近5日法人合計${inst_dir}, 融資餘額=${context.margin.margin_purchase_today_balance}
@@ -292,4 +297,4 @@ ${promptTemplate}
     }
 }
 
-module.exports = { generateAIReport };
+module.exports = { generateAIReport, generateSmartEngineReport };

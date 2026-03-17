@@ -38,8 +38,6 @@ function getScoreLabel(score) {
     return '劣';
 }
 
-// ... (GRADE_STYLES and helpers)
-
 export default function HealthCheckView({ symbol }) {
     const [data, setData] = useState(null);
     const [history, setHistory] = useState([]);
@@ -64,7 +62,6 @@ export default function HealthCheckView({ symbol }) {
             })
             .catch(e => {
                 console.error('Health check fetch error:', e);
-                // Even if history fails, we still want to show the current data if it succeeded
                 if (data && data.success) {
                     setLoading(false);
                 } else {
@@ -109,21 +106,9 @@ export default function HealthCheckView({ symbol }) {
     }));
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-2">
-                <div className="bg-teal-100 p-2.5 rounded-xl border border-teal-200">
-                    <Heart className="w-6 h-6 text-teal-600" />
-                </div>
-                <div>
-                    <h2 className="text-xl font-black text-slate-900 tracking-tighter">個股健診報告</h2>
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Stock Health Check</p>
-                </div>
-            </div>
-
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 p-8">
             <div className={`${style.bg} ${style.border} border-2 rounded-2xl p-6 shadow-lg ${style.glow} ring-1 ${style.ring}`}>
                 <div className="flex flex-col md:flex-row gap-8 items-center">
-                    {/* Score Circle/Box */}
                     <div className="flex items-center gap-6 border-r border-slate-200 pr-8">
                         <div>
                             <div className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-widest">綜合健康評分</div>
@@ -137,19 +122,16 @@ export default function HealthCheckView({ symbol }) {
                             <div className="text-[10px] font-bold tracking-widest uppercase text-center mt-1 opacity-70">GRADE</div>
                         </div>
                     </div>
-
-                    {/* AI Summary & Trend */}
                     <div className="flex-1 flex flex-col gap-4">
                         {data.summary && (
                             <div className={`p-4 rounded-xl border-l-4 ${style.border} bg-white/50 text-sm font-bold ${style.text} leading-relaxed shadow-sm`}>
                                 <div className="flex items-center gap-2 mb-1 opacity-70">
                                     <Activity className="w-3.5 h-3.5" />
-                                    <span className="text-[10px] uppercase tracking-widest">AI 智慧健診清單</span>
+                                    <span className="text-[10px] uppercase tracking-widest">AI 智慧健診摘要</span>
                                 </div>
                                 {data.summary}
                             </div>
                         )}
-                        
                         <div className="flex-1 min-h-[70px]">
                             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 px-1">健康分數走勢 (近30日)</div>
                             <div className="w-full h-[60px]">
@@ -163,10 +145,7 @@ export default function HealthCheckView({ symbol }) {
                                                 </linearGradient>
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                                            <XAxis 
-                                                dataKey="date" 
-                                                hide 
-                                            />
+                                            <XAxis dataKey="date" hide />
                                             <YAxis domain={[0, 100]} hide />
                                             <Tooltip
                                                 labelClassName="text-xs font-bold"
@@ -196,9 +175,7 @@ export default function HealthCheckView({ symbol }) {
                 </div>
             </div>
 
-            {/* Radar Chart + Bar Chart */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Radar */}
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                     <h3 className="text-slate-800 font-bold mb-4 flex items-center gap-2 text-sm">
                         <Shield className="w-4 h-4 text-teal-600" /> 六維雷達圖
@@ -207,34 +184,14 @@ export default function HealthCheckView({ symbol }) {
                         <ResponsiveContainer width="100%" height="100%">
                             <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
                                 <PolarGrid stroke="#e2e8f0" />
-                                <PolarAngleAxis
-                                    dataKey="dimension"
-                                    tick={{ fontSize: 12, fontWeight: 700, fill: '#475569' }}
-                                />
-                                <PolarRadiusAxis
-                                    angle={30}
-                                    domain={[0, 100]}
-                                    tick={{ fontSize: 9, fill: '#94a3b8' }}
-                                />
-                                <Radar
-                                    name="分數"
-                                    dataKey="score"
-                                    stroke="#14b8a6"
-                                    fill="#14b8a6"
-                                    fillOpacity={0.25}
-                                    strokeWidth={2}
-                                    dot={{ r: 4, fill: '#14b8a6', stroke: '#fff', strokeWidth: 2 }}
-                                />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#fff', borderColor: '#e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }}
-                                    formatter={(v) => [`${v} 分`, '評分']}
-                                />
+                                <PolarAngleAxis dataKey="dimension" tick={{ fontSize: 12, fontWeight: 700, fill: '#475569' }} />
+                                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 9, fill: '#94a3b8' }} />
+                                <Radar name="分數" dataKey="score" stroke="#14b8a6" fill="#14b8a6" fillOpacity={0.25} strokeWidth={2} dot={{ r: 4, fill: '#14b8a6', stroke: '#fff', strokeWidth: 2 }} />
+                                <Tooltip contentStyle={{ backgroundColor: '#fff', borderColor: '#e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }} />
                             </RadarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
-
-                {/* Bar Chart */}
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                     <h3 className="text-slate-800 font-bold mb-4 flex items-center gap-2 text-sm">
                         <Award className="w-4 h-4 text-indigo-600" /> 各面向評分
@@ -245,10 +202,7 @@ export default function HealthCheckView({ symbol }) {
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                                 <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} />
                                 <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fontWeight: 700, fill: '#475569' }} width={70} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#fff', borderColor: '#e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                    formatter={(v) => [`${v} 分`]}
-                                />
+                                <Tooltip contentStyle={{ backgroundColor: '#fff', borderColor: '#e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                                 <Bar dataKey="score" radius={[0, 6, 6, 0]} barSize={24}>
                                     {barData.map((entry, idx) => (
                                         <Cell key={idx} fill={entry.fill} />
@@ -260,7 +214,6 @@ export default function HealthCheckView({ symbol }) {
                 </div>
             </div>
 
-            {/* Dimension Detail Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {dimensions.map((dim, index) => {
                     const Icon = DIMENSION_ICONS[dim.name] || Shield;
@@ -280,7 +233,6 @@ export default function HealthCheckView({ symbol }) {
                                     <span className="text-xs font-black px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: color }}>{label}</span>
                                 </div>
                             </div>
-                            {/* Progress bar */}
                             <div className="w-full bg-slate-100 rounded-full h-2 mb-2">
                                 <div className="h-2 rounded-full transition-all duration-1000" style={{ width: `${dim.score}%`, backgroundColor: color }}></div>
                             </div>
@@ -290,10 +242,7 @@ export default function HealthCheckView({ symbol }) {
                 })}
             </div>
 
-            {/* A-Hsun Indicators Checklist */}
             <div className="bg-white border-2 border-slate-900 rounded-3xl p-8 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-slate-100 rounded-bl-full -z-10 opacity-50"></div>
-                
                 <div className="flex items-center gap-3 mb-8">
                     <div className="bg-slate-900 p-2.5 rounded-2xl">
                         <CheckCircle2 className="w-6 h-6 text-white" />
@@ -303,45 +252,14 @@ export default function HealthCheckView({ symbol }) {
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Investment Quality Checklist</p>
                     </div>
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                     {[
-                        { 
-                            label: '價格便宜程度', 
-                            desc: '本益比或淨值比處於歷史低水位', 
-                            checked: dimensions.find(d => d.name === '價值衡量')?.score >= 70,
-                            metric: `PE: ${metrics.pe || '--'}`
-                        },
-                        { 
-                            label: '公司獲利能力', 
-                            desc: 'ROE 高於 15% 且毛利表現穩定', 
-                            checked: dimensions.find(d => d.name === '獲利能力')?.score >= 70,
-                            metric: `ROE: ${metrics.latestROE ? metrics.latestROE + '%' : '--'}`
-                        },
-                        { 
-                            label: '營運動能成長', 
-                            desc: '營收或 EPS 呈現長期增長趨勢', 
-                            checked: dimensions.find(d => d.name === '成長能力')?.score >= 70,
-                            metric: `營收成長: ${data.revenue_growth ? data.revenue_growth + '%' : '--'}`
-                        },
-                        { 
-                            label: '財務安全穩健', 
-                            desc: '負債比低，具備良好流動性', 
-                            checked: dimensions.find(d => d.name === '安全性')?.score >= 70,
-                            metric: '風險: 低'
-                        },
-                        { 
-                            label: '籌碼優勢加持', 
-                            desc: '法人近期明顯佈局且持股增加', 
-                            checked: dimensions.find(d => d.name === '籌碼面')?.score >= 70,
-                            metric: `${metrics.totalBuy ? metrics.totalBuy + ' 張' : '法人持平'}`
-                        },
-                        { 
-                            label: '股利分配合理', 
-                            desc: '殖利率具吸引力且穩定配息', 
-                            checked: dimensions.find(d => d.name === '配息能力')?.score >= 70,
-                            metric: `殖利率: ${metrics.dy || '--'}%`
-                        }
+                        { label: '價格便宜程度', desc: '本益比或淨值比處於歷史低水位', checked: dimensions.find(d => d.name === '價值衡量')?.score >= 70, metric: `PE: ${metrics.pe || '--'}` },
+                        { label: '公司獲利能力', desc: 'ROE 高於 15% 且毛利表現穩定', checked: dimensions.find(d => d.name === '獲利能力')?.score >= 70, metric: `ROE: ${metrics.latestROE ? metrics.latestROE + '%' : '--'}` },
+                        { label: '營運動能成長', desc: '營收或 EPS 呈現長期增長趨勢', checked: dimensions.find(d => d.name === '成長能力')?.score >= 70, metric: `營收成長: ${data.revenue_growth ? data.revenue_growth + '%' : '--'}` },
+                        { label: '財務安全穩健', desc: '負債比低，具備良好流動性', checked: dimensions.find(d => d.name === '安全性')?.score >= 70, metric: '風險: 低' },
+                        { label: '籌碼優勢加持', desc: '法人近期明顯佈局且持股增加', checked: dimensions.find(d => d.name === '籌碼面')?.score >= 70, metric: `${metrics.totalBuy ? metrics.totalBuy + ' 張' : '法人持平'}` },
+                        { label: '股利分配合理', desc: '殖利率具吸引力且穩定配息', checked: dimensions.find(d => d.name === '配息能力')?.score >= 70, metric: `殖利率: ${metrics.dy || '--'}%` }
                     ].map((item, idx) => (
                         <div key={idx} className={`flex items-start gap-4 p-4 rounded-2xl border-2 transition-all ${item.checked ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-100 bg-slate-50 opacity-60'}`}>
                             <div className={`mt-1 h-6 w-6 rounded-full flex items-center justify-center shrink-0 ${item.checked ? 'bg-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-slate-200'}`}>
@@ -350,27 +268,15 @@ export default function HealthCheckView({ symbol }) {
                             <div className="flex-1">
                                 <div className="flex items-center justify-between mb-0.5">
                                     <h4 className={`text-sm font-black ${item.checked ? 'text-emerald-900' : 'text-slate-500'}`}>{item.label}</h4>
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.checked ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
-                                        {item.metric}
-                                    </span>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.checked ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>{item.metric}</span>
                                 </div>
                                 <p className={`text-[11px] font-medium leading-tight ${item.checked ? 'text-emerald-600' : 'text-slate-400'}`}>{item.desc}</p>
                             </div>
                         </div>
                     ))}
                 </div>
-                
-                <div className="mt-10 flex items-center gap-3 p-4 bg-slate-900 rounded-2xl text-white">
-                    <Award className="w-5 h-5 text-amber-400" />
-                    <p className="text-xs font-bold leading-relaxed">
-                        系統評註：{overall >= 80 ? '本股多項指標符合「阿勳」優質股標準，具備長線存股潛力。' : 
-                                 overall >= 60 ? '本股表現穩健，但部分指標尚有進步空間，建議分批佈局。' : 
-                                 '本股目前指標偏弱，建議等待基本面或估值改善後再行動。'}
-                    </p>
-                </div>
             </div>
 
-            {/* Key Metrics Summary */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
                     {[
@@ -386,10 +292,6 @@ export default function HealthCheckView({ symbol }) {
                         </div>
                     ))}
                 </div>
-            </div>
-
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-500 leading-relaxed font-medium">
-                註：個股健診評分為系統自動化評分，基於歷史財報、法人進出、市場估值等多維度量化指標綜合計算。評分結果僅供參考，不構成投資建議。
             </div>
         </div>
     );

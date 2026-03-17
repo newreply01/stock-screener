@@ -254,7 +254,7 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
                     borderUpColor: '#ef4444', wickDownColor: '#22c55e', wickUpColor: '#ef4444',
                 });
                 candleSeries.setData(candleData);
-                if (markers.length > 0) {
+                if (markers.length > 0 && typeof candleSeries.setMarkers === 'function') {
                     candleSeries.setMarkers(markers);
                 }
 

@@ -1,7 +1,7 @@
 const cron = require('node-cron');
 const { catchUp } = require('./fetcher');
 const { syncAllNews } = require('./news_fetcher');
-const { syncAllStocksFinancials } = require('./finmind_fetcher');
+const { syncAllStocksFinancials, syncTradingDate } = require('./finmind_fetcher');
 const { calculateAndStoreIndicators } = require('./calculate_indicators');
 const { runAll: runHealthCheck } = require('./scripts/calc_health_scores');
 let syncHistoricalMinuteBatch;
@@ -131,6 +131,26 @@ function startScheduler() {
         timezone: 'Asia/Taipei'
     });
     initTaskTracking('finmind_fetcher.js', finmindTask);
+
+    // 每日 04:00 同步交易日資訊 (FinMind)
+    const tradingDateTask = cron.schedule('0 4 * * *', async () => {
+        isTaskRunning['trading_date_sync'] = true;
+        console.log('📅 定時排程開始 (04:00)：同步交易日資訊...');
+        try {
+            await syncTradingDate();
+            console.log('📅 (04:00) 交易日資訊同步完成');
+            await logScriptStatus('finmind_fetcher.js', 'SUCCESS', '交易日資訊同步完成');
+        } catch (err) {
+            console.error('📅 (04:00) 交易日同步失敗:', err.message);
+            await logScriptStatus('finmind_fetcher.js', 'FAILED', `交易日同步失敗: ${err.message}`);
+        } finally {
+            isTaskRunning['trading_date_sync'] = false;
+        }
+    }, {
+        scheduled: true,
+        timezone: 'Asia/Taipei'
+    });
+    initTaskTracking('trading_date_sync', tradingDateTask);
 
     // 每交易日 15:30 第一次計算全股健診排行 (初步價格更新後)
     const healthTask1530 = cron.schedule('30 15 * * 1-5', async () => {

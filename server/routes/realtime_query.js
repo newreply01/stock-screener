@@ -11,21 +11,18 @@ router.get('/realtime-ticks', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Missing symbol parameter' });
         }
 
-        // 如果沒有提供日期，先尋找最新的日期
+        // 如果沒有提供日期，預設使用當前日期 (台北時間)
         let targetDate = date;
         if (!targetDate) {
-            // 先從 Hot Table 找
-            const hotDateRes = await query(`SELECT TO_CHAR(MAX(trade_time AT TIME ZONE 'Asia/Taipei'), 'YYYY-MM-DD') as max_date FROM realtime_ticks WHERE symbol = $1`, [symbol]);
-            targetDate = hotDateRes.rows[0]?.max_date;
+            const now = new Date();
+            const taipeiDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+            targetDate = taipeiDate.toISOString().split('T')[0];
             
-            // 如果 Hot Table 沒資料，再往 History 找
-            if (!targetDate) {
-                const histDateRes = await query(`SELECT TO_CHAR(MAX(trade_time AT TIME ZONE 'Asia/Taipei'), 'YYYY-MM-DD') as max_date FROM realtime_ticks_history WHERE symbol = $1`, [symbol]);
-                targetDate = histDateRes.rows[0]?.max_date;
-            }
-
-            if (!targetDate) {
-                return res.json({ success: true, data: [], date: null });
+            // 檢查今日是否有資料，如果今日完全沒資料，且沒有提供 date 參數，
+            // 則回傳空陣列，避免誤導使用者看到歷史資料
+            const checkTodayRes = await query(`SELECT 1 FROM realtime_ticks WHERE (trade_time AT TIME ZONE 'Asia/Taipei')::date = $1::date LIMIT 1`, [targetDate]);
+            if (checkTodayRes.rows.length === 0) {
+                return res.json({ success: true, data: [], date: targetDate, message: 'Today has no data yet' });
             }
         }
 
@@ -128,11 +125,54 @@ router.get('/debug/audit-crawler', async (req, res) => {
     }
 });
 
+// GET /api/realtime/market-index - 獲取大盤加權指數即時數據
+router.get('/market-index', async (req, res) => {
+    try {
+        const sql = `
+            SELECT 
+                t.*,
+                s.name,
+                TO_CHAR(t.trade_time, 'HH24:MI:SS') as time_str,
+                COALESCE(
+                    NULLIF(t.previous_close, 0),
+                    CASE 
+                        WHEN (t.trade_time AT TIME ZONE 'Asia/Taipei')::date = sn.last_update THEN sn.yest_close 
+                        WHEN (t.trade_time AT TIME ZONE 'Asia/Taipei')::date > sn.last_update THEN sn.today_close
+                        ELSE (SELECT close_price FROM daily_prices dp WHERE dp.symbol = t.symbol AND dp.trade_date < (t.trade_time AT TIME ZONE 'Asia/Taipei')::date ORDER BY dp.trade_date DESC LIMIT 1)
+                    END
+                ) as previous_close
+            FROM (
+                SELECT * FROM realtime_ticks WHERE symbol = 'TAIEX'
+                UNION ALL
+                SELECT * FROM realtime_ticks_history WHERE symbol = 'TAIEX'
+            ) t
+            LEFT JOIN stocks s ON t.symbol = s.symbol
+            LEFT JOIN snapshot_last_close sn ON t.symbol = sn.symbol
+            WHERE t.symbol = 'TAIEX'
+            ORDER BY t.trade_time DESC
+            LIMIT 1
+        `;
+        const result = await query(sql);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'No index data found' });
+        }
+        
+        res.json({
+            success: true,
+            data: result.rows[0]
+        });
+    } catch (err) {
+        console.error('Failed to fetch market index:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // GET /api/realtime/:symbol - 獲取個股即時快照數據
 router.get('/:symbol', async (req, res) => {
     try {
         const { symbol } = req.params;
-const sql = `
+        const sql = `
             SELECT 
                 t.*,
                 s.name,
@@ -167,6 +207,63 @@ const sql = `
             data: result.rows[0]
         });
     } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// POST /api/realtime/batch - 獲取多個個股即時快照數據
+router.post('/batch', async (req, res) => {
+    console.log('Realtime Batch Request:', req.body);
+    try {
+        const { symbols } = req.body || {};
+        if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
+            return res.status(400).json({ success: false, message: 'Invalid or empty symbols array' });
+        }
+
+        const sql = `
+            SELECT DISTINCT ON (t.symbol)
+                t.*,
+                s.name,
+                s.industry,
+                TO_CHAR(t.trade_time, 'HH24:MI:SS') as time_str,
+                COALESCE(
+                    NULLIF(t.previous_close, 0),
+                    CASE 
+                        WHEN DATE(t.trade_time) = sn.last_update THEN sn.yest_close 
+                        WHEN DATE(t.trade_time) > sn.last_update THEN sn.today_close
+                        ELSE (SELECT close_price FROM daily_prices dp WHERE dp.symbol = t.symbol AND dp.trade_date < DATE(t.trade_time) ORDER BY dp.trade_date DESC LIMIT 1)
+                    END
+                ) as previous_close
+            FROM (
+                SELECT * FROM realtime_ticks WHERE symbol = ANY($1)
+                UNION ALL
+                SELECT * FROM realtime_ticks_history WHERE symbol = ANY($1)
+            ) t
+            LEFT JOIN stocks s ON t.symbol = s.symbol
+            LEFT JOIN snapshot_last_close sn ON t.symbol = sn.symbol
+            ORDER BY t.symbol, t.trade_time DESC
+        `;
+        
+        const result = await query(sql, [symbols]);
+        
+        // Convert to object for easier lookup and calculate change_percent if missing
+        const dataMap = {};
+        result.rows.forEach(row => {
+            const price = parseFloat(row.price);
+            const prev = parseFloat(row.previous_close);
+            if (price && prev && (!row.change_percent || row.change_percent == 0)) {
+                row.change = (price - prev).toFixed(2);
+                row.change_percent = (((price - prev) / prev) * 100).toFixed(2);
+            }
+            dataMap[row.symbol] = row;
+        });
+
+        res.json({
+            success: true,
+            data: dataMap
+        });
+    } catch (err) {
+        console.error('Failed to fetch batch realtime data:', err);
         res.status(500).json({ success: false, error: err.message });
     }
 });

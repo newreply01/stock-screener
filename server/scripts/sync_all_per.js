@@ -1,51 +1,57 @@
-/**
- * Batch Sync PE/PB History Script
- * 
- * Fetches historical valuation data (PE, PB, Yield) for all active stocks
- * and stores them in the fm_stock_per table for the Valuation Model.
- */
-
 const { pool } = require('../db');
 const { syncStockPER } = require('../finmind_fetcher');
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function runSync() {
-    console.log("🚀 Starting batch sync for PE/PB history...");
+    console.log("🚀 Starting incremental & prioritized sync for PE/PB history...");
     
     try {
-        // Get all active stocks (4-digit symbols)
+        // 1. Get symbols prioritized by health_scores, skipping those already in fm_stock_per
         const res = await pool.query(`
-            SELECT symbol FROM stocks 
-            WHERE symbol ~ '^[0-9]{4}$'
-            ORDER BY symbol ASC
+            WITH unsynced_stocks AS (
+                SELECT s.symbol, 
+                       (SELECT 1 FROM stock_health_scores h WHERE h.symbol = s.symbol LIMIT 1) as has_health_score
+                FROM stocks s
+                WHERE s.symbol ~ '^[0-9]{4}$'
+                AND s.symbol NOT IN (SELECT DISTINCT stock_id FROM fm_stock_per)
+            )
+            SELECT symbol FROM unsynced_stocks
+            ORDER BY has_health_score DESC NULLS LAST, symbol ASC
         `);
+        
         const stocks = res.rows;
-        console.log(`📊 Found ${stocks.length} stocks to sync.`);
+        console.log(`📊 Found ${stocks.length} unsynced stocks to process.`);
+
+        if (stocks.length === 0) {
+            console.log("✨ All stocks are already synced. Nothing to do.");
+            return;
+        }
 
         for (let i = 0; i < stocks.length; i++) {
             const sym = stocks[i].symbol;
-            console.log(`[${i + 1}/${stocks.length}] Processing ${sym}...`);
+            process.stdout.write(`[${i + 1}/${stocks.length}] Processing ${sym}... `);
             
             try {
-                // Sync from 2020-01-01 by default
+                // syncStockPER default starts from 2020-01-01
                 await syncStockPER(sym);
+                console.log('✅ Done');
             } catch (err) {
-                console.error(`❌ Failed to sync ${sym}:`, err.message);
+                console.log(`❌ Failed: ${err.message}`);
             }
 
-            // FinMind rate limit consideration: 600 calls / hour per token
-            // With a small delay to be safe
+            // Small delay to be safe with FinMind rate limits
             if (i < stocks.length - 1) {
-                await sleep(2000); 
+                await sleep(1500); 
             }
         }
 
-        console.log("✅ Batch sync completed!");
+        console.log("\n✅ Global sync completed!");
     } catch (err) {
-        console.error("❌ Fatal error during sync:", err);
+        console.error("\n❌ Fatal error during sync:", err);
     } finally {
-        pool.end();
+        await pool.end();
+        process.exit(0);
     }
 }
 

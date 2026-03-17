@@ -461,6 +461,40 @@ async function syncHoldingSharesPer(symbol, date) {
     }
 }
 
+async function syncTradingDate() {
+    const ds = 'TaiwanStockTradingDate';
+    console.log(`🔄 [FinMind] Syncing ${ds}...`);
+    try {
+        const data = await fetchFinMind(ds, '');
+        if (data && data.length > 0) {
+            const client = await pool.connect();
+            try {
+                let count = 0;
+                await client.query('BEGIN');
+                for (const item of data) {
+                    await client.query(`
+                        INSERT INTO trading_dates (date, description)
+                        VALUES ($1, $2)
+                        ON CONFLICT (date) DO UPDATE SET
+                            description = EXCLUDED.description
+                    `, [item.date, String(item.description || '').substring(0, 100)]);
+                    count++;
+                }
+                await client.query('COMMIT');
+                console.log(`✅ [FinMind] Synced ${ds}: ${count}/${data.length} records.`);
+                await updateProgress(ds);
+            } catch (e) {
+                await client.query('ROLLBACK');
+                throw e;
+            } finally {
+                client.release();
+            }
+        }
+    } catch (err) {
+        console.error(`❌ [FinMind] Failed to sync ${ds}:`, err.message);
+    }
+}
+
 module.exports = { 
     syncStockFinancials, 
     syncAllStocksFinancials, 
@@ -469,5 +503,6 @@ module.exports = {
     syncFinancialRatios, 
     syncDetailedFinancials, 
     syncStockPER,
-    syncHoldingSharesPer
+    syncHoldingSharesPer,
+    syncTradingDate
 };

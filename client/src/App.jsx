@@ -218,7 +218,10 @@ function App() {
         ) : currentView === 'market-overview' ? (
           <MarketDashboard onStockSelect={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }} />
         ) : currentView === 'trading' ? (
-          <TradingDashboard />
+          <TradingDashboard 
+            watchlists={watchlists} 
+            watchedSymbols={watchedSymbols} 
+          />
         ) : currentView === 'explorer' ? (
           <RealtimeExplorer onStockSelect={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }} />
         ) : currentView === 'health-ranking' ? (

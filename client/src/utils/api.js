@@ -212,6 +212,23 @@ export async function getRealtimeActive() {
     return res.json();
 }
 
+export async function getRealtimeBatch(symbols) {
+    if (!symbols || symbols.length === 0) return { success: true, data: {} };
+    const res = await fetch(`${API_BASE}/realtime/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbols })
+    });
+    if (!res.ok) throw new Error('獲取批量即時行情失敗');
+    return res.json();
+}
+
+export async function getMarketIndex() {
+    const res = await fetch(`${API_BASE}/realtime/market-index`);
+    if (!res.ok) throw new Error('獲取大盤指數失敗');
+    return res.json();
+}
+
 export async function getIndustries() {
     const res = await fetch(`${API_BASE}/stocks/industries`);
     if (!res.ok) throw new Error('獲取產業清單失敗');
@@ -222,6 +239,13 @@ export async function getHealthHistory(symbol) {
     if (!symbol) return { data: [] };
     const res = await fetch(`${API_BASE}/stock/${symbol}/health-history`);
     if (!res.ok) throw new Error('獲取健診歷史失敗');
+    return res.json();
+}
+
+export async function getQuickDiagnosis(symbol) {
+    if (!symbol) return null;
+    const res = await fetch(`${API_BASE}/stock/${symbol}/quick-diagnosis`);
+    if (!res.ok) throw new Error('獲取快速診斷失敗');
     return res.json();
 }
 

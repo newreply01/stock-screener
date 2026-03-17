@@ -1,14 +1,9 @@
-const { pool } = require('./server/db');
-
-async function main() {
+const { Pool } = require('pg');
+const pool = new Pool({ user: 'postgres', host: 'localhost', database: 'stock_screener', password: 'postgres123', port: 5432 });
+async function run() {
     try {
         const res = await pool.query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
-        const tables = res.rows.map(r => r.table_name);
-        console.log(JSON.stringify(tables, null, 2));
-    } catch(e) {
-        console.error(e);
-    } finally {
-        pool.end();
-    }
+        console.table(res.rows);
+    } catch (err) { console.error(err); } finally { await pool.end(); }
 }
-main();
+run();

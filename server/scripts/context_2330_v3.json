@@ -1,0 +1,182 @@
+{
+  "symbol": "2330",
+  "info": {
+    "name": "台積電",
+    "industry": "電子工業"
+  },
+  "scores": {
+    "momentum": 70,
+    "valuation": 40,
+    "quality": 50,
+    "growth": 50,
+    "volatility": 47.2419346739746,
+    "sentiment": 50,
+    "macro": 50
+  },
+  "prices": [
+    {
+      "id": 693008,
+      "symbol": "2330",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "open_price": "1840",
+      "high_price": "1885",
+      "low_price": "1840",
+      "close_price": "1865",
+      "change_amount": "-20",
+      "change_percent": "-1.0610079575596816",
+      "volume": "36317450",
+      "trade_value": "65658371595",
+      "transactions": 223609,
+      "created_at": "2026-03-13T07:00:02.439Z"
+    },
+    {
+      "id": 669314,
+      "symbol": "2330",
+      "trade_date": "2026-03-11T16:00:00.000Z",
+      "open_price": "1900",
+      "high_price": "1915",
+      "low_price": "1885",
+      "close_price": "1885",
+      "change_amount": "-55",
+      "change_percent": "-2.8350515463917527",
+      "volume": "40662382",
+      "trade_value": "73004000040",
+      "transactions": 236364,
+      "created_at": "2026-03-12T07:00:03.029Z"
+    },
+    {
+      "id": 644662,
+      "symbol": "2330",
+      "trade_date": "2026-03-10T16:00:00.000Z",
+      "open_price": "1885",
+      "high_price": "1950",
+      "low_price": "1875",
+      "close_price": "1940",
+      "change_amount": "90",
+      "change_percent": "4.864864864864865",
+      "volume": "39238328",
+      "trade_value": "74504256490",
+      "transactions": 124201,
+      "created_at": "2026-03-11T07:00:02.792Z"
+    },
+    {
+      "id": 597398,
+      "symbol": "2330",
+      "trade_date": "2026-03-09T16:00:00.000Z",
+      "open_price": "1870",
+      "high_price": "1890",
+      "low_price": "1830",
+      "close_price": "1850",
+      "change_amount": "40",
+      "change_percent": "2.209944751381215",
+      "volume": "46926862",
+      "trade_value": "85392914950",
+      "transactions": 234126,
+      "created_at": "2026-03-10T07:00:03.609Z"
+    },
+    {
+      "id": 609214,
+      "symbol": "2330",
+      "trade_date": "2026-03-08T16:00:00.000Z",
+      "open_price": "1775",
+      "high_price": "1810",
+      "low_price": "1770",
+      "close_price": "1810",
+      "change_amount": "-80",
+      "change_percent": "-4.232804232804233",
+      "volume": "94441296",
+      "trade_value": "169437885289",
+      "transactions": 744799,
+      "created_at": "2026-03-10T09:37:12.741Z"
+    }
+  ],
+  "fundamentals": {
+    "id": 892495,
+    "symbol": "2330",
+    "trade_date": "2026-03-12T16:00:00.000Z",
+    "pe_ratio": "28.16",
+    "dividend_yield": "1.1800",
+    "pb_ratio": "8.92",
+    "created_at": "2026-03-13T13:45:37.067Z"
+  },
+  "institutional": [
+    {
+      "trade_date": "2025-12-30T16:00:00.000Z",
+      "foreign_net": "2766061",
+      "trust_net": "0"
+    },
+    {
+      "trade_date": "2025-12-29T16:00:00.000Z",
+      "foreign_net": "-2180670",
+      "trust_net": "0"
+    },
+    {
+      "trade_date": "2025-12-28T16:00:00.000Z",
+      "foreign_net": "3091188",
+      "trust_net": "0"
+    },
+    {
+      "trade_date": "2025-12-25T16:00:00.000Z",
+      "foreign_net": "2076306",
+      "trust_net": "0"
+    },
+    {
+      "trade_date": "2025-12-23T16:00:00.000Z",
+      "foreign_net": "-2144442",
+      "trust_net": "0"
+    }
+  ],
+  "revenue": [
+    {
+      "id": 379270,
+      "symbol": "2330",
+      "revenue_year": 2026,
+      "revenue_month": 2,
+      "revenue": "317656613000",
+      "created_at": "2026-03-11T15:51:43.848Z"
+    },
+    {
+      "id": 18641,
+      "symbol": "2330",
+      "revenue_year": 2026,
+      "revenue_month": 1,
+      "revenue": "401255128000",
+      "created_at": "2026-02-21T00:37:24.019Z"
+    },
+    {
+      "id": 18640,
+      "symbol": "2330",
+      "revenue_year": 2025,
+      "revenue_month": 12,
+      "revenue": "335003568000",
+      "created_at": "2026-02-21T00:37:24.018Z"
+    }
+  ],
+  "news": [
+    {
+      "title": "慧榮推6奈米新晶片 搶企業級SSD開機碟商機",
+      "summary": "NAND Flash 控制晶片大廠慧榮科技 (SIMO-US) 今 (13) 日宣布推出專為資料中心開機碟儲存應用設計的 PCIe Gen5 x4 NVMe 企業級 SSD 控制晶片，採用台積電 (2330-TW)(TSM-US)",
+      "publish_at": "2026-03-13T10:52:11.000Z"
+    },
+    {
+      "title": "外資買超371億元終於回補台積電 並狂掃友達、群創共42萬張",
+      "summary": "三大法人同站買方，合計買超約 517.8 億元，外資單日買超 371 億元，大買群創 (3481-TW)、友達 (2409-TW) 分別為 31.2 萬張、11.3 萬張，台積電 (2330-TW) 則由賣轉買 5,027 張。",
+      "publish_at": "2026-03-11T12:04:10.000Z"
+    },
+    {
+      "title": "AI、HPC需求續強 台積電2月營收月減20.8%、年增22% 續創同期新高",
+      "summary": "台積電 (2330-TW)(TSM-US) 今 (10) 日公佈 2 月營收，為新台幣 3,176 億 5,700 萬元，月減 20.8%，年增 22.2%，累計前 2 月營收為新台幣 7,189 億 1,200 萬元，年增 2",
+      "publish_at": "2026-03-10T06:26:58.000Z"
+    },
+    {
+      "title": "〈台股開盤〉川普放風停戰 權值股反彈帶勁 漲逾千點站回3萬3拚收復月線",
+      "summary": "台股今 (10) 日在電子權值股回神下，包括台積電 (2330-TW)、聯發科 (2308-TW)、記憶體類股激勵下，早盤一度跳空大漲 1,089 點，衝上 33,199 點站回 3 萬 3 千點大關，盤中暫報 33,189 點漲 3.46%。",
+      "publish_at": "2026-03-10T02:32:59.000Z"
+    },
+    {
+      "title": "台積電2026年預計招8千名員工 碩士工程師起新220萬元",
+      "summary": "台積電 (2330-TW)(TSM-US) 今 (7) 日宣布 2026 年校園徵才活動於本周正式啟動，為了持續支援業務成長與技術開發需求，2026 年預計在台灣招募包含工程師與技術員等約 8,000 名新進同仁，碩士畢業新進工",
+      "publish_at": "2026-03-07T04:46:50.000Z"
+    }
+  ]
+}

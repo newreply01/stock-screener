@@ -37,6 +37,8 @@ async function createTable() {
             eps_growth DECIMAL(10,2),
             avg_cash_dividend DECIMAL(8,2),
             inst_net_buy DECIMAL(12,2),
+            smart_score DECIMAL(5,2),
+            smart_rating VARCHAR(20),
             calc_date DATE NOT NULL,
             created_at TIMESTAMP DEFAULT NOW(),
             UNIQUE(symbol, calc_date)
@@ -175,6 +177,30 @@ async function calcAllScores() {
         if (r.rn == 1) revStatMap[r.stock_id] = parseFloat(r.value) || 0;
     });
 
+    // Batch fetch: Latest technical indicators
+    const indicatorRes = await query(`
+        SELECT DISTINCT ON (symbol) symbol, rsi_14, macd_value, macd_signal, macd_hist, ma_5, ma_20, ma_60,
+               k_value, d_value, upper_band, lower_band, ibs, volume_ratio
+        FROM indicators
+        ORDER BY symbol, trade_date DESC
+    `);
+    const indicatorMap = {};
+    indicatorRes.rows.forEach(r => { indicatorMap[r.symbol] = r; });
+
+    // Batch fetch: 20-day high/low for all stocks
+    const srRes = await query(`
+        SELECT symbol, MAX(high_price) as high_20, MIN(low_price) as low_20
+        FROM (
+            SELECT symbol, high_price, low_price,
+                   ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY trade_date DESC) as rn
+            FROM daily_prices
+        ) t
+        WHERE rn <= 20
+        GROUP BY symbol
+    `);
+    const srMap = {};
+    srRes.rows.forEach(r => { srMap[r.symbol] = r; });
+
     // Now calculate scores for each stock
     let processed = 0;
     let skipped = 0;
@@ -255,6 +281,62 @@ async function calcAllScores() {
         else if (overall >= 45) { grade = '普通'; gradeColor = 'yellow'; }
         else { grade = '待改善'; gradeColor = 'red'; }
 
+        // --- Smart Rating Calculation ---
+        const indicators = indicatorMap[sym] || {};
+        const sr = srMap[sym] || {};
+        
+        // 1. Technical Indicators Signal (-1 to 1)
+        let techScore = 0;
+        
+        // KD Signal
+        const k = parseFloat(indicators.k_value);
+        const d = parseFloat(indicators.d_value);
+        if (!isNaN(k) && !isNaN(d)) {
+            if (k > 80) techScore -= 0.2;
+            else if (k < 20) techScore += 0.2;
+            if (k > d) techScore += 0.2; else techScore -= 0.2;
+        }
+
+        // Bollinger Bands Signal
+        const upper = parseFloat(indicators.upper_band);
+        const lower = parseFloat(indicators.lower_band);
+        if (!isNaN(upper) && !isNaN(lower)) {
+            if (closePrice > upper) techScore -= 0.2;
+            else if (closePrice < lower) techScore += 0.2;
+        }
+
+        // RSI / MACD / MA20
+        const rsi = parseFloat(indicators.rsi_14);
+        if (rsi > 70) techScore -= 0.1; else if (rsi < 30) techScore += 0.1;
+        const macdHist = parseFloat(indicators.macd_hist);
+        if (macdHist > 0) techScore += 0.1; else if (macdHist < 0) techScore -= 0.1;
+        const ma20 = parseFloat(indicators.ma_20);
+        if (closePrice > ma20) techScore += 0.1; else techScore -= 0.1;
+
+        techScore = Math.max(-1, Math.min(1, techScore));
+
+        // 2. Price Position Signal (-1 to 1)
+        let priceLevelScore = 0;
+        const h20 = parseFloat(sr.high_20 || 0);
+        const l20 = parseFloat(sr.low_20 || 0);
+        if (h20 > l20) {
+            const range = h20 - l20;
+            const pos = (closePrice - l20) / range; // 0 to 1
+            priceLevelScore = (0.5 - pos) * 2; // Near low = 1, Near high = -1
+        }
+
+        // 3. Sentiment Signal (Base on Health Score -1 to 1)
+        const sentimentScore = (overall - 50) / 50;
+
+        // Composite Smart Score: Tech 40%, Price 30%, Sentiment 30%
+        const compositeScore = (techScore * 0.4) + (priceLevelScore * 0.3) + (sentimentScore * 0.3);
+        
+        let smartRating = "觀望";
+        if (compositeScore > 0.6) smartRating = "強力買進";
+        else if (compositeScore > 0.15) smartRating = "買進";
+        else if (compositeScore < -0.6) smartRating = "強力賣出";
+        else if (compositeScore < -0.15) smartRating = "賣出";
+
         batchValues.push([
             sym, stock.name, stock.industry, stock.market,
             closePrice, changePct,
@@ -263,6 +345,7 @@ async function calcAllScores() {
             pe, pb, dy, roe.toFixed(2), grossMargin.toFixed(2),
             revenueGrowth.toFixed(2), epsGrowth.toFixed(2),
             avgCashDiv.toFixed(2), (totalBuy / 1000).toFixed(2),
+            compositeScore.toFixed(2), smartRating,
             calcDate
         ]);
         processed++;
@@ -279,8 +362,8 @@ async function calcAllScores() {
     for (let i = 0; i < batchValues.length; i += BATCH_SIZE) {
         const batch = batchValues.slice(i, i + BATCH_SIZE);
         const placeholders = batch.map((_, idx) => {
-            const base = idx * 25;
-            return `(${Array.from({ length: 25 }, (_, j) => `$${base + j + 1}`).join(',')})`;
+            const base = idx * 27;
+            return `(${Array.from({ length: 27 }, (_, j) => `$${base + j + 1}`).join(',')})`;
         }).join(',');
 
         const flatValues = batch.flat();
@@ -292,7 +375,8 @@ async function calcAllScores() {
                  overall_score, grade, grade_color,
                  profit_score, growth_score, safety_score, value_score, dividend_score, chip_score,
                  pe, pb, dividend_yield, roe, gross_margin,
-                 revenue_growth, eps_growth, avg_cash_dividend, inst_net_buy, calc_date)
+                 revenue_growth, eps_growth, avg_cash_dividend, inst_net_buy, 
+                 smart_score, smart_rating, calc_date)
                 VALUES ${placeholders}
                 ON CONFLICT (symbol, calc_date) DO UPDATE SET
                     name = EXCLUDED.name,
@@ -318,6 +402,8 @@ async function calcAllScores() {
                     eps_growth = EXCLUDED.eps_growth,
                     avg_cash_dividend = EXCLUDED.avg_cash_dividend,
                     inst_net_buy = EXCLUDED.inst_net_buy,
+                    smart_score = EXCLUDED.smart_score,
+                    smart_rating = EXCLUDED.smart_rating,
                     created_at = NOW()
             `, flatValues);
         } catch (err) {

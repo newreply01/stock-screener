@@ -1,0 +1,3905 @@
+[
+  {
+    "symbol": "2615",
+    "info": {
+      "name": "萬海",
+      "industry": "航運業"
+    },
+    "prices": [
+      {
+        "id": 693168,
+        "symbol": "2615",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "80.6",
+        "high_price": "81",
+        "low_price": "78.3",
+        "close_price": "78.7",
+        "change_amount": "-1.3",
+        "change_percent": "-1.625",
+        "volume": "11393510",
+        "trade_value": "899207309",
+        "transactions": 9868,
+        "created_at": "2026-03-13T07:00:02.984Z",
+        "rsi_14": "51.44",
+        "macd_hist": "0.14",
+        "ma_5": "79.76",
+        "ma_10": "80.45",
+        "ma_20": "77.82",
+        "ma_60": "77.66",
+        "patterns": []
+      },
+      {
+        "id": 669474,
+        "symbol": "2615",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "81.8",
+        "high_price": "82.5",
+        "low_price": "79.8",
+        "close_price": "80",
+        "change_amount": "0.2",
+        "change_percent": "0.25062656641604014",
+        "volume": "17797908",
+        "trade_value": "1440358185",
+        "transactions": 11322,
+        "created_at": "2026-03-12T07:00:03.632Z",
+        "rsi_14": "54.91",
+        "macd_hist": "0.29",
+        "ma_5": "79.74",
+        "ma_10": "80.22",
+        "ma_20": "77.56",
+        "ma_60": "77.68",
+        "patterns": []
+      },
+      {
+        "id": 644822,
+        "symbol": "2615",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "79.9",
+        "high_price": "80.4",
+        "low_price": "78.8",
+        "close_price": "79.8",
+        "change_amount": "0.6",
+        "change_percent": "0.7575757575757575",
+        "volume": "17817593",
+        "trade_value": "1421682151",
+        "transactions": 10281,
+        "created_at": "2026-03-11T07:00:03.498Z",
+        "rsi_14": "54.47",
+        "macd_hist": "0.37",
+        "ma_5": "79.48",
+        "ma_10": "79.86",
+        "ma_20": "77.24",
+        "ma_60": "77.69",
+        "patterns": []
+      },
+      {
+        "id": 597558,
+        "symbol": "2615",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "80",
+        "high_price": "80.3",
+        "low_price": "77.6",
+        "close_price": "79.2",
+        "change_amount": "-1.9",
+        "change_percent": "-2.3427866831072746",
+        "volume": "22157022",
+        "trade_value": "1746122299",
+        "transactions": 15157,
+        "created_at": "2026-03-10T07:00:04.207Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 609374,
+        "symbol": "2615",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "78.1",
+        "high_price": "84.8",
+        "low_price": "76.6",
+        "close_price": "81.1",
+        "change_amount": "2.5",
+        "change_percent": "3.1806615776081424",
+        "volume": "75213172",
+        "trade_value": "6133513997",
+        "transactions": 43950,
+        "created_at": "2026-03-10T09:37:13.391Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 892655,
+      "symbol": "2615",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "7.02",
+      "dividend_yield": "3.8100",
+      "pb_ratio": "0.80",
+      "created_at": "2026-03-13T13:45:37.615Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "-303408",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "-175958",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "1876698",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "2622191",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "-1877995",
+        "trust_net": "0",
+        "dealer_net": "0"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 415366,
+        "symbol": "2615",
+        "revenue_year": 2026,
+        "revenue_month": 2,
+        "revenue": "10580264000",
+        "created_at": "2026-03-14T06:23:24.926Z"
+      },
+      {
+        "id": 287140,
+        "symbol": "2615",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "12537769000",
+        "created_at": "2026-02-27T22:45:13.156Z"
+      },
+      {
+        "id": 287139,
+        "symbol": "2615",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "12079080000",
+        "created_at": "2026-02-27T22:45:13.155Z"
+      }
+    ],
+    "news": []
+  },
+  {
+    "symbol": "2605",
+    "info": {
+      "name": "新興",
+      "industry": "航運業"
+    },
+    "prices": [
+      {
+        "id": 693158,
+        "symbol": "2605",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "36",
+        "high_price": "36.3",
+        "low_price": "33.6",
+        "close_price": "34.75",
+        "change_amount": "-0.75",
+        "change_percent": "-2.112676056338028",
+        "volume": "26022334",
+        "trade_value": "901966333",
+        "transactions": 12035,
+        "created_at": "2026-03-13T07:00:02.950Z",
+        "rsi_14": "60.01",
+        "macd_hist": "0.01",
+        "ma_5": "34.39",
+        "ma_10": "35.08",
+        "ma_20": "32.52",
+        "ma_60": "29.14",
+        "patterns": [
+          "bearish_engulfing"
+        ]
+      },
+      {
+        "id": 669464,
+        "symbol": "2605",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "34.85",
+        "high_price": "36.65",
+        "low_price": "34.75",
+        "close_price": "35.5",
+        "change_amount": "1.05",
+        "change_percent": "3.047895500725689",
+        "volume": "26585659",
+        "trade_value": "949604856",
+        "transactions": 13590,
+        "created_at": "2026-03-12T07:00:03.596Z",
+        "rsi_14": "63.55",
+        "macd_hist": "0.07",
+        "ma_5": "34.24",
+        "ma_10": "34.98",
+        "ma_20": "32.22",
+        "ma_60": "29.03",
+        "patterns": []
+      },
+      {
+        "id": 644812,
+        "symbol": "2605",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "33.3",
+        "high_price": "34.5",
+        "low_price": "33.15",
+        "close_price": "34.45",
+        "change_amount": "1.3",
+        "change_percent": "3.92156862745098",
+        "volume": "17124443",
+        "trade_value": "582446110",
+        "transactions": 8041,
+        "created_at": "2026-03-11T07:00:03.456Z",
+        "rsi_14": "60.52",
+        "macd_hist": "0.05",
+        "ma_5": "34.13",
+        "ma_10": "34.72",
+        "ma_20": "31.83",
+        "ma_60": "28.96",
+        "patterns": []
+      },
+      {
+        "id": 597548,
+        "symbol": "2605",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "33.7",
+        "high_price": "35.35",
+        "low_price": "32.6",
+        "close_price": "33.15",
+        "change_amount": "-0.95",
+        "change_percent": "-2.785923753665689",
+        "volume": "28165073",
+        "trade_value": "940462414",
+        "transactions": 11517,
+        "created_at": "2026-03-10T07:00:04.168Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 609364,
+        "symbol": "2605",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "33.3",
+        "high_price": "35.35",
+        "low_price": "32.3",
+        "close_price": "34.1",
+        "change_amount": "0.1",
+        "change_percent": "0.29411764705882354",
+        "volume": "50940587",
+        "trade_value": "1730074222",
+        "transactions": 22391,
+        "created_at": "2026-03-10T09:37:13.356Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 892645,
+      "symbol": "2605",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "23.97",
+      "dividend_yield": "2.8800",
+      "pb_ratio": "1.16",
+      "created_at": "2026-03-13T13:45:37.581Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "-1799000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "1124000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "1184000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "1525147",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "1655000",
+        "trust_net": "0",
+        "dealer_net": "49000"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 414616,
+        "symbol": "2605",
+        "revenue_year": 2026,
+        "revenue_month": 2,
+        "revenue": "436531000",
+        "created_at": "2026-03-14T06:17:51.577Z"
+      },
+      {
+        "id": 286520,
+        "symbol": "2605",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "397771000",
+        "created_at": "2026-02-27T22:43:04.669Z"
+      },
+      {
+        "id": 286519,
+        "symbol": "2605",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "492218000",
+        "created_at": "2026-02-27T22:43:04.667Z"
+      }
+    ],
+    "news": [
+      {
+        "title": "營收速報  - 新興(2605)2月營收4.37億元年增率高達87.46％",
+        "summary": "2026年2月新興(2605-TW) 營收年增成長87.46% , 盤後股價為33.15元",
+        "publish_at": "2026-03-10T06:31:10.000Z"
+      },
+      {
+        "title": "〈港股盤後〉3月開局重挫  恒指跌逾2%險守二萬六 油金板塊逆市狂飆",
+        "summary": "港股市場在 3 月首個交易日遭遇劇烈震盪，受到中東地緣政治局勢驟然升溫影響，主要指數全線低開低走。恒生指數周一 (2 日) 下跌 570 點，跌幅 2.14%，收報 26059.85 點，險守二萬六關口；恒生科技指數重挫 2.89%，收報 49",
+        "publish_at": "2026-03-02T08:36:51.000Z"
+      },
+      {
+        "title": "鉅亨速報 - Factset 最新調查：新興(2605-TW)目標價調升至32元，幅度約6.67%",
+        "summary": "FactSet 最新調查：新興(2605-TW)目標價調升，最高估值、最低估值、中位數、綜合評級、近5日股價、大盤表現、即時新聞資訊。",
+        "publish_at": "2026-02-24T00:10:23.000Z"
+      }
+    ]
+  },
+  {
+    "symbol": "1402",
+    "info": {
+      "name": "遠東新",
+      "industry": "紡織纖維"
+    },
+    "prices": [
+      {
+        "id": 692782,
+        "symbol": "1402",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "27.85",
+        "high_price": "28.05",
+        "low_price": "27.3",
+        "close_price": "27.3",
+        "change_amount": "-0.65",
+        "change_percent": "-2.3255813953488373",
+        "volume": "25829529",
+        "trade_value": "710715249",
+        "transactions": 10393,
+        "created_at": "2026-03-13T07:00:01.703Z",
+        "rsi_14": "39.79",
+        "macd_hist": "-0.11",
+        "ma_5": "28.20",
+        "ma_10": "28.47",
+        "ma_20": "28.40",
+        "ma_60": "28.23",
+        "patterns": []
+      },
+      {
+        "id": 669088,
+        "symbol": "1402",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "28.4",
+        "high_price": "28.6",
+        "low_price": "27.9",
+        "close_price": "27.95",
+        "change_amount": "-0.5",
+        "change_percent": "-1.7574692442882252",
+        "volume": "17770706",
+        "trade_value": "481239676",
+        "transactions": 6808,
+        "created_at": "2026-03-12T07:00:02.130Z",
+        "rsi_14": "45.23",
+        "macd_hist": "-0.04",
+        "ma_5": "28.59",
+        "ma_10": "28.62",
+        "ma_20": "28.42",
+        "ma_60": "28.26",
+        "patterns": []
+      },
+      {
+        "id": 644436,
+        "symbol": "1402",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "28.6",
+        "high_price": "28.85",
+        "low_price": "28.45",
+        "close_price": "28.45",
+        "change_amount": "-0.15",
+        "change_percent": "-0.5244755244755245",
+        "volume": "7990179",
+        "trade_value": "228333956",
+        "transactions": 3076,
+        "created_at": "2026-03-11T07:00:01.758Z",
+        "rsi_14": "50.11",
+        "macd_hist": "0.00",
+        "ma_5": "28.58",
+        "ma_10": "28.67",
+        "ma_20": "28.41",
+        "ma_60": "28.27",
+        "patterns": []
+      },
+      {
+        "id": 597172,
+        "symbol": "1402",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "28.7",
+        "high_price": "28.85",
+        "low_price": "28.45",
+        "close_price": "28.6",
+        "change_amount": "-0.1",
+        "change_percent": "-0.34843205574912894",
+        "volume": "8233152",
+        "trade_value": "235582216",
+        "transactions": 3134,
+        "created_at": "2026-03-10T07:00:02.736Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 608988,
+        "symbol": "1402",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "28.65",
+        "high_price": "29.7",
+        "low_price": "28.25",
+        "close_price": "28.7",
+        "change_amount": "-0.55",
+        "change_percent": "-1.8803418803418805",
+        "volume": "15941343",
+        "trade_value": "457042586",
+        "transactions": 6284,
+        "created_at": "2026-03-10T09:37:11.846Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 892269,
+      "symbol": "1402",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "17.28",
+      "dividend_yield": "4.5800",
+      "pb_ratio": "0.65",
+      "created_at": "2026-03-13T13:45:36.323Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "-647805",
+        "trust_net": "0",
+        "dealer_net": "25000"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "-289000",
+        "trust_net": "0",
+        "dealer_net": "56000"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "1205614",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "-1664383",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "-1827000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 6448,
+        "symbol": "1402",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "21993415000",
+        "created_at": "2026-02-20T22:37:14.507Z"
+      },
+      {
+        "id": 6447,
+        "symbol": "1402",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "23787210000",
+        "created_at": "2026-02-20T22:37:14.504Z"
+      },
+      {
+        "id": 6446,
+        "symbol": "1402",
+        "revenue_year": 2025,
+        "revenue_month": 11,
+        "revenue": "21519377000",
+        "created_at": "2026-02-20T22:37:14.501Z"
+      }
+    ],
+    "news": [
+      {
+        "title": "盤中速報 - 集中市場加權指數上漲1402.16點至34174.03點，漲幅4.28%",
+        "summary": "集中市場加權指數盤中漲幅4.28%，DRAM模組、車用記憶體概念表現強勁。快同時查看近日週月績效與即時新聞資訊。",
+        "publish_at": "2026-03-11T03:44:53.000Z"
+      }
+    ]
+  },
+  {
+    "symbol": "1309",
+    "info": {
+      "name": "台達化",
+      "industry": "塑膠工業"
+    },
+    "prices": [
+      {
+        "id": 692763,
+        "symbol": "1309",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "16.15",
+        "high_price": "16.6",
+        "low_price": "15.2",
+        "close_price": "15.3",
+        "change_amount": "0.2",
+        "change_percent": "1.3245033112582782",
+        "volume": "25307585",
+        "trade_value": "399849782",
+        "transactions": 10063,
+        "created_at": "2026-03-13T07:00:01.637Z",
+        "rsi_14": "66.11",
+        "macd_hist": "0.24",
+        "ma_5": "14.69",
+        "ma_10": "13.86",
+        "ma_20": "13.04",
+        "ma_60": "12.11",
+        "patterns": []
+      },
+      {
+        "id": 669069,
+        "symbol": "1309",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "14.5",
+        "high_price": "15.1",
+        "low_price": "13.95",
+        "close_price": "15.1",
+        "change_amount": "1.35",
+        "change_percent": "9.818181818181818",
+        "volume": "13535679",
+        "trade_value": "197942865",
+        "transactions": 5737,
+        "created_at": "2026-03-12T07:00:02.058Z",
+        "rsi_14": "65.16",
+        "macd_hist": "0.22",
+        "ma_5": "14.42",
+        "ma_10": "13.58",
+        "ma_20": "12.86",
+        "ma_60": "12.05",
+        "patterns": [
+          "hammer"
+        ]
+      },
+      {
+        "id": 644417,
+        "symbol": "1309",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "13.6",
+        "high_price": "13.85",
+        "low_price": "13.15",
+        "close_price": "13.75",
+        "change_amount": "-0.25",
+        "change_percent": "-1.7857142857142856",
+        "volume": "9416661",
+        "trade_value": "126826750",
+        "transactions": 3842,
+        "created_at": "2026-03-11T07:00:01.654Z",
+        "rsi_14": "57.80",
+        "macd_hist": "0.17",
+        "ma_5": "13.94",
+        "ma_10": "13.34",
+        "ma_20": "12.68",
+        "ma_60": "12.01",
+        "patterns": []
+      },
+      {
+        "id": 597153,
+        "symbol": "1309",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "13.8",
+        "high_price": "14.8",
+        "low_price": "13.8",
+        "close_price": "14",
+        "change_amount": "-1.3",
+        "change_percent": "-8.49673202614379",
+        "volume": "14581506",
+        "trade_value": "204654482",
+        "transactions": 5870,
+        "created_at": "2026-03-10T07:00:02.663Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 608969,
+        "symbol": "1309",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "15.3",
+        "high_price": "15.3",
+        "low_price": "14.15",
+        "close_price": "15.3",
+        "change_amount": "1.35",
+        "change_percent": "9.67741935483871",
+        "volume": "26060273",
+        "trade_value": "393964197",
+        "transactions": 8263,
+        "created_at": "2026-03-10T09:37:11.760Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 892250,
+      "symbol": "1309",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "0.00",
+      "dividend_yield": "0.9800",
+      "pb_ratio": "1.07",
+      "created_at": "2026-03-13T13:45:36.264Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "-124000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "10000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "164000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "-186310",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "-301000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 354743,
+        "symbol": "1309",
+        "revenue_year": 2026,
+        "revenue_month": 2,
+        "revenue": "824009000",
+        "created_at": "2026-03-06T22:11:29.840Z"
+      },
+      {
+        "id": 2108,
+        "symbol": "1309",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "1135298000",
+        "created_at": "2026-02-20T18:29:41.387Z"
+      },
+      {
+        "id": 2107,
+        "symbol": "1309",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "1042274000",
+        "created_at": "2026-02-20T18:29:41.384Z"
+      }
+    ],
+    "news": []
+  },
+  {
+    "symbol": "1409",
+    "info": {
+      "name": "新纖",
+      "industry": "紡織纖維"
+    },
+    "prices": [
+      {
+        "id": 692783,
+        "symbol": "1409",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "16.05",
+        "high_price": "16.5",
+        "low_price": "15.75",
+        "close_price": "16.45",
+        "change_amount": "0.65",
+        "change_percent": "4.113924050632912",
+        "volume": "25092919",
+        "trade_value": "407743827",
+        "transactions": 8100,
+        "created_at": "2026-03-13T07:00:01.706Z",
+        "rsi_14": "64.65",
+        "macd_hist": "0.10",
+        "ma_5": "15.50",
+        "ma_10": "15.28",
+        "ma_20": "15.29",
+        "ma_60": "15.17",
+        "patterns": []
+      },
+      {
+        "id": 669089,
+        "symbol": "1409",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "15.05",
+        "high_price": "16.2",
+        "low_price": "15.05",
+        "close_price": "15.8",
+        "change_amount": "0.6",
+        "change_percent": "3.9473684210526314",
+        "volume": "12354272",
+        "trade_value": "193569212",
+        "transactions": 3866,
+        "created_at": "2026-03-12T07:00:02.133Z",
+        "rsi_14": "58.24",
+        "macd_hist": "0.03",
+        "ma_5": "15.32",
+        "ma_10": "15.19",
+        "ma_20": "15.21",
+        "ma_60": "15.15",
+        "patterns": []
+      },
+      {
+        "id": 644437,
+        "symbol": "1409",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "15.05",
+        "high_price": "15.2",
+        "low_price": "15",
+        "close_price": "15.2",
+        "change_amount": "0.15",
+        "change_percent": "0.9966777408637875",
+        "volume": "3091695",
+        "trade_value": "46678335",
+        "transactions": 1036,
+        "created_at": "2026-03-11T07:00:01.762Z",
+        "rsi_14": "50.55",
+        "macd_hist": "-0.02",
+        "ma_5": "15.14",
+        "ma_10": "15.17",
+        "ma_20": "15.15",
+        "ma_60": "15.14",
+        "patterns": []
+      },
+      {
+        "id": 597173,
+        "symbol": "1409",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "15.1",
+        "high_price": "15.2",
+        "low_price": "14.95",
+        "close_price": "15.05",
+        "change_amount": "0.05",
+        "change_percent": "0.33333333333333337",
+        "volume": "3682258",
+        "trade_value": "55527607",
+        "transactions": 1302,
+        "created_at": "2026-03-10T07:00:02.740Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 608989,
+        "symbol": "1409",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "15.05",
+        "high_price": "15.35",
+        "low_price": "14.8",
+        "close_price": "15",
+        "change_amount": "-0.55",
+        "change_percent": "-3.536977491961415",
+        "volume": "5269617",
+        "trade_value": "78979055",
+        "transactions": 2256,
+        "created_at": "2026-03-10T09:37:11.849Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 892270,
+      "symbol": "1409",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "13.82",
+      "dividend_yield": "5.4700",
+      "pb_ratio": "0.67",
+      "created_at": "2026-03-13T13:45:36.326Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "-651000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "713000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "558500",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "-318000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "-2046000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 384518,
+        "symbol": "1409",
+        "revenue_year": 2026,
+        "revenue_month": 2,
+        "revenue": "2768316000",
+        "created_at": "2026-03-13T22:02:13.625Z"
+      },
+      {
+        "id": 6510,
+        "symbol": "1409",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "3334219000",
+        "created_at": "2026-02-20T22:37:21.050Z"
+      },
+      {
+        "id": 6509,
+        "symbol": "1409",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "3085248000",
+        "created_at": "2026-02-20T22:37:21.048Z"
+      }
+    ],
+    "news": []
+  },
+  {
+    "symbol": "4958",
+    "info": {
+      "name": "臻鼎-KY",
+      "industry": "電子工業"
+    },
+    "prices": [
+      {
+        "id": 693449,
+        "symbol": "4958",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "169.5",
+        "high_price": "188.5",
+        "low_price": "168.5",
+        "close_price": "188.5",
+        "change_amount": "17",
+        "change_percent": "9.912536443148689",
+        "volume": "24900754",
+        "trade_value": "4584258540",
+        "transactions": 17955,
+        "created_at": "2026-03-13T07:00:03.952Z",
+        "rsi_14": "54.86",
+        "macd_hist": "-2.52",
+        "ma_5": "173.00",
+        "ma_10": "178.70",
+        "ma_20": "185.98",
+        "ma_60": "165.30",
+        "patterns": [
+          "bullish_engulfing",
+          "piercing_line"
+        ]
+      },
+      {
+        "id": 669755,
+        "symbol": "4958",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "172.5",
+        "high_price": "178",
+        "low_price": "170.5",
+        "close_price": "171.5",
+        "change_amount": "-3",
+        "change_percent": "-1.7191977077363898",
+        "volume": "7439938",
+        "trade_value": "1289874892",
+        "transactions": 7604,
+        "created_at": "2026-03-12T07:00:04.626Z",
+        "rsi_14": "46.01",
+        "macd_hist": "-3.95",
+        "ma_5": "170.30",
+        "ma_10": "180.75",
+        "ma_20": "185.60",
+        "ma_60": "164.62",
+        "patterns": []
+      },
+      {
+        "id": 645103,
+        "symbol": "4958",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "170",
+        "high_price": "175.5",
+        "low_price": "170",
+        "close_price": "174.5",
+        "change_amount": "6.5",
+        "change_percent": "3.869047619047619",
+        "volume": "11193008",
+        "trade_value": "1944846513",
+        "transactions": 9412,
+        "created_at": "2026-03-11T07:00:04.696Z",
+        "rsi_14": "47.53",
+        "macd_hist": "-4.22",
+        "ma_5": "171.50",
+        "ma_10": "184.15",
+        "ma_20": "186.20",
+        "ma_60": "164.18",
+        "patterns": []
+      },
+      {
+        "id": 597839,
+        "symbol": "4958",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "168.5",
+        "high_price": "170.5",
+        "low_price": "164",
+        "close_price": "168",
+        "change_amount": "5.5",
+        "change_percent": "3.3846153846153846",
+        "volume": "14431837",
+        "trade_value": "2417690791",
+        "transactions": 11461,
+        "created_at": "2026-03-10T07:00:05.251Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 609655,
+        "symbol": "4958",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "157.5",
+        "high_price": "163",
+        "low_price": "157.5",
+        "close_price": "162.5",
+        "change_amount": "-12.5",
+        "change_percent": "-7.142857142857142",
+        "volume": "20587818",
+        "trade_value": "3274075402",
+        "transactions": 14492,
+        "created_at": "2026-03-10T09:37:14.474Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 892936,
+      "symbol": "4958",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "29.69",
+      "dividend_yield": "1.8300",
+      "pb_ratio": "1.63",
+      "created_at": "2026-03-13T13:45:38.567Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "1720134",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "2570000",
+        "trust_net": "0",
+        "dealer_net": "5000"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "514686",
+        "trust_net": "0",
+        "dealer_net": "2000"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "5208093",
+        "trust_net": "0",
+        "dealer_net": "74000"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "6116501",
+        "trust_net": "0",
+        "dealer_net": "2000"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 459153,
+        "symbol": "4958",
+        "revenue_year": 2026,
+        "revenue_month": 2,
+        "revenue": "11720507000",
+        "created_at": "2026-03-14T19:31:38.939Z"
+      },
+      {
+        "id": 323833,
+        "symbol": "4958",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "13564440000",
+        "created_at": "2026-02-28T02:17:48.618Z"
+      },
+      {
+        "id": 323832,
+        "symbol": "4958",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "19321296000",
+        "created_at": "2026-02-28T02:17:48.615Z"
+      }
+    ],
+    "news": [
+      {
+        "title": "〈臻鼎營運展望〉IC載板需求夯 旗下禮鼎科技也有上市掛牌規劃",
+        "summary": "在 AI 需求的驅動之下，引爆 IC 載板需求的直線飆升，繼欣興 (3037-TW) 旗下蘇州群策科技擬尋求在香港主板以 H 股 掛牌後，臻鼎 - KY(4958-TW) 旗下的純載板廠禮鼎科技，除計畫再蓋廠擴產之外，也將進一步提出上市掛牌案",
+        "publish_at": "2026-03-12T09:47:53.000Z"
+      },
+      {
+        "title": "〈臻鼎營運展望〉規劃今、明兩年的資本支出規模將超越千億元大關",
+        "summary": "臻鼎 - KY(4958-TW) 今 (12) 日召開法說會，臻鼎目前正處於成立以來規模最大的產能擴充期，2026 年資本支出規模預計達 500 億元以上，董事長沈慶芳指出，臻鼎在台灣、中國大陸及泰國加速投資，預計兩年投資逾千億元。",
+        "publish_at": "2026-03-12T08:46:44.000Z"
+      },
+      {
+        "title": "〈臻鼎營運展望〉營收連續蟬聯全球全球PCB廠第一 新黃金10年正啟動",
+        "summary": "臻鼎 - KY(4958-TW) 今 (12) 日召開法說會，臻鼎 - KY 在 2025 年全年營收 1825.22 億元，創歷年新高，並蟬聯第九年全球第一大 PCB 製造廠，同時，臻鼎認為 2025 年至 2035 年爲「黃金 10 年」。",
+        "publish_at": "2026-03-12T08:15:11.000Z"
+      },
+      {
+        "title": "〈臻鼎營運展望〉去年稅後純益67.91億元EPS達6.91元 擬配息3.45元",
+        "summary": "臻鼎 - KY(4958-TW) 今 (12) 日通過最新財報及配息案，2025 年臻鼎 - KY 財報稅後純益 67.91 億元，年減 26.03%，每股純益爲 6.91 元，同時臻鼎 - KY 董事會並通過去年盈餘配發 3.45 元股息。",
+        "publish_at": "2026-03-12T07:52:45.000Z"
+      },
+      {
+        "title": "鉅亨速報 - Factset 最新調查：臻鼎-KY(4958-TW)EPS預估下修至7.3元，預估目標價為172元",
+        "summary": "FactSet 最新調查：臻鼎-KY(4958-TW)EPS預估下修，預估EPS、預估營收、目標價、歷史獲利表現、即時新聞資訊。",
+        "publish_at": "2026-03-12T04:11:34.000Z"
+      }
+    ]
+  },
+  {
+    "symbol": "1717",
+    "info": {
+      "name": "長興",
+      "industry": "化學生技醫療"
+    },
+    "prices": [
+      {
+        "id": 692894,
+        "symbol": "1717",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "62.3",
+        "high_price": "65.9",
+        "low_price": "61.2",
+        "close_price": "64.7",
+        "change_amount": "1.3",
+        "change_percent": "2.0504731861198735",
+        "volume": "24504259",
+        "trade_value": "1574762431",
+        "transactions": 15819,
+        "created_at": "2026-03-13T07:00:02.065Z",
+        "rsi_14": "56.28",
+        "macd_hist": "-0.10",
+        "ma_5": "61.56",
+        "ma_10": "62.42",
+        "ma_20": "60.81",
+        "ma_60": "54.57",
+        "patterns": [
+          "bullish_engulfing",
+          "piercing_line"
+        ]
+      },
+      {
+        "id": 669200,
+        "symbol": "1717",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "63.6",
+        "high_price": "66",
+        "low_price": "62.5",
+        "close_price": "63.4",
+        "change_amount": "-0.4",
+        "change_percent": "-0.6269592476489029",
+        "volume": "26743577",
+        "trade_value": "1709170951",
+        "transactions": 16268,
+        "created_at": "2026-03-12T07:00:02.603Z",
+        "rsi_14": "54.59",
+        "macd_hist": "-0.28",
+        "ma_5": "61.18",
+        "ma_10": "62.85",
+        "ma_20": "60.40",
+        "ma_60": "54.16",
+        "patterns": []
+      },
+      {
+        "id": 644548,
+        "symbol": "1717",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "59",
+        "high_price": "64.1",
+        "low_price": "59",
+        "close_price": "63.8",
+        "change_amount": "5.5",
+        "change_percent": "9.433962264150944",
+        "volume": "20108438",
+        "trade_value": "1258164394",
+        "transactions": 15777,
+        "created_at": "2026-03-11T07:00:02.282Z",
+        "rsi_14": "55.20",
+        "macd_hist": "-0.43",
+        "ma_5": "60.76",
+        "ma_10": "62.79",
+        "ma_20": "60.08",
+        "ma_60": "53.76",
+        "patterns": []
+      },
+      {
+        "id": 597284,
+        "symbol": "1717",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "59",
+        "high_price": "59.8",
+        "low_price": "57.4",
+        "close_price": "58.3",
+        "change_amount": "0.7",
+        "change_percent": "1.215277777777778",
+        "volume": "15195149",
+        "trade_value": "891117972",
+        "transactions": 9325,
+        "created_at": "2026-03-10T07:00:03.202Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 609100,
+        "symbol": "1717",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "57.9",
+        "high_price": "58.5",
+        "low_price": "56.6",
+        "close_price": "57.6",
+        "change_amount": "-5.2",
+        "change_percent": "-8.280254777070063",
+        "volume": "19043011",
+        "trade_value": "1092804976",
+        "transactions": 12629,
+        "created_at": "2026-03-10T09:37:12.290Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 892381,
+      "symbol": "1717",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "45.89",
+      "dividend_yield": "1.8500",
+      "pb_ratio": "2.74",
+      "created_at": "2026-03-13T13:45:36.684Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "460889",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "16000",
+        "trust_net": "0",
+        "dealer_net": "68000"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "1402000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "-401380",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "-360500",
+        "trust_net": "0",
+        "dealer_net": "0"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 393580,
+        "symbol": "1717",
+        "revenue_year": 2026,
+        "revenue_month": 2,
+        "revenue": "2436388000",
+        "created_at": "2026-03-14T00:14:44.162Z"
+      },
+      {
+        "id": 14618,
+        "symbol": "1717",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "3889579000",
+        "created_at": "2026-02-21T00:24:54.972Z"
+      },
+      {
+        "id": 14617,
+        "symbol": "1717",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "3723693000",
+        "created_at": "2026-02-21T00:24:54.970Z"
+      }
+    ],
+    "news": []
+  },
+  {
+    "symbol": "2323",
+    "info": {
+      "name": "中環",
+      "industry": "光電業"
+    },
+    "prices": [
+      {
+        "id": 693003,
+        "symbol": "2323",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "11",
+        "high_price": "11.05",
+        "low_price": "10.4",
+        "close_price": "10.5",
+        "change_amount": "-0.9",
+        "change_percent": "-7.894736842105263",
+        "volume": "24504086",
+        "trade_value": "260322011",
+        "transactions": 6549,
+        "created_at": "2026-03-13T07:00:02.422Z",
+        "rsi_14": "47.26",
+        "macd_hist": "0.02",
+        "ma_5": "10.84",
+        "ma_10": "10.82",
+        "ma_20": "10.68",
+        "ma_60": "10.71",
+        "patterns": []
+      },
+      {
+        "id": 669309,
+        "symbol": "2323",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "11.35",
+        "high_price": "11.5",
+        "low_price": "11.2",
+        "close_price": "11.4",
+        "change_amount": "0.1",
+        "change_percent": "0.8849557522123894",
+        "volume": "10921411",
+        "trade_value": "124074594",
+        "transactions": 2837,
+        "created_at": "2026-03-12T07:00:03.013Z",
+        "rsi_14": "58.28",
+        "macd_hist": "0.06",
+        "ma_5": "10.95",
+        "ma_10": "10.90",
+        "ma_20": "10.67",
+        "ma_60": "10.69",
+        "patterns": []
+      },
+      {
+        "id": 644657,
+        "symbol": "2323",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "10.75",
+        "high_price": "11.45",
+        "low_price": "10.75",
+        "close_price": "11.3",
+        "change_amount": "0.7",
+        "change_percent": "6.6037735849056585",
+        "volume": "15458895",
+        "trade_value": "173320975",
+        "transactions": 3983,
+        "created_at": "2026-03-11T07:00:02.768Z",
+        "rsi_14": "57.25",
+        "macd_hist": "0.03",
+        "ma_5": "10.79",
+        "ma_10": "10.87",
+        "ma_20": "10.62",
+        "ma_60": "10.66",
+        "patterns": []
+      },
+      {
+        "id": 597393,
+        "symbol": "2323",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "10.65",
+        "high_price": "10.8",
+        "low_price": "10.5",
+        "close_price": "10.6",
+        "change_amount": "0.2",
+        "change_percent": "1.9230769230769231",
+        "volume": "4606187",
+        "trade_value": "49081868",
+        "transactions": 1351,
+        "created_at": "2026-03-10T07:00:03.584Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 609209,
+        "symbol": "2323",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "10.35",
+        "high_price": "10.5",
+        "low_price": "10.2",
+        "close_price": "10.4",
+        "change_amount": "-0.65",
+        "change_percent": "-5.88235294117647",
+        "volume": "7184656",
+        "trade_value": "74347622",
+        "transactions": 2200,
+        "created_at": "2026-03-10T09:37:12.726Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 892490,
+      "symbol": "2323",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "0.00",
+      "dividend_yield": "1.9000",
+      "pb_ratio": "0.65",
+      "created_at": "2026-03-13T13:45:37.049Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "93000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "3570000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "-1779000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "1657000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "-205000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 403247,
+        "symbol": "2323",
+        "revenue_year": 2026,
+        "revenue_month": 2,
+        "revenue": "661384000",
+        "created_at": "2026-03-14T03:10:10.527Z"
+      },
+      {
+        "id": 18331,
+        "symbol": "2323",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "753383000",
+        "created_at": "2026-02-21T00:36:51.214Z"
+      },
+      {
+        "id": 18330,
+        "symbol": "2323",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "609857000",
+        "created_at": "2026-02-21T00:36:51.213Z"
+      }
+    ],
+    "news": []
+  },
+  {
+    "symbol": "3059",
+    "info": {
+      "name": "華晶科",
+      "industry": "電子工業"
+    },
+    "prices": [
+      {
+        "id": 693289,
+        "symbol": "3059",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "37.25",
+        "high_price": "37.75",
+        "low_price": "36.9",
+        "close_price": "37.45",
+        "change_amount": "-0.05",
+        "change_percent": "-0.13333333333333336",
+        "volume": "1048218",
+        "trade_value": "39166374",
+        "transactions": 914,
+        "created_at": "2026-03-13T07:00:03.408Z",
+        "rsi_14": "43.57",
+        "macd_hist": "-0.05",
+        "ma_5": "37.28",
+        "ma_10": "37.80",
+        "ma_20": "38.35",
+        "ma_60": "40.10",
+        "patterns": []
+      },
+      {
+        "id": 669595,
+        "symbol": "3059",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "37.9",
+        "high_price": "38.25",
+        "low_price": "37.2",
+        "close_price": "37.5",
+        "change_amount": "-0.6",
+        "change_percent": "-1.574803149606299",
+        "volume": "1261161",
+        "trade_value": "47500571",
+        "transactions": 1331,
+        "created_at": "2026-03-12T07:00:04.053Z",
+        "rsi_14": "43.77",
+        "macd_hist": "-0.07",
+        "ma_5": "37.41",
+        "ma_10": "38.03",
+        "ma_20": "38.39",
+        "ma_60": "40.19",
+        "patterns": []
+      },
+      {
+        "id": 644943,
+        "symbol": "3059",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "37.5",
+        "high_price": "38.2",
+        "low_price": "37.45",
+        "close_price": "38.1",
+        "change_amount": "1.1",
+        "change_percent": "2.9729729729729732",
+        "volume": "1479656",
+        "trade_value": "56087095",
+        "transactions": 1192,
+        "created_at": "2026-03-11T07:00:04.028Z",
+        "rsi_14": "46.12",
+        "macd_hist": "-0.09",
+        "ma_5": "37.51",
+        "ma_10": "38.26",
+        "ma_20": "38.40",
+        "ma_60": "40.29",
+        "patterns": []
+      },
+      {
+        "id": 597679,
+        "symbol": "3059",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "37.1",
+        "high_price": "37.35",
+        "low_price": "36.75",
+        "close_price": "37",
+        "change_amount": "0.65",
+        "change_percent": "1.7881705639614855",
+        "volume": "1054909",
+        "trade_value": "39135298",
+        "transactions": 1038,
+        "created_at": "2026-03-10T07:00:04.631Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 609495,
+        "symbol": "3059",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "36.2",
+        "high_price": "36.8",
+        "low_price": "35",
+        "close_price": "36.35",
+        "change_amount": "-1.75",
+        "change_percent": "-4.593175853018373",
+        "volume": "2112354",
+        "trade_value": "76012483",
+        "transactions": 2272,
+        "created_at": "2026-03-10T09:37:13.861Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 892776,
+      "symbol": "3059",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "30.45",
+      "dividend_yield": "2.6700",
+      "pb_ratio": "1.15",
+      "created_at": "2026-03-13T13:45:38.027Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "-17201",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "-284424",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "67531",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "-128000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "-387000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 426373,
+        "symbol": "3059",
+        "revenue_year": 2026,
+        "revenue_month": 2,
+        "revenue": "637401000",
+        "created_at": "2026-03-14T09:30:40.679Z"
+      },
+      {
+        "id": 34862,
+        "symbol": "3059",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "674989000",
+        "created_at": "2026-02-21T04:43:24.451Z"
+      },
+      {
+        "id": 34861,
+        "symbol": "3059",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "653675000",
+        "created_at": "2026-02-21T04:43:24.449Z"
+      }
+    ],
+    "news": []
+  },
+  {
+    "symbol": "2377",
+    "info": {
+      "name": "微星",
+      "industry": "電腦及週邊設備業"
+    },
+    "prices": [
+      {
+        "id": 693041,
+        "symbol": "2377",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "93.7",
+        "high_price": "95.1",
+        "low_price": "92.5",
+        "close_price": "92.8",
+        "change_amount": "-1.5",
+        "change_percent": "-1.5906680805938496",
+        "volume": "5658936",
+        "trade_value": "527285899",
+        "transactions": 5073,
+        "created_at": "2026-03-13T07:00:02.548Z",
+        "rsi_14": "46.26",
+        "macd_hist": "0.21",
+        "ma_5": "93.44",
+        "ma_10": "94.73",
+        "ma_20": "92.90",
+        "ma_60": "96.29",
+        "patterns": []
+      },
+      {
+        "id": 669347,
+        "symbol": "2377",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "93.7",
+        "high_price": "96.2",
+        "low_price": "93.6",
+        "close_price": "94.3",
+        "change_amount": "-0.2",
+        "change_percent": "-0.21164021164021166",
+        "volume": "4450600",
+        "trade_value": "420558449",
+        "transactions": 4445,
+        "created_at": "2026-03-12T07:00:03.155Z",
+        "rsi_14": "49.75",
+        "macd_hist": "0.34",
+        "ma_5": "94.22",
+        "ma_10": "94.88",
+        "ma_20": "92.76",
+        "ma_60": "96.43",
+        "patterns": []
+      },
+      {
+        "id": 644695,
+        "symbol": "2377",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "93",
+        "high_price": "96",
+        "low_price": "93",
+        "close_price": "94.5",
+        "change_amount": "1.7",
+        "change_percent": "1.8318965517241377",
+        "volume": "5479943",
+        "trade_value": "518805407",
+        "transactions": 4762,
+        "created_at": "2026-03-11T07:00:02.957Z",
+        "rsi_14": "50.22",
+        "macd_hist": "0.37",
+        "ma_5": "94.36",
+        "ma_10": "94.67",
+        "ma_20": "92.59",
+        "ma_60": "96.57",
+        "patterns": []
+      },
+      {
+        "id": 597431,
+        "symbol": "2377",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "93.5",
+        "high_price": "94.4",
+        "low_price": "91.2",
+        "close_price": "92.8",
+        "change_amount": "0",
+        "change_percent": "0",
+        "volume": "6165273",
+        "trade_value": "571646108",
+        "transactions": 5439,
+        "created_at": "2026-03-10T07:00:03.730Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 609247,
+        "symbol": "2377",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "91.2",
+        "high_price": "93.7",
+        "low_price": "90.2",
+        "close_price": "92.8",
+        "change_amount": "-3.9",
+        "change_percent": "-4.033092037228542",
+        "volume": "6996375",
+        "trade_value": "642210448",
+        "transactions": 6811,
+        "created_at": "2026-03-10T09:37:12.886Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 892528,
+      "symbol": "2377",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "13.65",
+      "dividend_yield": "4.5300",
+      "pb_ratio": "1.44",
+      "created_at": "2026-03-13T13:45:37.180Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "-967162",
+        "trust_net": "0",
+        "dealer_net": "47231"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "-468705",
+        "trust_net": "0",
+        "dealer_net": "54000"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "-1086830",
+        "trust_net": "0",
+        "dealer_net": "49000"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "-2364463",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "-2302405",
+        "trust_net": "0",
+        "dealer_net": "0"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 406156,
+        "symbol": "2377",
+        "revenue_year": 2026,
+        "revenue_month": 2,
+        "revenue": "16140711000",
+        "created_at": "2026-03-14T03:29:19.391Z"
+      },
+      {
+        "id": 66665,
+        "symbol": "2377",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "22271797000",
+        "created_at": "2026-02-21T10:47:23.202Z"
+      },
+      {
+        "id": 66664,
+        "symbol": "2377",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "16864668000",
+        "created_at": "2026-02-21T10:47:23.201Z"
+      }
+    ],
+    "news": [
+      {
+        "title": "蘋果推平價筆電Macbook Neo搶市 華碩微星鎖定AI與中高階市場正面對壘",
+        "summary": "蘋果 (AAPL-US) 近期推出歷來最平價的 MacBook Neo 引發全球個人電腦產業高度關注。華碩 (2357-TW) 與微星 (2377-TW) 兩大 PC 品牌於近期法說會中，針對這款售價僅 599 美元的產品提出應對策略。兩大台廠",
+        "publish_at": "2026-03-15T00:00:56.000Z"
+      },
+      {
+        "title": "〈微星法說〉規劃終端產品售價調漲15-30% 因應關鍵零組件成本壓力",
+        "summary": "PC 品牌微星 (2377-TW) 今 (13) 日召開法說會，董事長徐祥表示，在關鍵零組件供應受限的環境下，產業將不再出現明顯的淡旺季之分。整年度的出貨動能將由輝達 (NVDA-US) 的晶片供貨量主導，取代過去以市場需求驅動",
+        "publish_at": "2026-03-13T08:50:30.000Z"
+      },
+      {
+        "title": "〈微星法說〉去年賺57億元年減15% EPS 6.8元 關稅、零組件漲價衝擊獲利",
+        "summary": "PC 品牌微星 (2377-TW) 今 (13) 日召開法人說明會並同步公告 2025 全年財報，去年全年賺 57.5 億元，年減 15.4%，每股純益 6.8 元；微星董事長徐祥表示，由於受到遭到匯率、關稅、新品延後上市的影響，儘管去年營收創",
+        "publish_at": "2026-03-13T08:45:52.000Z"
+      },
+      {
+        "title": "鉅亨速報 - Factset 最新調查：微星(2377-TW)目標價調升至116元，幅度約3.11%",
+        "summary": "FactSet 最新調查：微星(2377-TW)目標價調升，最高估值、最低估值、中位數、綜合評級、近5日股價、大盤表現、即時新聞資訊。",
+        "publish_at": "2026-03-13T02:10:32.000Z"
+      },
+      {
+        "title": "微星攜手輝達搶攻電信商機 MWC發表可擴展NVIDIA AI Aerial解決方案",
+        "summary": "PC 品牌微星 (2377-TW) 於西班牙巴塞隆納舉行的 2026 世界行動通訊大會展示最新解決方案 。微星結合輝達的技術打造可擴展平台，透過單一整合架構支援開放式無線接取網路與私有 5G 發展 。",
+        "publish_at": "2026-03-04T03:18:42.000Z"
+      }
+    ]
+  },
+  {
+    "symbol": "3014",
+    "info": {
+      "name": "聯陽",
+      "industry": "半導體業"
+    },
+    "prices": [
+      {
+        "id": 693247,
+        "symbol": "3014",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "118.5",
+        "high_price": "119.5",
+        "low_price": "118",
+        "close_price": "118.5",
+        "change_amount": "-1.5",
+        "change_percent": "-1.25",
+        "volume": "932052",
+        "trade_value": "110740402",
+        "transactions": 986,
+        "created_at": "2026-03-13T07:00:03.257Z",
+        "rsi_14": "48.59",
+        "macd_hist": "-0.28",
+        "ma_5": "118.00",
+        "ma_10": "119.00",
+        "ma_20": "119.63",
+        "ma_60": "117.67",
+        "patterns": []
+      },
+      {
+        "id": 669553,
+        "symbol": "3014",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "119",
+        "high_price": "120.5",
+        "low_price": "117",
+        "close_price": "120",
+        "change_amount": "1",
+        "change_percent": "0.8403361344537815",
+        "volume": "1253564",
+        "trade_value": "149124008",
+        "transactions": 1321,
+        "created_at": "2026-03-12T07:00:03.914Z",
+        "rsi_14": "51.62",
+        "macd_hist": "-0.29",
+        "ma_5": "118.40",
+        "ma_10": "119.45",
+        "ma_20": "119.60",
+        "ma_60": "117.69",
+        "patterns": []
+      },
+      {
+        "id": 644901,
+        "symbol": "3014",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "119",
+        "high_price": "119.5",
+        "low_price": "118",
+        "close_price": "119",
+        "change_amount": "1",
+        "change_percent": "0.847457627118644",
+        "volume": "1043151",
+        "trade_value": "123799604",
+        "transactions": 1232,
+        "created_at": "2026-03-11T07:00:03.838Z",
+        "rsi_14": "49.68",
+        "macd_hist": "-0.44",
+        "ma_5": "118.20",
+        "ma_10": "119.80",
+        "ma_20": "119.45",
+        "ma_60": "117.69",
+        "patterns": []
+      },
+      {
+        "id": 597637,
+        "symbol": "3014",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "117",
+        "high_price": "118",
+        "low_price": "115",
+        "close_price": "118",
+        "change_amount": "3.5",
+        "change_percent": "3.056768558951965",
+        "volume": "1181673",
+        "trade_value": "137808327",
+        "transactions": 1143,
+        "created_at": "2026-03-10T07:00:04.483Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 609453,
+        "symbol": "3014",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "114.5",
+        "high_price": "115.5",
+        "low_price": "112",
+        "close_price": "114.5",
+        "change_amount": "-6",
+        "change_percent": "-4.979253112033195",
+        "volume": "1565518",
+        "trade_value": "178558774",
+        "transactions": 1886,
+        "created_at": "2026-03-10T09:37:13.701Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 892734,
+      "symbol": "3014",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "12.84",
+      "dividend_yield": "7.1700",
+      "pb_ratio": "2.79",
+      "created_at": "2026-03-13T13:45:37.888Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "-1000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "-119000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "-32010",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "-233959",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "63000",
+        "trust_net": "0",
+        "dealer_net": "4000"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 423223,
+        "symbol": "3014",
+        "revenue_year": 2026,
+        "revenue_month": 2,
+        "revenue": "460808000",
+        "created_at": "2026-03-14T08:33:52.126Z"
+      },
+      {
+        "id": 32382,
+        "symbol": "3014",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "719294000",
+        "created_at": "2026-02-21T04:38:35.246Z"
+      },
+      {
+        "id": 32381,
+        "symbol": "3014",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "475117000",
+        "created_at": "2026-02-21T04:38:35.244Z"
+      }
+    ],
+    "news": []
+  },
+  {
+    "symbol": "6213",
+    "info": {
+      "name": "聯茂",
+      "industry": "電子零組件業"
+    },
+    "prices": [
+      {
+        "id": 693533,
+        "symbol": "6213",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "130.5",
+        "high_price": "139",
+        "low_price": "129",
+        "close_price": "137.5",
+        "change_amount": "5",
+        "change_percent": "3.7735849056603774",
+        "volume": "16533005",
+        "trade_value": "2242588855",
+        "transactions": 11897,
+        "created_at": "2026-03-13T07:00:04.255Z",
+        "rsi_14": "58.82",
+        "macd_hist": "0.35",
+        "ma_5": "129.00",
+        "ma_10": "128.80",
+        "ma_20": "126.90",
+        "ma_60": "118.20",
+        "patterns": [
+          "bullish_engulfing",
+          "piercing_line"
+        ]
+      },
+      {
+        "id": 669839,
+        "symbol": "6213",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "133",
+        "high_price": "137.5",
+        "low_price": "131.5",
+        "close_price": "132.5",
+        "change_amount": "-1",
+        "change_percent": "-0.7490636704119851",
+        "volume": "10774605",
+        "trade_value": "1443453318",
+        "transactions": 8726,
+        "created_at": "2026-03-12T07:00:04.919Z",
+        "rsi_14": "55.91",
+        "macd_hist": "-0.09",
+        "ma_5": "127.00",
+        "ma_10": "129.20",
+        "ma_20": "125.40",
+        "ma_60": "117.72",
+        "patterns": []
+      },
+      {
+        "id": 645187,
+        "symbol": "6213",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "129.5",
+        "high_price": "138",
+        "low_price": "129",
+        "close_price": "133.5",
+        "change_amount": "7",
+        "change_percent": "5.533596837944664",
+        "volume": "17199447",
+        "trade_value": "2309391457",
+        "transactions": 13732,
+        "created_at": "2026-03-11T07:00:05.177Z",
+        "rsi_14": "56.66",
+        "macd_hist": "-0.33",
+        "ma_5": "126.10",
+        "ma_10": "130.60",
+        "ma_20": "123.98",
+        "ma_60": "117.28",
+        "patterns": []
+      },
+      {
+        "id": 597923,
+        "symbol": "6213",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "121",
+        "high_price": "126.5",
+        "low_price": "120",
+        "close_price": "126.5",
+        "change_amount": "11.5",
+        "change_percent": "10",
+        "volume": "12208509",
+        "trade_value": "1527165630",
+        "transactions": 9483,
+        "created_at": "2026-03-10T07:00:05.535Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 609739,
+        "symbol": "6213",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "116.5",
+        "high_price": "118",
+        "low_price": "115",
+        "close_price": "115",
+        "change_amount": "-12.5",
+        "change_percent": "-9.803921568627452",
+        "volume": "9703366",
+        "trade_value": "1121985625",
+        "transactions": 6687,
+        "created_at": "2026-03-10T09:37:14.798Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 893020,
+      "symbol": "6213",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "33.05",
+      "dividend_yield": "2.1800",
+      "pb_ratio": "2.35",
+      "created_at": "2026-03-13T13:45:38.857Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "606000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "-1687000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "-495970",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "1121038",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "-213000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 479247,
+        "symbol": "6213",
+        "revenue_year": 2026,
+        "revenue_month": 2,
+        "revenue": "2609875000",
+        "created_at": "2026-03-15T00:48:19.111Z"
+      },
+      {
+        "id": 22346,
+        "symbol": "6213",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "3163692000",
+        "created_at": "2026-02-21T01:32:45.715Z"
+      },
+      {
+        "id": 22345,
+        "symbol": "6213",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "3170506000",
+        "created_at": "2026-02-21T01:32:45.713Z"
+      }
+    ],
+    "news": [
+      {
+        "title": "鉅亨速報 - Factset 最新調查：聯茂(6213-TW)EPS預估上修至4.16元，預估目標價為130元",
+        "summary": "FactSet 最新調查：聯茂(6213-TW)EPS預估上修，預估EPS、預估營收、目標價、歷史獲利表現、即時新聞資訊。",
+        "publish_at": "2026-03-07T00:10:42.000Z"
+      },
+      {
+        "title": "鉅亨速報 - Factset 最新調查：聯茂(6213-TW)目標價調升至130元，幅度約8.79%",
+        "summary": "FactSet 最新調查：聯茂(6213-TW)目標價調升，最高估值、最低估值、中位數、綜合評級、近5日股價、大盤表現、即時新聞資訊。",
+        "publish_at": "2026-03-07T00:10:20.000Z"
+      },
+      {
+        "title": "鉅亨速報 - Factset 最新調查：聯茂(6213-TW)EPS預估上修至4.04元，預估目標價為119.5元",
+        "summary": "FactSet 最新調查：聯茂(6213-TW)EPS預估上修，預估EPS、預估營收、目標價、歷史獲利表現、即時新聞資訊。",
+        "publish_at": "2026-03-06T00:10:42.000Z"
+      }
+    ]
+  },
+  {
+    "symbol": "1305",
+    "info": {
+      "name": "華夏",
+      "industry": "塑膠工業"
+    },
+    "prices": [
+      {
+        "id": 692760,
+        "symbol": "1305",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "14.5",
+        "high_price": "15",
+        "low_price": "13.6",
+        "close_price": "13.75",
+        "change_amount": "-0.25",
+        "change_percent": "-1.7857142857142856",
+        "volume": "16036234",
+        "trade_value": "226106888",
+        "transactions": 6098,
+        "created_at": "2026-03-13T07:00:01.627Z",
+        "rsi_14": "59.21",
+        "macd_hist": "0.13",
+        "ma_5": "13.48",
+        "ma_10": "13.02",
+        "ma_20": "12.50",
+        "ma_60": "11.85",
+        "patterns": []
+      },
+      {
+        "id": 669066,
+        "symbol": "1305",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "13.3",
+        "high_price": "14",
+        "low_price": "12.9",
+        "close_price": "14",
+        "change_amount": "1.25",
+        "change_percent": "9.803921568627452",
+        "volume": "19099009",
+        "trade_value": "260777470",
+        "transactions": 7530,
+        "created_at": "2026-03-12T07:00:02.042Z",
+        "rsi_14": "61.40",
+        "macd_hist": "0.12",
+        "ma_5": "13.38",
+        "ma_10": "12.88",
+        "ma_20": "12.38",
+        "ma_60": "11.82",
+        "patterns": [
+          "hammer"
+        ]
+      },
+      {
+        "id": 644414,
+        "symbol": "1305",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "12.85",
+        "high_price": "12.85",
+        "low_price": "12.25",
+        "close_price": "12.75",
+        "change_amount": "-0.1",
+        "change_percent": "-0.7782101167315176",
+        "volume": "7466975",
+        "trade_value": "93683859",
+        "transactions": 3517,
+        "created_at": "2026-03-11T07:00:01.641Z",
+        "rsi_14": "53.40",
+        "macd_hist": "0.07",
+        "ma_5": "12.99",
+        "ma_10": "12.76",
+        "ma_20": "12.26",
+        "ma_60": "11.78",
+        "patterns": []
+      },
+      {
+        "id": 597150,
+        "symbol": "1305",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "13",
+        "high_price": "13.25",
+        "low_price": "12.65",
+        "close_price": "12.85",
+        "change_amount": "-1.2",
+        "change_percent": "-8.540925266903916",
+        "volume": "14430637",
+        "trade_value": "185135153",
+        "transactions": 4568,
+        "created_at": "2026-03-10T07:00:02.652Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 608966,
+        "symbol": "1305",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "14.55",
+        "high_price": "14.55",
+        "low_price": "13.3",
+        "close_price": "14.05",
+        "change_amount": "0.8",
+        "change_percent": "6.037735849056604",
+        "volume": "39964441",
+        "trade_value": "566522690",
+        "transactions": 11042,
+        "created_at": "2026-03-10T09:37:11.750Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 892247,
+      "symbol": "1305",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "0.00",
+      "dividend_yield": "0.7300",
+      "pb_ratio": "1.03",
+      "created_at": "2026-03-13T13:45:36.256Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "-181000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "-44000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "23000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "-819000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "-212000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 354295,
+        "symbol": "1305",
+        "revenue_year": 2026,
+        "revenue_month": 2,
+        "revenue": "785281000",
+        "created_at": "2026-03-06T22:10:06.893Z"
+      },
+      {
+        "id": 1922,
+        "symbol": "1305",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "806175000",
+        "created_at": "2026-02-20T18:29:22.388Z"
+      },
+      {
+        "id": 1921,
+        "symbol": "1305",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "656140000",
+        "created_at": "2026-02-20T18:29:22.386Z"
+      }
+    ],
+    "news": []
+  },
+  {
+    "symbol": "6415",
+    "info": {
+      "name": "矽力*-KY",
+      "industry": "半導體業"
+    },
+    "prices": [
+      {
+        "id": 693558,
+        "symbol": "6415",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "270",
+        "high_price": "286.5",
+        "low_price": "269",
+        "close_price": "280",
+        "change_amount": "8",
+        "change_percent": "2.941176470588235",
+        "volume": "15668241",
+        "trade_value": "4380793402",
+        "transactions": 11916,
+        "created_at": "2026-03-13T07:00:04.339Z",
+        "rsi_14": "57.24",
+        "macd_hist": "-0.89",
+        "ma_5": "259.90",
+        "ma_10": "257.00",
+        "ma_20": "267.23",
+        "ma_60": "239.38",
+        "patterns": [
+          "red_three_soldiers"
+        ]
+      },
+      {
+        "id": 669864,
+        "symbol": "6415",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "260.5",
+        "high_price": "278",
+        "low_price": "258",
+        "close_price": "272",
+        "change_amount": "10",
+        "change_percent": "3.816793893129771",
+        "volume": "6877693",
+        "trade_value": "1846566933",
+        "transactions": 8588,
+        "created_at": "2026-03-12T07:00:05.013Z",
+        "rsi_14": "54.64",
+        "macd_hist": "-2.62",
+        "ma_5": "254.40",
+        "ma_10": "257.10",
+        "ma_20": "268.03",
+        "ma_60": "238.13",
+        "patterns": []
+      },
+      {
+        "id": 645212,
+        "symbol": "6415",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "253",
+        "high_price": "269",
+        "low_price": "252",
+        "close_price": "262",
+        "change_amount": "9.5",
+        "change_percent": "3.762376237623762",
+        "volume": "6166696",
+        "trade_value": "1611179105",
+        "transactions": 6997,
+        "created_at": "2026-03-11T07:00:05.299Z",
+        "rsi_14": "51.19",
+        "macd_hist": "-4.40",
+        "ma_5": "250.70",
+        "ma_10": "257.80",
+        "ma_20": "268.90",
+        "ma_60": "237.18",
+        "patterns": []
+      },
+      {
+        "id": 597948,
+        "symbol": "6415",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "243",
+        "high_price": "256",
+        "low_price": "237.5",
+        "close_price": "252.5",
+        "change_amount": "19.5",
+        "change_percent": "8.369098712446352",
+        "volume": "3856865",
+        "trade_value": "956792312",
+        "transactions": 4186,
+        "created_at": "2026-03-10T07:00:05.615Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 609764,
+        "symbol": "6415",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "227.5",
+        "high_price": "234.5",
+        "low_price": "227.5",
+        "close_price": "233",
+        "change_amount": "-19.5",
+        "change_percent": "-7.7227722772277225",
+        "volume": "4094484",
+        "trade_value": "943596486",
+        "transactions": 4320,
+        "created_at": "2026-03-10T09:37:14.883Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 893045,
+      "symbol": "6415",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "43.82",
+      "dividend_yield": "0.9100",
+      "pb_ratio": "2.91",
+      "created_at": "2026-03-13T13:45:38.942Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "57373",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "-79162",
+        "trust_net": "0",
+        "dealer_net": "3000"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "85700",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "107907",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "-191627",
+        "trust_net": "0",
+        "dealer_net": "0"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 484267,
+        "symbol": "6415",
+        "revenue_year": 2026,
+        "revenue_month": 2,
+        "revenue": "1364391000",
+        "created_at": "2026-03-15T02:32:46.497Z"
+      },
+      {
+        "id": 23890,
+        "symbol": "6415",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "1718815000",
+        "created_at": "2026-02-21T01:35:31.917Z"
+      },
+      {
+        "id": 23889,
+        "symbol": "6415",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "2065220000",
+        "created_at": "2026-02-21T01:35:31.915Z"
+      }
+    ],
+    "news": [
+      {
+        "title": "鉅亨速報 - Factset 最新調查：矽力-KY(6415-TW)目標價調升至327.5元，幅度約7.38%",
+        "summary": "FactSet 最新調查：矽力-KY(6415-TW)目標價調升，最高估值、最低估值、中位數、綜合評級、近5日股價、大盤表現、即時新聞資訊。",
+        "publish_at": "2026-03-13T00:10:35.000Z"
+      },
+      {
+        "title": "鉅亨速報 - Factset 最新調查：矽力-KY(6415-TW)EPS預估下修至8.99元，預估目標價為305元",
+        "summary": "FactSet 最新調查：矽力-KY(6415-TW)EPS預估下修，預估EPS、預估營收、目標價、歷史獲利表現、即時新聞資訊。",
+        "publish_at": "2026-03-12T12:11:33.000Z"
+      },
+      {
+        "title": "鉅亨速報 - Factset 最新調查：矽力-KY(6415-TW)目標價調升至305元，幅度約13.81%",
+        "summary": "FactSet 最新調查：矽力-KY(6415-TW)目標價調升，最高估值、最低估值、中位數、綜合評級、近5日股價、大盤表現、即時新聞資訊。",
+        "publish_at": "2026-03-12T12:10:28.000Z"
+      },
+      {
+        "title": "鉅亨速報 - Factset 最新調查：矽力-KY(6415-TW)目標價調升至305元，幅度約13.81%",
+        "summary": "FactSet 最新調查：矽力-KY(6415-TW)目標價調升，最高估值、最低估值、中位數、綜合評級、近5日股價、大盤表現、即時新聞資訊。",
+        "publish_at": "2026-03-12T04:11:10.000Z"
+      },
+      {
+        "title": "鉅亨速報 - Factset 最新調查：矽力-KY(6415-TW)目標價調升至305元，幅度約13.81%",
+        "summary": "FactSet 最新調查：矽力-KY(6415-TW)目標價調升，最高估值、最低估值、中位數、綜合評級、近5日股價、大盤表現、即時新聞資訊。",
+        "publish_at": "2026-03-11T02:10:32.000Z"
+      }
+    ]
+  },
+  {
+    "symbol": "6285",
+    "info": {
+      "name": "啟碁",
+      "industry": "電子工業"
+    },
+    "prices": [
+      {
+        "id": 693553,
+        "symbol": "6285",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "162.5",
+        "high_price": "172",
+        "low_price": "160",
+        "close_price": "167.5",
+        "change_amount": "0",
+        "change_percent": "0",
+        "volume": "15266458",
+        "trade_value": "2541289977",
+        "transactions": 11998,
+        "created_at": "2026-03-13T07:00:04.322Z",
+        "rsi_14": "52.40",
+        "macd_hist": "-3.64",
+        "ma_5": "161.40",
+        "ma_10": "165.80",
+        "ma_20": "174.55",
+        "ma_60": "137.92",
+        "patterns": []
+      },
+      {
+        "id": 669859,
+        "symbol": "6285",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "164",
+        "high_price": "170",
+        "low_price": "162.5",
+        "close_price": "167.5",
+        "change_amount": "4",
+        "change_percent": "2.4464831804281344",
+        "volume": "14135928",
+        "trade_value": "2356804903",
+        "transactions": 12133,
+        "created_at": "2026-03-12T07:00:04.996Z",
+        "rsi_14": "52.40",
+        "macd_hist": "-4.32",
+        "ma_5": "161.10",
+        "ma_10": "167.75",
+        "ma_20": "175.97",
+        "ma_60": "136.83",
+        "patterns": []
+      },
+      {
+        "id": 645207,
+        "symbol": "6285",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "158.5",
+        "high_price": "168.5",
+        "low_price": "158",
+        "close_price": "163.5",
+        "change_amount": "7",
+        "change_percent": "4.472843450479233",
+        "volume": "15434026",
+        "trade_value": "2532992788",
+        "transactions": 13596,
+        "created_at": "2026-03-11T07:00:05.276Z",
+        "rsi_14": "50.16",
+        "macd_hist": "-5.15",
+        "ma_5": "160.50",
+        "ma_10": "170.00",
+        "ma_20": "176.75",
+        "ma_60": "135.76",
+        "patterns": []
+      },
+      {
+        "id": 597943,
+        "symbol": "6285",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "159",
+        "high_price": "159.5",
+        "low_price": "151",
+        "close_price": "156.5",
+        "change_amount": "4.5",
+        "change_percent": "2.9605263157894735",
+        "volume": "14236896",
+        "trade_value": "2213446930",
+        "transactions": 11187,
+        "created_at": "2026-03-10T07:00:05.601Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 609759,
+        "symbol": "6285",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "150",
+        "high_price": "153",
+        "low_price": "149.5",
+        "close_price": "152",
+        "change_amount": "-14",
+        "change_percent": "-8.433734939759036",
+        "volume": "14590474",
+        "trade_value": "2194191598",
+        "transactions": 13421,
+        "created_at": "2026-03-10T09:37:14.852Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 893040,
+      "symbol": "6285",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "26.46",
+      "dividend_yield": "2.5700",
+      "pb_ratio": "2.36",
+      "created_at": "2026-03-13T13:45:38.927Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "-714590",
+        "trust_net": "0",
+        "dealer_net": "47830"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "-1047000",
+        "trust_net": "0",
+        "dealer_net": "52000"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "-622000",
+        "trust_net": "0",
+        "dealer_net": "49000"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "-821944",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "-265904",
+        "trust_net": "0",
+        "dealer_net": "1000"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 483296,
+        "symbol": "6285",
+        "revenue_year": 2026,
+        "revenue_month": 2,
+        "revenue": "8173548000",
+        "created_at": "2026-03-15T01:50:30.033Z"
+      },
+      {
+        "id": 23524,
+        "symbol": "6285",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "10135784000",
+        "created_at": "2026-02-21T01:34:52.054Z"
+      },
+      {
+        "id": 23523,
+        "symbol": "6285",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "9230566000",
+        "created_at": "2026-02-21T01:34:52.052Z"
+      }
+    ],
+    "news": [
+      {
+        "title": "鉅亨速報 - Factset 最新調查：啟碁(6285-TW)EPS預估上修至8.35元，預估目標價為155元",
+        "summary": "FactSet 最新調查：啟碁(6285-TW)EPS預估上修，預估EPS、預估營收、目標價、歷史獲利表現、即時新聞資訊。",
+        "publish_at": "2026-03-14T00:10:50.000Z"
+      },
+      {
+        "title": "鉅亨速報 - Factset 最新調查：啟碁(6285-TW)目標價調升至155元，幅度約19.23%",
+        "summary": "FactSet 最新調查：啟碁(6285-TW)目標價調升，最高估值、最低估值、中位數、綜合評級、近5日股價、大盤表現、即時新聞資訊。",
+        "publish_at": "2026-03-14T00:10:25.000Z"
+      },
+      {
+        "title": "鉅亨速報 - Factset 最新調查：啟碁(6285-TW)EPS預估上修至7.94元，預估目標價為130元",
+        "summary": "FactSet 最新調查：啟碁(6285-TW)EPS預估上修，預估EPS、預估營收、目標價、歷史獲利表現、即時新聞資訊。",
+        "publish_at": "2026-03-12T12:11:18.000Z"
+      },
+      {
+        "title": "啓碁參展MWC 2026 亮相整合NVIDIA O-RU與AI-RAN通訊解決方案",
+        "summary": "網通廠啓碁 (6285-TW) 將參與世界行動通訊大會（MWC 2026），以「Empowering the Future with AI-driven Connectivity」為年度主軸，展出亮點包含首度導入 AI 生態系的",
+        "publish_at": "2026-03-02T07:52:53.000Z"
+      }
+    ]
+  },
+  {
+    "symbol": "8069",
+    "info": {
+      "name": "元太",
+      "industry": "光電業"
+    },
+    "prices": [
+      {
+        "id": 704267,
+        "symbol": "8069",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "152.5",
+        "high_price": "155.5",
+        "low_price": "151",
+        "close_price": "152.5",
+        "change_amount": "-6.5",
+        "change_percent": "-4.088050314465408",
+        "volume": "14885363",
+        "trade_value": "2278491658",
+        "transactions": 11802,
+        "created_at": "2026-03-13T07:00:46.968Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 680635,
+        "symbol": "8069",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "162",
+        "high_price": "162.5",
+        "low_price": "157",
+        "close_price": "159",
+        "change_amount": "-3",
+        "change_percent": "-1.8518518518518516",
+        "volume": "8946633",
+        "trade_value": "1422518205",
+        "transactions": 6729,
+        "created_at": "2026-03-12T07:01:12.224Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 655983,
+        "symbol": "8069",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "161",
+        "high_price": "164.5",
+        "low_price": "160.5",
+        "close_price": "162",
+        "change_amount": "3",
+        "change_percent": "1.8867924528301887",
+        "volume": "4789937",
+        "trade_value": "777328295",
+        "transactions": 4555,
+        "created_at": "2026-03-11T07:00:57.215Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 596873,
+        "symbol": "8069",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "150.5",
+        "high_price": "158.5",
+        "low_price": "150.5",
+        "close_price": "155",
+        "change_amount": "-10",
+        "change_percent": "-6.0606060606060606",
+        "volume": "8580641",
+        "trade_value": "1326373699",
+        "transactions": 8579,
+        "created_at": "2026-03-09T22:15:04.593Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 586321,
+        "symbol": "8069",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "150.5",
+        "high_price": "158.5",
+        "low_price": "150.5",
+        "close_price": "155",
+        "change_amount": "-10",
+        "change_percent": "-6.0606060606060606",
+        "volume": "8580641",
+        "trade_value": "1326373699",
+        "transactions": 8579,
+        "created_at": "2026-03-09T07:30:51.997Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 894067,
+      "symbol": "8069",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "16.68",
+      "dividend_yield": "3.8700",
+      "pb_ratio": "2.56",
+      "created_at": "2026-03-13T13:45:43.114Z"
+    },
+    "institutional": [],
+    "revenue": [],
+    "news": [
+      {
+        "title": "鉅亨速報 - Factset 最新調查：元太(8069-TW)目標價調降至230元，幅度約5.74%",
+        "summary": "FactSet 最新調查：元太(8069-TW)目標價調降，最高估值、最低估值、中位數、綜合評級、近5日股價、大盤表現、即時新聞資訊。",
+        "publish_at": "2026-03-13T00:10:23.000Z"
+      },
+      {
+        "title": "鉅亨速報 - Factset 最新調查：元太(8069-TW)EPS預估下修至9.91元，預估目標價為244元",
+        "summary": "FactSet 最新調查：元太(8069-TW)EPS預估下修，預估EPS、預估營收、目標價、歷史獲利表現、即時新聞資訊。",
+        "publish_at": "2026-03-12T14:10:32.000Z"
+      }
+    ]
+  },
+  {
+    "symbol": "2367",
+    "info": {
+      "name": "燿華",
+      "industry": "電子零組件業"
+    },
+    "prices": [
+      {
+        "id": 693033,
+        "symbol": "2367",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "71.5",
+        "high_price": "73.8",
+        "low_price": "71.1",
+        "close_price": "72.6",
+        "change_amount": "-0.4",
+        "change_percent": "-0.547945205479452",
+        "volume": "14760679",
+        "trade_value": "1074255751",
+        "transactions": 12429,
+        "created_at": "2026-03-13T07:00:02.522Z",
+        "rsi_14": "68.15",
+        "macd_hist": "-0.11",
+        "ma_5": "68.00",
+        "ma_10": "69.32",
+        "ma_20": "63.08",
+        "ma_60": "43.79",
+        "patterns": [
+          "red_three_soldiers"
+        ]
+      },
+      {
+        "id": 669339,
+        "symbol": "2367",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "68.6",
+        "high_price": "73.5",
+        "low_price": "68.6",
+        "close_price": "73",
+        "change_amount": "3.8",
+        "change_percent": "5.491329479768785",
+        "volume": "23188475",
+        "trade_value": "1675436065",
+        "transactions": 17819,
+        "created_at": "2026-03-12T07:00:03.125Z",
+        "rsi_14": "68.87",
+        "macd_hist": "-0.19",
+        "ma_5": "67.28",
+        "ma_10": "68.51",
+        "ma_20": "62.15",
+        "ma_60": "42.98",
+        "patterns": []
+      },
+      {
+        "id": 644687,
+        "symbol": "2367",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "65.3",
+        "high_price": "69.4",
+        "low_price": "65.3",
+        "close_price": "69.2",
+        "change_amount": "6.1",
+        "change_percent": "9.667194928684626",
+        "volume": "15816600",
+        "trade_value": "1081436921",
+        "transactions": 13406,
+        "created_at": "2026-03-11T07:00:02.923Z",
+        "rsi_14": "65.67",
+        "macd_hist": "-0.43",
+        "ma_5": "66.66",
+        "ma_10": "67.08",
+        "ma_20": "60.96",
+        "ma_60": "42.17",
+        "patterns": []
+      },
+      {
+        "id": 597423,
+        "symbol": "2367",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "65",
+        "high_price": "65",
+        "low_price": "60.5",
+        "close_price": "63.1",
+        "change_amount": "1",
+        "change_percent": "1.610305958132045",
+        "volume": "16268207",
+        "trade_value": "1033447020",
+        "transactions": 13251,
+        "created_at": "2026-03-10T07:00:03.703Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 609239,
+        "symbol": "2367",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "62.2",
+        "high_price": "64",
+        "low_price": "62.1",
+        "close_price": "62.1",
+        "change_amount": "-6.9",
+        "change_percent": "-10",
+        "volume": "17701767",
+        "trade_value": "1105418488",
+        "transactions": 17638,
+        "created_at": "2026-03-10T09:37:12.856Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 892520,
+      "symbol": "2367",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "105.22",
+      "dividend_yield": "0.2800",
+      "pb_ratio": "3.99",
+      "created_at": "2026-03-13T13:45:37.153Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "-876500",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "128000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "-6745000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "-459871",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "-2167200",
+        "trust_net": "0",
+        "dealer_net": "0"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 405556,
+        "symbol": "2367",
+        "revenue_year": 2026,
+        "revenue_month": 2,
+        "revenue": "1178139000",
+        "created_at": "2026-03-14T03:25:48.846Z"
+      },
+      {
+        "id": 66308,
+        "symbol": "2367",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "1409727000",
+        "created_at": "2026-02-21T10:46:29.465Z"
+      },
+      {
+        "id": 66307,
+        "symbol": "2367",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "1291761000",
+        "created_at": "2026-02-21T10:46:29.464Z"
+      }
+    ],
+    "news": [
+      {
+        "title": "瑞軒遭2度處置 燿華期貨契約保證金6日起同步拉高1.5倍",
+        "summary": "台灣期貨交易所公告調整個股期貨保證金，由於燿華 (2367-TW) 經證交所公布為處置有價證券，自明（6）日一般交易時段結束後起，調高燿華期貨 (VBF) 所有月份保證金為現行級距之 1.5 倍。此外，瑞軒 (2489-TW",
+        "publish_at": "2026-03-05T12:13:28.000Z"
+      },
+      {
+        "title": "燿華及志聖今起遭處置交易每5分鐘撮合一盤至3/18",
+        "summary": "交易所公告，PCB 全製程廠燿華 (2367-TW) 及設備廠志聖 (2467-TW) 今 (5) 起遭處置交易，將以每 5 分鐘撮合一盤，交易所此一對志聖及燿華的處置交易措施將至 3 月 18 日。",
+        "publish_at": "2026-03-05T01:01:22.000Z"
+      },
+      {
+        "title": "〈港股盤後〉恒指重上26700點 科網股漲跌互見 匯豐強升",
+        "summary": "港股主要指數周三 (25 日) 漲跌不一，恒生指數全日收報 26765.72 點，上漲 174.45 點，漲幅 0.66%，國企指數漲 0.30%，報 9034.75 點，恒生科技指數跌 0.19%，收報 5260.5 點。大市全日成交額達 2367",
+        "publish_at": "2026-02-25T00:41:07.000Z"
+      }
+    ]
+  },
+  {
+    "symbol": "2383",
+    "info": {
+      "name": "台光電",
+      "industry": "電子零組件業"
+    },
+    "prices": [
+      {
+        "id": 693045,
+        "symbol": "2383",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "2580",
+        "high_price": "2765",
+        "low_price": "2540",
+        "close_price": "2705",
+        "change_amount": "105",
+        "change_percent": "4.038461538461538",
+        "volume": "4417368",
+        "trade_value": "11773147780",
+        "transactions": 11111,
+        "created_at": "2026-03-13T07:00:02.560Z",
+        "rsi_14": "70.43",
+        "macd_hist": "20.25",
+        "ma_5": "2461.00",
+        "ma_10": "2392.00",
+        "ma_20": "2278.00",
+        "ma_60": "1850.92",
+        "patterns": [
+          "red_three_soldiers"
+        ]
+      },
+      {
+        "id": 669351,
+        "symbol": "2383",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "2440",
+        "high_price": "2665",
+        "low_price": "2440",
+        "close_price": "2600",
+        "change_amount": "150",
+        "change_percent": "6.122448979591836",
+        "volume": "5442114",
+        "trade_value": "14111345150",
+        "transactions": 13117,
+        "created_at": "2026-03-12T07:00:03.172Z",
+        "rsi_14": "67.93",
+        "macd_hist": "8.39",
+        "ma_5": "2392.00",
+        "ma_10": "2365.50",
+        "ma_20": "2235.50",
+        "ma_60": "1830.75",
+        "patterns": []
+      },
+      {
+        "id": 644699,
+        "symbol": "2383",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "2390",
+        "high_price": "2520",
+        "low_price": "2375",
+        "close_price": "2450",
+        "change_amount": "75",
+        "change_percent": "3.1578947368421053",
+        "volume": "4829317",
+        "trade_value": "11815203430",
+        "transactions": 11401,
+        "created_at": "2026-03-11T07:00:02.976Z",
+        "rsi_14": "63.86",
+        "macd_hist": "-2.88",
+        "ma_5": "2345.00",
+        "ma_10": "2347.50",
+        "ma_20": "2194.75",
+        "ma_60": "1811.17",
+        "patterns": []
+      },
+      {
+        "id": 597435,
+        "symbol": "2383",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "2315",
+        "high_price": "2390",
+        "low_price": "2315",
+        "close_price": "2375",
+        "change_amount": "200",
+        "change_percent": "9.195402298850574",
+        "volume": "3065582",
+        "trade_value": "7271580415",
+        "transactions": 9871,
+        "created_at": "2026-03-10T07:00:03.746Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 609251,
+        "symbol": "2383",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "2125",
+        "high_price": "2210",
+        "low_price": "2125",
+        "close_price": "2175",
+        "change_amount": "-185",
+        "change_percent": "-7.838983050847458",
+        "volume": "3391849",
+        "trade_value": "7335727400",
+        "transactions": 13760,
+        "created_at": "2026-03-10T09:37:12.899Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 892532,
+      "symbol": "2383",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "66.17",
+      "dividend_yield": "0.9200",
+      "pb_ratio": "19.21",
+      "created_at": "2026-03-13T13:45:37.194Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "-481994",
+        "trust_net": "0",
+        "dealer_net": "405500"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "-170588",
+        "trust_net": "0",
+        "dealer_net": "67000"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "52961",
+        "trust_net": "0",
+        "dealer_net": "18000"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "-581561",
+        "trust_net": "0",
+        "dealer_net": "129000"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "-364015",
+        "trust_net": "0",
+        "dealer_net": "166002"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 406456,
+        "symbol": "2383",
+        "revenue_year": 2026,
+        "revenue_month": 2,
+        "revenue": "10193772000",
+        "created_at": "2026-03-14T04:08:30.196Z"
+      },
+      {
+        "id": 67037,
+        "symbol": "2383",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "10862602000",
+        "created_at": "2026-02-21T10:47:50.247Z"
+      },
+      {
+        "id": 67036,
+        "symbol": "2383",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "8704662000",
+        "created_at": "2026-02-21T10:47:50.244Z"
+      }
+    ],
+    "news": [
+      {
+        "title": "鉅亨速報 - Factset 最新調查：台光電(2383-TW)EPS預估下修至41.67元，預估目標價為2770元",
+        "summary": "FactSet 最新調查：台光電(2383-TW)EPS預估下修，預估EPS、預估營收、目標價、歷史獲利表現、即時新聞資訊。",
+        "publish_at": "2026-03-12T00:11:08.000Z"
+      },
+      {
+        "title": "鉅亨速報 - Factset 最新調查：台光電(2383-TW)目標價調升至2770元，幅度約25.34%",
+        "summary": "FactSet 最新調查：台光電(2383-TW)目標價調升，最高估值、最低估值、中位數、綜合評級、近5日股價、大盤表現、即時新聞資訊。",
+        "publish_at": "2026-03-12T00:10:39.000Z"
+      },
+      {
+        "title": "台光電(2383)股價1500→2450元還能追嗎？輝達GTC大會亮底牌！明年EPS衝100元、3000元目標價浮現...想上車先看這指標",
+        "summary": "",
+        "publish_at": "2026-03-11T12:30:21.000Z"
+      },
+      {
+        "title": "台光電去年連四季各賺逾一個股本 全年EPS 41.67元擬配股息25元",
+        "summary": "台光電 (2383-TW) 在 2025 年受惠 AI 及低軌衛星需求走揚，每季都賺回超過 1 個股本，2025 年全年稅後純益 146.5 億元、每股盈餘 41.67 元，改寫新高，每股將配發 25 元現金股息也創新高，盈餘配配發率 60%。",
+        "publish_at": "2026-03-11T10:12:21.000Z"
+      },
+      {
+        "title": "營收速報  - 台光電(2383)2月營收101.94億元年增率高達45.01％",
+        "summary": "2026年2月台光電(2383-TW) 營收年增成長45.01% , 盤後股價為2365元",
+        "publish_at": "2026-03-05T07:15:16.000Z"
+      }
+    ]
+  },
+  {
+    "symbol": "2312",
+    "info": {
+      "name": "金寶",
+      "industry": "電子工業"
+    },
+    "prices": [
+      {
+        "id": 692997,
+        "symbol": "2312",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "23",
+        "high_price": "23.2",
+        "low_price": "22.75",
+        "close_price": "22.8",
+        "change_amount": "-0.55",
+        "change_percent": "-2.355460385438972",
+        "volume": "14120063",
+        "trade_value": "323620035",
+        "transactions": 7888,
+        "created_at": "2026-03-13T07:00:02.402Z",
+        "rsi_14": "41.61",
+        "macd_hist": "-0.09",
+        "ma_5": "23.17",
+        "ma_10": "23.40",
+        "ma_20": "24.16",
+        "ma_60": "25.10",
+        "patterns": []
+      },
+      {
+        "id": 669303,
+        "symbol": "2312",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "23.8",
+        "high_price": "23.9",
+        "low_price": "23.2",
+        "close_price": "23.35",
+        "change_amount": "-0.65",
+        "change_percent": "-2.7083333333333335",
+        "volume": "13025783",
+        "trade_value": "306194924",
+        "transactions": 7385,
+        "created_at": "2026-03-12T07:00:02.990Z",
+        "rsi_14": "43.78",
+        "macd_hist": "-0.08",
+        "ma_5": "23.32",
+        "ma_10": "23.69",
+        "ma_20": "24.31",
+        "ma_60": "25.10",
+        "patterns": []
+      },
+      {
+        "id": 644651,
+        "symbol": "2312",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "23.6",
+        "high_price": "24.15",
+        "low_price": "23.5",
+        "close_price": "24",
+        "change_amount": "0.6",
+        "change_percent": "2.564102564102564",
+        "volume": "14369341",
+        "trade_value": "343371713",
+        "transactions": 7012,
+        "created_at": "2026-03-11T07:00:02.746Z",
+        "rsi_14": "46.42",
+        "macd_hist": "-0.12",
+        "ma_5": "23.28",
+        "ma_10": "23.88",
+        "ma_20": "24.41",
+        "ma_60": "25.09",
+        "patterns": []
+      },
+      {
+        "id": 597387,
+        "symbol": "2312",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "23.45",
+        "high_price": "23.95",
+        "low_price": "23.15",
+        "close_price": "23.4",
+        "change_amount": "1.1",
+        "change_percent": "4.9327354260089695",
+        "volume": "19701462",
+        "trade_value": "463211631",
+        "transactions": 9534,
+        "created_at": "2026-03-10T07:00:03.560Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 609203,
+        "symbol": "2312",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "21.75",
+        "high_price": "22.35",
+        "low_price": "21.55",
+        "close_price": "22.3",
+        "change_amount": "-1.25",
+        "change_percent": "-5.307855626326964",
+        "volume": "15657163",
+        "trade_value": "344450858",
+        "transactions": 7889,
+        "created_at": "2026-03-10T09:37:12.700Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 892484,
+      "symbol": "2312",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "21.92",
+      "dividend_yield": "2.6300",
+      "pb_ratio": "1.51",
+      "created_at": "2026-03-13T13:45:37.030Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "-646000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "672000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "448186",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "-283793",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "-10315000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 402797,
+        "symbol": "2312",
+        "revenue_year": 2026,
+        "revenue_month": 2,
+        "revenue": "10752396000",
+        "created_at": "2026-03-14T03:06:52.791Z"
+      },
+      {
+        "id": 17959,
+        "symbol": "2312",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "13061207000",
+        "created_at": "2026-02-21T00:36:11.712Z"
+      },
+      {
+        "id": 17958,
+        "symbol": "2312",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "13513048000",
+        "created_at": "2026-02-21T00:36:11.710Z"
+      }
+    ],
+    "news": [
+      {
+        "title": "〈焦點股〉金寶推動轉型ODM廠 獲外資連五日敲進落後補漲逾4%",
+        "summary": "金寶 (2312-TW) 近日持續獲得外資敲進，自農曆年前即開始買進，連續 5 個交易日買超，合計買超 1.7 萬張，激勵金寶今 (24) 日價量齊揚，站回季線大關。 ",
+        "publish_at": "2026-02-23T21:18:37.000Z"
+      }
+    ]
+  },
+  {
+    "symbol": "1312",
+    "info": {
+      "name": "國喬",
+      "industry": "塑膠工業"
+    },
+    "prices": [
+      {
+        "id": 692765,
+        "symbol": "1312",
+        "trade_date": "2026-03-12T16:00:00.000Z",
+        "open_price": "14.15",
+        "high_price": "14.65",
+        "low_price": "13.5",
+        "close_price": "13.65",
+        "change_amount": "-0.4",
+        "change_percent": "-2.8469750889679712",
+        "volume": "17933214",
+        "trade_value": "248783417",
+        "transactions": 6399,
+        "created_at": "2026-03-13T07:00:01.643Z",
+        "rsi_14": "53.68",
+        "macd_hist": "0.03",
+        "ma_5": "13.74",
+        "ma_10": "13.45",
+        "ma_20": "13.27",
+        "ma_60": "12.63",
+        "patterns": [
+          "bearish_engulfing"
+        ]
+      },
+      {
+        "id": 669071,
+        "symbol": "1312",
+        "trade_date": "2026-03-11T16:00:00.000Z",
+        "open_price": "13.95",
+        "high_price": "14.3",
+        "low_price": "13.45",
+        "close_price": "14.05",
+        "change_amount": "0.55",
+        "change_percent": "4.074074074074074",
+        "volume": "27945905",
+        "trade_value": "389651164",
+        "transactions": 9618,
+        "created_at": "2026-03-12T07:00:02.065Z",
+        "rsi_14": "57.68",
+        "macd_hist": "0.04",
+        "ma_5": "13.82",
+        "ma_10": "13.45",
+        "ma_20": "13.22",
+        "ma_60": "12.59",
+        "patterns": []
+      },
+      {
+        "id": 644419,
+        "symbol": "1312",
+        "trade_date": "2026-03-10T16:00:00.000Z",
+        "open_price": "13.55",
+        "high_price": "13.6",
+        "low_price": "13",
+        "close_price": "13.5",
+        "change_amount": "-0.05",
+        "change_percent": "-0.36900369003690037",
+        "volume": "15611812",
+        "trade_value": "207265675",
+        "transactions": 5360,
+        "created_at": "2026-03-11T07:00:01.661Z",
+        "rsi_14": "53.22",
+        "macd_hist": "0.01",
+        "ma_5": "13.57",
+        "ma_10": "13.45",
+        "ma_20": "13.16",
+        "ma_60": "12.56",
+        "patterns": []
+      },
+      {
+        "id": 597155,
+        "symbol": "1312",
+        "trade_date": "2026-03-09T16:00:00.000Z",
+        "open_price": "13.3",
+        "high_price": "13.9",
+        "low_price": "12.9",
+        "close_price": "13.55",
+        "change_amount": "-0.4",
+        "change_percent": "-2.867383512544803",
+        "volume": "31660814",
+        "trade_value": "420326402",
+        "transactions": 9352,
+        "created_at": "2026-03-10T07:00:02.672Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      },
+      {
+        "id": 608971,
+        "symbol": "1312",
+        "trade_date": "2026-03-08T16:00:00.000Z",
+        "open_price": "15.35",
+        "high_price": "15.45",
+        "low_price": "13.85",
+        "close_price": "13.95",
+        "change_amount": "-0.1",
+        "change_percent": "-0.7117437722419929",
+        "volume": "90295009",
+        "trade_value": "1313714622",
+        "transactions": 25742,
+        "created_at": "2026-03-10T09:37:11.769Z",
+        "rsi_14": null,
+        "macd_hist": null,
+        "ma_5": null,
+        "ma_10": null,
+        "ma_20": null,
+        "ma_60": null,
+        "patterns": null
+      }
+    ],
+    "fundamentals": {
+      "id": 892252,
+      "symbol": "1312",
+      "trade_date": "2026-03-12T16:00:00.000Z",
+      "pe_ratio": "0.00",
+      "dividend_yield": "0.0000",
+      "pb_ratio": "0.53",
+      "created_at": "2026-03-13T13:45:36.270Z"
+    },
+    "institutional": [
+      {
+        "trade_date": "2025-12-30T16:00:00.000Z",
+        "foreign_net": "-548000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-29T16:00:00.000Z",
+        "foreign_net": "2374574",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-28T16:00:00.000Z",
+        "foreign_net": "965000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-25T16:00:00.000Z",
+        "foreign_net": "-1887000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      },
+      {
+        "trade_date": "2025-12-23T16:00:00.000Z",
+        "foreign_net": "-235000",
+        "trust_net": "0",
+        "dealer_net": "0"
+      }
+    ],
+    "revenue": [
+      {
+        "id": 383168,
+        "symbol": "1312",
+        "revenue_year": 2026,
+        "revenue_month": 2,
+        "revenue": "2072655000",
+        "created_at": "2026-03-13T21:16:39.069Z"
+      },
+      {
+        "id": 5394,
+        "symbol": "1312",
+        "revenue_year": 2026,
+        "revenue_month": 1,
+        "revenue": "2321933000",
+        "created_at": "2026-02-20T22:35:22.929Z"
+      },
+      {
+        "id": 5393,
+        "symbol": "1312",
+        "revenue_year": 2025,
+        "revenue_month": 12,
+        "revenue": "2356924000",
+        "created_at": "2026-02-20T22:35:22.927Z"
+      }
+    ],
+    "news": []
+  }
+]

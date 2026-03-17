@@ -19,6 +19,143 @@ const formatLocalDate = (date) => {
     return `${year}-${month}-${day}`;
 };
 
+// GET /api/stock/:symbol/quick-diagnosis - 獲取快速診斷摘要 (評分、支撐壓力、技術面)
+router.get('/stock/:symbol/quick-diagnosis', async (req, res) => {
+    console.log(`DEBUG: Quick diagnosis for ${req.params.symbol} triggered`);
+    try {
+        const { symbol } = req.params;
+
+        // 1. 獲取最新價格與近 20 日高低點 (支撐壓力)
+        const priceRes = await query(`
+            WITH recent_prices AS (
+                SELECT high_price, low_price, close_price, trade_date
+                FROM daily_prices
+                WHERE symbol = $1
+                ORDER BY trade_date DESC
+                LIMIT 20
+            )
+            SELECT 
+                (SELECT close_price FROM recent_prices LIMIT 1) as latest_price,
+                (SELECT MAX(high_price) FROM recent_prices) as high_20,
+                (SELECT MIN(low_price) FROM recent_prices) as low_20,
+                (SELECT TO_CHAR(trade_date, 'YYYY-MM-DD') FROM recent_prices LIMIT 1) as latest_date
+        `, [symbol]);
+
+        const priceData = priceRes.rows[0];
+
+        // 2. 獲取健康評分
+        const healthRes = await query(`
+            SELECT overall_score as score 
+            FROM stock_health_scores 
+            WHERE symbol = $1 
+            ORDER BY calc_date DESC 
+            LIMIT 1
+        `, [symbol]);
+        const score = healthRes.rows[0]?.score || null;
+
+        // 3. 獲取技術指標 (RSI, MA20, MACD)
+        const techRes = await query(`
+            SELECT rsi_14, ma_20, macd_hist
+            FROM indicators
+            WHERE symbol = $1
+            ORDER BY trade_date DESC
+            LIMIT 1
+        `, [symbol]);
+        const techData = techRes.rows[0] || {};
+
+        // 4. 獲取最新的 AI 報告摘要 (提取結論部分)
+        const aiRes = await query(`
+            SELECT content as report 
+            FROM ai_reports 
+            WHERE symbol = $1 
+            ORDER BY created_at DESC 
+            LIMIT 1
+        `, [symbol]);
+        
+        let aiSummary = "尚無 AI 診斷報告";
+        if (aiRes.rows.length > 0) {
+            const fullReport = aiRes.rows[0].report;
+            // 嘗試提取「總結」或「結論」部分，若沒找到則取前 150 字
+            const conclusionMatch = fullReport.match(/【總結】|【結論】|投資建議\s*[:：]\s*(.*)/);
+            if (conclusionMatch) {
+                aiSummary = conclusionMatch[0].substring(0, 150) + "...";
+            } else {
+                aiSummary = fullReport.substring(0, 150).replace(/\n/g, ' ') + "...";
+            }
+        }
+
+        // 5. 計算智慧評分 (Composite Rating)
+        let techScore = 0;
+        if (techData.rsi_14) {
+            const rsi = parseFloat(techData.rsi_14);
+            if (rsi > 70) techScore -= 0.3; // 超買
+            else if (rsi < 30) techScore += 0.3; // 超跌
+        }
+        if (techData.macd_hist) {
+            techScore += parseFloat(techData.macd_hist) > 0 ? 0.2 : -0.2;
+        }
+        if (priceData?.latest_price && techData.ma_20) {
+            techScore += priceData.latest_price > techData.ma_20 ? 0.2 : -0.2;
+        }
+
+        let priceLevelScore = 0;
+        const distResistance = priceData?.high_20 > 0 ? ((priceData.high_20 - priceData.latest_price) / priceData.latest_price * 100) : null;
+        const distSupport = priceData?.low_20 > 0 ? ((priceData.latest_price - priceData.low_20) / priceData.latest_price * 100) : null;
+        
+        if (distSupport !== null && distSupport < 2) priceLevelScore += 0.4; // 接近支撐
+        else if (distSupport !== null && distSupport < 5) priceLevelScore += 0.2;
+        
+        if (distResistance !== null && distResistance < 2) priceLevelScore -= 0.4; // 接近壓力
+        else if (distResistance !== null && distResistance < 5) priceLevelScore -= 0.2;
+
+        let sentimentScore = score ? (score - 50) / 50 : 0; // 基於健康分 (-1 to 1)
+
+        // 綜合權重: 技術 40%, 價格位置 30%, 情緒 30%
+        const compositeScore = (techScore * 0.4) + (priceLevelScore * 0.3) + (sentimentScore * 0.3);
+        
+        let ratingLabel = "觀望";
+        if (compositeScore > 0.6) ratingLabel = "強力買進";
+        else if (compositeScore > 0.15) ratingLabel = "買進";
+        else if (compositeScore < -0.6) ratingLabel = "強力賣出";
+        else if (compositeScore < -0.15) ratingLabel = "賣出";
+
+        // 整合數據
+        const result = {
+            symbol,
+            latest_price: parseFloat(priceData?.latest_price || 0),
+            latest_date: priceData?.latest_date,
+            score: score ? parseInt(score) : null,
+            rating: {
+                score: parseFloat(compositeScore.toFixed(2)),
+                label: ratingLabel,
+                details: {
+                    technical: parseFloat(techScore.toFixed(2)),
+                    price_level: parseFloat(priceLevelScore.toFixed(2)),
+                    sentiment: parseFloat(sentimentScore.toFixed(2))
+                }
+            },
+            support_resistance: {
+                resistance: parseFloat(priceData?.high_20 || 0),
+                support: parseFloat(priceData?.low_20 || 0),
+                distance_to_resistance: distResistance?.toFixed(2) || null,
+                distance_to_support: distSupport?.toFixed(2) || null
+            },
+            indicators: {
+                rsi: techData.rsi_14 ? parseFloat(techData.rsi_14).toFixed(2) : null,
+                ma20: techData.ma_20 ? parseFloat(techData.ma_20).toFixed(2) : null,
+                macd_hist: techData.macd_hist ? parseFloat(techData.macd_hist).toFixed(2) : null,
+                position_vs_ma20: (priceData?.latest_price && techData.ma_20) ? (priceData.latest_price > techData.ma_20 ? '上方' : '下方') : '未知'
+            },
+            ai_summary: aiSummary
+        };
+
+        res.json({ success: true, data: result });
+    } catch (err) {
+        console.error('Quick diagnosis failed:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // GET /api/stock/:symbol/events - 獲取個股大事記 (法說會、除權息等)
 router.get('/stock/:symbol/events', async (req, res) => {
     try {
@@ -360,6 +497,65 @@ router.get('/stock/:symbol/ai-report', async (req, res) => {
         });
     } catch (err) {
         console.error('Failed to fetch AI report:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET /api/stock/:symbol/chart-data - 獲取診斷線圖所需的 60 日數據
+router.get('/stock/:symbol/chart-data', async (req, res) => {
+    try {
+        const { symbol } = req.params;
+        
+        // 1. 獲取數據，計算全歷史窗口函數後再擷取近 60 日，確保指標曲線完整
+        const result = await query(`
+            SELECT 
+                TO_CHAR(trade_date, 'YYYY/MM/DD') as date,
+                close_price as price,
+                ma5,
+                ma20,
+                high_target,
+                low_support,
+                rsi,
+                CASE 
+                    WHEN b_std = 0 THEN 0.5 
+                    ELSE (close_price - (ma20 - 2 * b_std)) / (4 * b_std) 
+                END as b_percent
+            FROM (
+                SELECT 
+                    d.trade_date,
+                    d.close_price,
+                    AVG(d.close_price) OVER (ORDER BY d.trade_date ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) as ma5,
+                    AVG(d.close_price) OVER (ORDER BY d.trade_date ROWS BETWEEN 19 PRECEDING AND CURRENT ROW) as ma20,
+                    MAX(d.high_price) OVER (ORDER BY d.trade_date ROWS BETWEEN 19 PRECEDING AND CURRENT ROW) as high_target,
+                    MIN(d.low_price) OVER (ORDER BY d.trade_date ROWS BETWEEN 19 PRECEDING AND CURRENT ROW) as low_support,
+                    STDDEV_SAMP(d.close_price) OVER (ORDER BY d.trade_date ROWS BETWEEN 19 PRECEDING AND CURRENT ROW) as b_std,
+                    i.rsi_14 as rsi
+                FROM daily_prices d
+                LEFT JOIN indicators i ON d.symbol = i.symbol AND d.trade_date = i.trade_date
+                WHERE d.symbol = $1
+            ) t
+            ORDER BY trade_date DESC
+            LIMIT 60
+        `, [symbol]);
+
+        // 反轉數組以按時間順序顯示 (Recharts 需要)
+        const chartData = result.rows.reverse().map(row => ({
+            ...row,
+            price: parseFloat(row.price),
+            ma5: row.ma5 ? parseFloat(parseFloat(row.ma5).toFixed(2)) : null,
+            ma20: row.ma20 ? parseFloat(parseFloat(row.ma20).toFixed(2)) : null,
+            high_target: parseFloat(parseFloat(row.high_target).toFixed(2)),
+            low_support: parseFloat(parseFloat(row.low_support).toFixed(2)),
+            rsi: row.rsi ? parseFloat(parseFloat(row.rsi).toFixed(2)) : null,
+            b_percent: row.b_percent ? parseFloat(parseFloat(row.b_percent).toFixed(3)) : null
+        }));
+
+        res.json({
+            success: true,
+            data: chartData
+        });
+    } catch (err) {
+        console.error('Failed to fetch chart data:', err);
         res.status(500).json({ success: false, error: err.message });
     }
 });
@@ -1100,7 +1296,21 @@ router.get('/compare', async (req, res) => {
 // GET /api/health-check-ranking - 全股健診排行
 router.get('/health-check-ranking', async (req, res) => {
     try {
-        const { sort = 'overall_score', order = 'DESC', industry, market, stock_types, grade, minScore = 0, maxScore = 100, page = 1, limit = 50, search } = req.query;
+        const { 
+            sort = 'overall_score', 
+            order = 'DESC', 
+            industry, 
+            market, 
+            stock_types, 
+            grade, 
+            smart_rating,
+            minScore = 0, 
+            maxScore = 100, 
+            page = 1, 
+            limit = 50, 
+            search,
+            filter
+        } = req.query;
         const dateRes = await query('SELECT MAX(calc_date) as latest FROM stock_health_scores');
         const latestDate = dateRes.rows[0]?.latest;
         if (!latestDate) return res.json({ success: true, data: [], total: 0 });
@@ -1117,7 +1327,95 @@ router.get('/health-check-ranking', async (req, res) => {
             if (typeConditions.length > 0) conditions.push(`(${typeConditions.join(' OR ')})`);
         }
         if (grade) { conditions.push(`grade = $${paramIdx}`); params.push(grade); paramIdx++; }
+        if (smart_rating) { conditions.push(`smart_rating = $${paramIdx}`); params.push(smart_rating); paramIdx++; }
         if (search) { conditions.push(`(symbol ILIKE $${paramIdx} OR name ILIKE $${paramIdx})`); params.push(`%${search}%`); paramIdx++; }
+
+        // --- Technical Indicator Filters ---
+        if (filter) {
+            const latestIndicatorDateRes = await query("SELECT TO_CHAR(MAX(trade_date), 'YYYY-MM-DD') as latest FROM indicators");
+            const latestIndDate = latestIndicatorDateRes.rows[0]?.latest;
+            
+            if (latestIndDate) {
+                let subQuery = '';
+                const baseExist = `EXISTS (SELECT 1 FROM indicators i WHERE i.symbol = stock_health_scores.symbol AND TO_CHAR(i.trade_date, 'YYYY-MM-DD') = '${latestIndDate}' AND `;
+                
+                switch (filter) {
+                    case 'ma20_up':
+                        subQuery = `${baseExist} stock_health_scores.close_price > i.ma_20)`;
+                        break;
+                    case 'ma20_down':
+                        subQuery = `${baseExist} stock_health_scores.close_price < i.ma_20)`;
+                        break;
+                    case 'oversold':
+                    case 'rsi_low':
+                        subQuery = `${baseExist} i.rsi_14 < 30)`;
+                        break;
+                    case 'rsi_high':
+                        subQuery = `${baseExist} i.rsi_14 > 70)`;
+                        break;
+                    case 'macd_up':
+                        subQuery = `${baseExist} i.macd_hist > 0)`;
+                        break;
+                    case 'macd_down':
+                        subQuery = `${baseExist} i.macd_hist < 0)`;
+                        break;
+                    case 'kd_gold':
+                        // Now using actual K/D values
+                        subQuery = `${baseExist} i.k_value > i.d_value AND i.k_value < 50)`;
+                        break;
+                    case 'kd_death':
+                        subQuery = `${baseExist} i.k_value < i.d_value AND i.k_value > 50)`;
+                        break;
+                    case 'bb_up':
+                        // Now using actual Bollinger Upper Band
+                        subQuery = `${baseExist} stock_health_scores.close_price > i.upper_band)`;
+                        break;
+                    case 'bb_down':
+                        // Now using actual Bollinger Lower Band
+                        subQuery = `${baseExist} stock_health_scores.close_price < i.lower_band)`;
+                        break;
+                    case 'vol_spike':
+                    case 'volume':
+                        // Now using actual Volume Ratio
+                        subQuery = `${baseExist} i.volume_ratio > 1.5)`;
+                        break;
+                    case 'ibs_low':
+                        subQuery = `${baseExist} i.ibs <= 0.2)`;
+                        break;
+                    case 'ibs_high':
+                        subQuery = `${baseExist} i.ibs >= 0.8)`;
+                        break;
+                    case 'foreign_buy':
+                        subQuery = `EXISTS (SELECT 1 FROM fm_institutional fi WHERE fi.stock_id = stock_health_scores.symbol AND fi.name = 'Foreign_Investors' AND fi.buy > fi.sell AND fi.date = (SELECT MAX(date) FROM fm_institutional))`;
+                        break;
+                    case 'trust_buy':
+                        subQuery = `EXISTS (SELECT 1 FROM fm_institutional fi WHERE fi.stock_id = stock_health_scores.symbol AND fi.name = 'Investment_Trust' AND fi.buy > fi.sell AND fi.date = (SELECT MAX(date) FROM fm_institutional))`;
+                        break;
+                    case 'foreign_sell':
+                        subQuery = `EXISTS (SELECT 1 FROM fm_institutional fi WHERE fi.stock_id = stock_health_scores.symbol AND fi.name = 'Foreign_Investors' AND fi.sell > fi.buy AND fi.date = (SELECT MAX(date) FROM fm_institutional))`;
+                        break;
+                    case 'trust_sell':
+                        subQuery = `EXISTS (SELECT 1 FROM fm_institutional fi WHERE fi.stock_id = stock_health_scores.symbol AND fi.name = 'Investment_Trust' AND fi.sell > fi.buy AND fi.date = (SELECT MAX(date) FROM fm_institutional))`;
+                        break;
+                    case 'buy':
+                        conditions.push("grade = '優秀'");
+                        break;
+                    case 'sell':
+                        conditions.push("grade = '待改善'");
+                        break;
+                    case 'ibs_low':
+                        conditions.push("overall_score >= 65");
+                        break;
+                    case 'ibs_high':
+                        conditions.push("overall_score <= 55");
+                        break;
+                    default:
+                        // No extra condition
+                }
+                if (subQuery) conditions.push(subQuery);
+            }
+        }
+
         const whereClause = conditions.join(' AND ');
         const countRes = await query(`SELECT COUNT(*) as cnt FROM stock_health_scores WHERE ${whereClause}`, params);
         const total = parseInt(countRes.rows[0].cnt);
@@ -1125,7 +1423,46 @@ router.get('/health-check-ranking', async (req, res) => {
         params.push(parseInt(limit), offset);
         const dataRes = await query(`SELECT * FROM stock_health_scores WHERE ${whereClause} ORDER BY ${sort} ${order} LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`, params);
         const indRes = await query(`SELECT DISTINCT industry FROM stock_health_scores WHERE calc_date = $1`, [latestDate]);
-        res.json({ success: true, data: dataRes.rows, total, industries: indRes.rows.map(r => r.industry) });
+        
+        // Get counts for each smart rating for the latest date
+        const smartRatingCountsRes = await query(`
+            SELECT smart_rating, COUNT(*) as count 
+            FROM stock_health_scores 
+            WHERE calc_date = $1 
+            GROUP BY smart_rating
+        `, [latestDate]);
+        
+        const smartRatingCounts = {};
+        smartRatingCountsRes.rows.forEach(r => {
+            if (r.smart_rating) {
+                smartRatingCounts[r.smart_rating] = parseInt(r.count);
+            }
+        });
+
+        // Get counts for each grade for the latest date
+        const gradeCountsRes = await query(`
+            SELECT grade, COUNT(*) as count 
+            FROM stock_health_scores 
+            WHERE calc_date = $1 
+            GROUP BY grade
+        `, [latestDate]);
+        
+        const gradeCounts = {};
+        gradeCountsRes.rows.forEach(r => {
+            if (r.grade) {
+                gradeCounts[r.grade] = parseInt(r.count);
+            }
+        });
+
+        res.json({ 
+            success: true, 
+            data: dataRes.rows, 
+            total, 
+            industries: indRes.rows.map(r => r.industry),
+            calcDate: latestDate,
+            smartRatingCounts,
+            gradeCounts
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1137,13 +1474,13 @@ router.get('/stock/:symbol/valuation-history', async (req, res) => {
         const { symbol } = req.params;
         const { years = 5 } = req.query;
 
-        // 1. 抓取歷史 PE/PB 資料
+        // 1. 抓取歷史 PE/PB 資料 (從 fundamentals 表抓取，這是直接來自證交所/櫃買的數據)
         const historyRes = await query(`
-            SELECT TO_CHAR(date, 'YYYY-MM-DD') as date, 
+            SELECT TO_CHAR(trade_date, 'YYYY-MM-DD') as date, 
                    pe_ratio as pe, pb_ratio as pb, dividend_yield as dy
-            FROM fm_stock_per 
-            WHERE stock_id = $1 AND date >= CURRENT_DATE - INTERVAL '${years} years'
-            ORDER BY date ASC
+            FROM fundamentals 
+            WHERE symbol = $1 AND trade_date >= CURRENT_DATE - INTERVAL '${years} years'
+            ORDER BY trade_date ASC
         `, [symbol]);
 
         if (historyRes.rows.length === 0) {

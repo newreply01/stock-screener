@@ -91,6 +91,14 @@ async function fetchTWSE(dateObj) {
             return;
         }
 
+        // --- 新增：記錄交易日 ---
+        const tradeDateHyphen = toDateHyphen(dateObj);
+        await query(
+            `INSERT INTO trading_dates (date, description) VALUES ($1, '證交所交易日') ON CONFLICT (date) DO NOTHING`,
+            [tradeDateHyphen]
+        );
+        await updateProgress('TaiwanStockTradingDate');
+
         const table = json.tables.find(t => t.title && t.title.includes('每日收盤行情'));
 
         // --- 新增：抓取大盤指數 ---
@@ -239,7 +247,10 @@ async function fetchFundamentals(dateObj) {
             count++;
         }
         console.log(`[Fund] ${dateStr} 更新 ${count} 筆`);
-        if (count > 0) await updateProgress('TaiwanStockFinancialStatements');
+        if (count > 0) {
+            await updateProgress('TaiwanStockFinancialStatements');
+            await updateProgress('TaiwanStockTradingDate'); // 確保這也被標記為已更新
+        }
     } catch (e) {
         console.error(`[Fund] ${dateStr} 失敗:`, e.message);
     }

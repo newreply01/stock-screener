@@ -33,23 +33,21 @@ async function logCrawlerStatus(status, message) {
 
 async function getTargetSymbols() {
     try {
-        // 從 stocks 表獲取所有需要監控的標的
-        // 1. 排除 industry 為 NULL 的項目 (通常是權證)
-        // 2. 排除 industry 中包含 "權證", "牛證", "熊證" 的項目
-        // 3. 雖然有些 ETF 長度為 6 碼，但其 industry 為 'ETF'，應保留
         const res = await query(`
             SELECT symbol, market FROM stocks 
-            WHERE industry IS NOT NULL 
+            WHERE (industry IS NOT NULL 
               AND industry NOT LIKE '%權證%'
               AND industry NOT LIKE '%牛證%'
-              AND industry NOT LIKE '%熊證%'
+              AND industry NOT LIKE '%熊證%')
+               OR symbol = 'TAIEX'
         `);
         const symbols = res.rows.map(r => ({
             symbol: r.symbol,
             market: r.market,
-            prefix: r.market === 'twse' ? 'tse' : 'otc'
+            prefix: r.symbol === 'TAIEX' ? 'tse' : (r.market === 'twse' ? 'tse' : 'otc'),
+            apiSymbol: r.symbol === 'TAIEX' ? 't00' : r.symbol
         }));
-        console.log(`[Crawler] Target symbols count: ${symbols.length} (Smart filter: Included ETFs/ETNs, Excluded Warrants)`);
+        console.log(`[Crawler] Target symbols count: ${symbols.length} (Smart filter: Included ETFs/ETNs/TAIEX, Excluded Warrants)`);
         return symbols;
     } catch (err) {
         console.error(`[Crawler] Failed to get target symbols:`, err.message);
@@ -220,7 +218,7 @@ async function startCrawler() {
 
         for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
             const batch = symbols.slice(i, i + BATCH_SIZE);
-            const batchStr = batch.map(s => `${s.prefix}_${s.symbol}.tw`).join('|');
+            const batchStr = batch.map(s => `${s.prefix}_${s.apiSymbol}.tw`).join('|');
 
             const results = await fetchBatch(batchStr);
 
@@ -230,7 +228,7 @@ async function startCrawler() {
 
                 if (priceSource !== 'z') fallbackCount++;
 
-                const symbol = info.c;
+                const symbol = info.c === 't00' ? 'TAIEX' : info.c;
                 const z = resolvedPrice;
                 const o = (info.o && info.o !== '-') ? parseFloat(info.o) : resolvedPrice;
                 const h = (info.h && info.h !== '-') ? parseFloat(info.h) : resolvedPrice;

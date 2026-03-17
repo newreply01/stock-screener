@@ -51,9 +51,11 @@ import ValuationRiverView from './ValuationRiverView'
 import StockCompareView from './StockCompareView'
 import EventCalendar from './EventCalendar'
 import BrokerTracking from './BrokerTracking'
+import QuickDiagnosisView from './QuickDiagnosisView'
 
 const SIDEBAR_MENU = [
     { id: 'overview', label: '總覽' },
+    { id: 'quick_diagnosis', label: '快速診斷' },
     { id: 'realtime', label: '即時行情' },
     { type: 'header', label: '技術分析' },
     { id: 'kd', label: 'KD線圖' },
@@ -413,7 +415,9 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
 
                     {/* Main Scrollable Area */}
                     <div className="flex-1 overflow-y-auto p-6 bg-white relative">
-                        {activeTab === 'overview' ? (
+                        {activeTab === 'quick_diagnosis' ? (
+                            <QuickDiagnosisView symbol={stock.symbol} />
+                        ) : activeTab === 'overview' ? (
                             <div className="space-y-8">
                                 {/* Stats Grid */}
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

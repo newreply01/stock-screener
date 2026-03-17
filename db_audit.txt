@@ -1,0 +1,15 @@
+Table: fundamentals
+Columns: id, symbol, trade_date, pe_ratio, dividend_yield, pb_ratio, created_at
+
+Table: daily_prices
+Columns: id, symbol, trade_date, open_price, high_price, low_price, close_price, change_amount, change_percent, volume, trade_value, transactions, created_at
+
+Table: indicators
+Columns: id, symbol, trade_date, rsi_14, macd_value, macd_signal, macd_hist, ma_5, ma_10, ma_20, ma_60, created_at, patterns
+
+Table: monthly_revenue
+Columns: id, symbol, revenue_year, revenue_month, revenue, created_at
+
+Table: institutional_2025
+Columns: id, symbol, trade_date, foreign_buy, foreign_sell, foreign_net, trust_buy, trust_sell, trust_net, dealer_buy, dealer_sell, dealer_net, total_net, created_at
+

@@ -127,6 +127,10 @@ router.get('/status', async (req, res) => {
                     script = 'finmind_fetcher.js';
                     description = '每週六 04:00 更新';
                     break;
+                case 'TaiwanStockTradingDate':
+                    script = 'finmind_fetcher.js';
+                    description = '每日 04:00 更新';
+                    break;
                 default:
                     script = '未知';
                     description = '定期檢查更新';
