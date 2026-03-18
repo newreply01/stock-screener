@@ -45,7 +45,7 @@ if (!process.env.VERCEL) {
         const { startScheduler } = require('./scheduler');
         startScheduler();
         const PORT = process.env.PORT || 5678;
-        app.listen(PORT, '127.0.0.1', () => console.log('Server started on port ' + PORT));
+        app.listen(PORT, '0.0.0.0', () => console.log('Server started on port ' + PORT));
     } catch (e) {
         console.error('Failed to start server:', e);
     }

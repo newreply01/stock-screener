@@ -43,7 +43,7 @@ router.get('/status', async (req, res) => {
 
         // 2.5 取得各個 JS 程式的最後執行狀態 + 記憶體中即時狀態
         const liveStatusMap = getLiveSchedulerStatus ? getLiveSchedulerStatus() : {};
-        const scriptNames = ['fetcher.js', 'news_fetcher.js', 'finmind_fetcher.js', 'calc_health_scores.js', 'realtime_crawler.js'];
+        const scriptNames = ['twse_fetcher.js', 'news_fetcher.js', 'finmind_fetcher.js', 'calc_health_scores.js', 'realtime_crawler.js'];
         const scriptStatusList = [];
 
         try {
@@ -99,6 +99,7 @@ router.get('/status', async (req, res) => {
                 case 'TaiwanStockPrice':
                 case 'TaiwanStockDayTrading':
                 case 'TaiwanStockMarginPurchaseShortSale':
+                case 'TaiwanStockInstitutional':
                 case 'TaiwanStockInstitutionalInvestorsBuySell':
                 case 'TaiwanStockTotalInstitutionalInvestors':
                 case 'TaiwanStockTotalMarginPurchaseShortSale':
@@ -108,10 +109,11 @@ router.get('/status', async (req, res) => {
                 case 'TaiwanSecuritiesTraderInfo':
                 case 'TaiwanFuturesInstitutionalInvestors':
                 case 'TaiwanOptionInstitutionalInvestors':
-                    script = 'fetcher.js';
+                    script = 'twse_fetcher.js';
                     description = '15:00 初步 / 21:45 補全';
                     break;
                 // 新聞
+                case 'News':
                 case 'TaiwanStockNews':
                     script = 'news_fetcher.js';
                     description = '每小時更新';
@@ -127,13 +129,20 @@ router.get('/status', async (req, res) => {
                     script = 'finmind_fetcher.js';
                     description = '每週六 04:00 更新';
                     break;
+                case 'TaiwanStockBrokerTrading':
+                case 'TaiwanStockPER':
+                case 'TaiwanStockHoldingSharesPer':
+                case 'FinMindDaily':
+                    script = 'finmind_fetcher.js';
+                    description = '每小時 15 分 (600筆/hr)';
+                    break;
                 case 'TaiwanStockTradingDate':
                     script = 'finmind_fetcher.js';
                     description = '每日 04:00 更新';
                     break;
                 default:
                     script = '未知';
-                    description = '定期檢查更新';
+                    description = '15:00 初步 / 21:45 補全';
             }
 
             return {

@@ -380,9 +380,9 @@ async function syncStockFinancials(symbol) {
             console.error(`❌ [FinMind] Failed to sync PER for ${symbol}:`, err.message);
         }
 
-        await syncBrokerTrading(symbol);
-        await syncMarginTrading(symbol);
-        await syncInstitutional(symbol);
+        // await syncBrokerTrading(symbol); // KEEP THIS (Unique)
+        // await syncMarginTrading(symbol); // MOVED TO fetcher.js
+        // await syncInstitutional(symbol); // MOVED TO fetcher.js
         await syncHoldingSharesPer(symbol);
         await syncDetailedFinancials(symbol);
         await syncFinancialRatios(symbol);
@@ -431,6 +431,26 @@ async function syncAllStocksFinancials() {
         await syncStockFinancials(stocks[i].symbol);
         await sleep(6000);
     }
+}
+
+async function syncDailyStocksData() {
+    console.log(`🚀 [FinMind] Starting daily data sync (Broker/PER/Holding)...`);
+    console.log(getTokenStatus());
+    const res = await pool.query(`
+        SELECT symbol FROM stocks 
+        WHERE symbol ~ '^[0-9]{4}$'
+        ORDER BY symbol ASC
+    `);
+    const stocks = res.rows;
+    for (let i = 0; i < stocks.length; i++) {
+        const symbol = stocks[i].symbol;
+        await syncBrokerTrading(symbol);
+        await syncStockPER(symbol);
+        await syncHoldingSharesPer(symbol);
+        // Faster sleep because we fetch fewer datasets per stock
+        await sleep(2000); 
+    }
+    await updateProgress('FinMindDaily');
 }
 
 async function syncHoldingSharesPer(symbol, date) {
@@ -504,5 +524,6 @@ module.exports = {
     syncDetailedFinancials, 
     syncStockPER,
     syncHoldingSharesPer,
-    syncTradingDate
+    syncTradingDate,
+    syncDailyStocksData
 };

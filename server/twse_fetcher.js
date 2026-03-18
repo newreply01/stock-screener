@@ -9,6 +9,8 @@ const TWSE_PE_URL = 'https://www.twse.com.tw/rwd/zh/afterTrading/BWIBBU_d?respon
 const TPEX_PE_URL = 'https://www.tpex.org.tw/web/stock/aftertrading/peratio_analysis/pera_result.php?l=zh-tw&o=json';
 const TWSE_INST_URL = 'https://www.twse.com.tw/rwd/zh/fund/T86?response=json&selectType=ALL';
 const TPEX_INST_URL = 'https://www.tpex.org.tw/web/stock/3insti/daily_trade/3itrade_hedge_result.php?l=zh-tw&o=json&se=EW&t=D';
+const TWSE_MARGIN_URL = 'https://www.twse.com.tw/exchangeReport/MI_MARGN?response=json&selectType=ALL';
+const TPEX_MARGIN_URL = 'https://www.tpex.org.tw/web/stock/margin_trading/margin_sbl/margin_sbl_result.php?l=zh-tw&o=json';
 
 // 工具函式
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -432,6 +434,97 @@ async function fetchTPExInstitutional(dateObj) {
     }
 }
 
+// ===== 抓取融資融券 (TWSE) 歷史 =====
+async function fetchMarginTrading(dateObj) {
+    const dateStr = toDateStr(dateObj);
+    const dateHyphen = toDateHyphen(dateObj);
+    console.log(`[Margin] 抓取 TWSE ${dateStr}...`);
+    try {
+        const res = await nodeFetch(`${TWSE_MARGIN_URL}&date=${dateStr}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const json = await res.json();
+        if (json.stat !== 'OK' || !json.data) return;
+
+        let count = 0;
+        for (const row of json.data) {
+            const symbol = row[0].trim();
+            if (!/^\d{4,6}$/.test(symbol)) continue;
+
+            await ensureStock(symbol);
+            await query(`
+                INSERT INTO fm_margin_trading (
+                    stock_id, date, 
+                    margin_purchase_buy, margin_purchase_sell, margin_purchase_cash_repayment, margin_purchase_yesterday_balance, margin_purchase_today_balance, margin_purchase_limit,
+                    short_sale_buy, short_sale_sell, short_sale_cash_repayment, short_sale_yesterday_balance, short_sale_today_balance, short_sale_limit,
+                    offsetting_margin_short
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                ON CONFLICT (stock_id, date) DO UPDATE SET
+                    margin_purchase_buy = EXCLUDED.margin_purchase_buy,
+                    margin_purchase_sell = EXCLUDED.margin_purchase_sell,
+                    margin_purchase_today_balance = EXCLUDED.margin_purchase_today_balance,
+                    short_sale_today_balance = EXCLUDED.short_sale_today_balance,
+                    offsetting_margin_short = EXCLUDED.offsetting_margin_short
+            `, [
+                symbol, dateHyphen,
+                parseNumber(row[2]), parseNumber(row[3]), parseNumber(row[4]), parseNumber(row[5]), parseNumber(row[6]), parseNumber(row[7]),
+                parseNumber(row[8]), parseNumber(row[9]), parseNumber(row[10]), parseNumber(row[11]), parseNumber(row[12]), parseNumber(row[13]),
+                parseNumber(row[14])
+            ]);
+            count++;
+        }
+        console.log(`[Margin] TWSE ${dateStr} 更新 ${count} 筆`);
+        if (count > 0) await updateProgress('TaiwanStockMarginPurchaseShortSale');
+    } catch (e) {
+        console.error(`[Margin] TWSE ${dateStr} 失敗:`, e.message);
+    }
+}
+
+// ===== 抓取融資融券 (TPEx) 歷史 =====
+async function fetchTPExMarginTrading(dateObj) {
+    const rocDate = toRocDate(dateObj);
+    const dateHyphen = toDateHyphen(dateObj);
+    console.log(`[Margin] 抓取 TPEx ${rocDate}...`);
+    try {
+        const res = await nodeFetch(`${TPEX_MARGIN_URL}&d=${rocDate}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const json = await res.json();
+        const dataRows = (json.tables && json.tables[0] && json.tables[0].data) ? json.tables[0].data : json.aaData;
+        if (!dataRows || dataRows.length === 0) return;
+
+        let count = 0;
+        for (const row of dataRows) {
+            const symbol = row[0].trim();
+            if (!/^\d{4,6}$/.test(symbol)) continue;
+
+            await ensureStock(symbol);
+            // TPEx indices: 4: M-Buy, 5: M-Sell, 6: M-Cash, 7: M-Prev, 8: M-Curr, 9: M-Limit
+            // 10: S-Buy, 11: S-Sell, 12: S-Cash, 13: S-Prev, 14: S-Curr, 15: S-Limit, 16: Offset
+            await query(`
+                INSERT INTO fm_margin_trading (
+                    stock_id, date, 
+                    margin_purchase_buy, margin_purchase_sell, margin_purchase_cash_repayment, margin_purchase_yesterday_balance, margin_purchase_today_balance, margin_purchase_limit,
+                    short_sale_buy, short_sale_sell, short_sale_cash_repayment, short_sale_yesterday_balance, short_sale_today_balance, short_sale_limit,
+                    offsetting_margin_short
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                ON CONFLICT (stock_id, date) DO UPDATE SET
+                    margin_purchase_buy = EXCLUDED.margin_purchase_buy,
+                    margin_purchase_sell = EXCLUDED.margin_purchase_sell,
+                    margin_purchase_today_balance = EXCLUDED.margin_purchase_today_balance,
+                    short_sale_today_balance = EXCLUDED.short_sale_today_balance,
+                    offsetting_margin_short = EXCLUDED.offsetting_margin_short
+            `, [
+                symbol, dateHyphen,
+                parseNumber(row[4]), parseNumber(row[5]), parseNumber(row[6]), parseNumber(row[7]), parseNumber(row[8]), parseNumber(row[9]),
+                parseNumber(row[10]), parseNumber(row[11]), parseNumber(row[12]), parseNumber(row[13]), parseNumber(row[14]), parseNumber(row[15]),
+                parseNumber(row[16])
+            ]);
+            count++;
+        }
+        console.log(`[Margin] TPEx ${rocDate} 更新 ${count} 筆`);
+        if (count > 0) await updateProgress('TaiwanStockMarginPurchaseShortSale');
+    } catch (e) {
+        console.error(`[Margin] TPEx ${rocDate} 失敗:`, e.message);
+    }
+}
+
 // ===== 通用抓取區間迴圈 =====
 async function fetchRange(startDate, endDate) {
     console.log(`📅 執行區間抓取: ${toDateHyphen(startDate)} -> ${toDateHyphen(endDate)}`);
@@ -462,6 +555,10 @@ async function fetchRange(startDate, endDate) {
         await fetchInstitutional(current);
         await sleep(1000);
         await fetchTPExInstitutional(current);
+        await sleep(1000);
+        await fetchMarginTrading(current);
+        await sleep(1000);
+        await fetchTPExMarginTrading(current);
 
         console.log(`⏳ 休眠 3 秒...`);
         await sleep(3000);

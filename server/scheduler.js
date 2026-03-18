@@ -1,7 +1,7 @@
 const cron = require('node-cron');
-const { catchUp } = require('./fetcher');
+const { catchUp } = require('./twse_fetcher');
 const { syncAllNews } = require('./news_fetcher');
-const { syncAllStocksFinancials, syncTradingDate } = require('./finmind_fetcher');
+const { syncAllStocksFinancials, syncTradingDate, syncDailyStocksData } = require('./finmind_fetcher');
 const { calculateAndStoreIndicators } = require('./calculate_indicators');
 const { runAll: runHealthCheck } = require('./scripts/calc_health_scores');
 let syncHistoricalMinuteBatch;
@@ -50,45 +50,45 @@ function getLiveSchedulerStatus() {
 function startScheduler() {
     // 每交易日 15:00 更新行情 (初步價格同步)
     const fetcherTask1500 = cron.schedule('0 15 * * 1-5', async () => {
-        isTaskRunning['fetcher.js'] = true;
+        isTaskRunning['twse_fetcher.js'] = true;
         console.log(' 定時排程開始 (15:00)：抓取今日行情...');
-        await logScriptStatus('fetcher.js', 'RUNNING', '正在執行盤後行情初步抓取');
+        await logScriptStatus('twse_fetcher.js', 'RUNNING', '正在執行盤後行情初步抓取');
         try {
             await catchUp();
             console.log(' (15:00) 今日行情抓取完成');
-            await logScriptStatus('fetcher.js', 'SUCCESS', '盤後行情初步抓取完成');
+            await logScriptStatus('twse_fetcher.js', 'SUCCESS', '盤後行情初步抓取完成');
         } catch (err) {
             console.error(' (15:00) 行情抓取失敗:', err.message);
-            await logScriptStatus('fetcher.js', 'FAILED', `執行失敗: ${err.message}`);
+            await logScriptStatus('twse_fetcher.js', 'FAILED', `執行失敗: ${err.message}`);
         } finally {
-            isTaskRunning['fetcher.js'] = false;
+            isTaskRunning['twse_fetcher.js'] = false;
         }
     }, {
         scheduled: true,
         timezone: 'Asia/Taipei'
     });
-    initTaskTracking('fetcher.js_1500', fetcherTask1500);
+    initTaskTracking('twse_fetcher.js_1500', fetcherTask1500);
 
     // 每交易日 21:45 補抓籌碼資料 (三大法人、融資融券更新後)
     const fetcherTask2145 = cron.schedule('45 21 * * 1-5', async () => {
-        isTaskRunning['fetcher.js'] = true;
+        isTaskRunning['twse_fetcher.js'] = true;
         console.log(' 定時排程開始 (21:45)：補抓今日籌碼資料...');
-        await logScriptStatus('fetcher.js', 'RUNNING', '正在補抓今日法人與資券資料');
+        await logScriptStatus('twse_fetcher.js', 'RUNNING', '正在補抓今日法人與資券資料');
         try {
             await catchUp();
             console.log(' (21:45) 今日籌碼資料補全完成');
-            await logScriptStatus('fetcher.js', 'SUCCESS', '今日法人與資券補抓完成');
+            await logScriptStatus('twse_fetcher.js', 'SUCCESS', '今日法人與資券補抓完成');
         } catch (err) {
             console.error(' (21:45) 籌碼補抓失敗:', err.message);
-            await logScriptStatus('fetcher.js', 'FAILED', `補抓失敗: ${err.message}`);
+            await logScriptStatus('twse_fetcher.js', 'FAILED', `補抓失敗: ${err.message}`);
         } finally {
-            isTaskRunning['fetcher.js'] = false;
+            isTaskRunning['twse_fetcher.js'] = false;
         }
     }, {
         scheduled: true,
         timezone: 'Asia/Taipei'
     });
-    initTaskTracking('fetcher.js_2145', fetcherTask2145);
+    initTaskTracking('twse_fetcher.js_2145', fetcherTask2145);
 
     // 每小時更新新聞
     const newsTask = cron.schedule('0 * * * *', async () => {
@@ -114,14 +114,14 @@ function startScheduler() {
     // 每週六 04:00 更新基本面資料 (FinMind)
     const finmindTask = cron.schedule('0 4 * * 6', async () => {
         isTaskRunning['finmind_fetcher.js'] = true;
-        console.log(' 定時排程開始：更新基本面資料...');
+        console.log('🚀 定時排程開始：更新基本面資料...');
         await logScriptStatus('finmind_fetcher.js', 'RUNNING', '正在執行基本面資料更新');
         try {
             await syncAllStocksFinancials();
-            console.log(' 基本面資料更新完成');
+            console.log('✅ 基本面資料更新完成');
             await logScriptStatus('finmind_fetcher.js', 'SUCCESS', '基本面資料更新完成');
         } catch (err) {
-            console.error(' 基本面更新失敗:', err.message);
+            console.error('❌ 基本面更新失敗:', err.message);
             await logScriptStatus('finmind_fetcher.js', 'FAILED', `基本面更新失敗: ${err.message}`);
         } finally {
             isTaskRunning['finmind_fetcher.js'] = false;
@@ -131,6 +131,27 @@ function startScheduler() {
         timezone: 'Asia/Taipei'
     });
     initTaskTracking('finmind_fetcher.js', finmindTask);
+
+    // 每小時更新 FinMind 每日異動資料 (分點買賣、本益比、持股分級)
+    const finmindDailyTask = cron.schedule('15 * * * *', async () => {
+        isTaskRunning['finmind_daily'] = true;
+        console.log('🚀 定時排程開始：更新 FinMind 每日異動資料...');
+        await logScriptStatus('finmind_fetcher.js', 'RUNNING', '正在執行每小時分點與籌碼更新');
+        try {
+            await syncDailyStocksData();
+            console.log('✅ FinMind 每日異動資料更新完成');
+            await logScriptStatus('finmind_fetcher.js', 'SUCCESS', '每小時分點與籌碼更新完成');
+        } catch (err) {
+            console.error('❌ FinMind 每日更新失敗:', err.message);
+            await logScriptStatus('finmind_fetcher.js', 'FAILED', `每日更新失敗: ${err.message}`);
+        } finally {
+            isTaskRunning['finmind_daily'] = false;
+        }
+    }, {
+        scheduled: true,
+        timezone: 'Asia/Taipei'
+    });
+    initTaskTracking('finmind_daily', finmindDailyTask);
 
     // 每日 04:00 同步交易日資訊 (FinMind)
     const tradingDateTask = cron.schedule('0 4 * * *', async () => {
