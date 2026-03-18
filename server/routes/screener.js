@@ -114,9 +114,9 @@ router.get('/stock/:symbol/quick-diagnosis', async (req, res) => {
         const compositeScore = (techScore * 0.4) + (priceLevelScore * 0.3) + (sentimentScore * 0.3);
         
         let ratingLabel = "觀望";
-        if (compositeScore > 0.6) ratingLabel = "強力買進";
+        if (compositeScore > 0.45) ratingLabel = "強力買進";
         else if (compositeScore > 0.15) ratingLabel = "買進";
-        else if (compositeScore < -0.6) ratingLabel = "強力賣出";
+        else if (compositeScore < -0.45) ratingLabel = "強力賣出";
         else if (compositeScore < -0.15) ratingLabel = "賣出";
 
         // 整合數據
@@ -184,7 +184,7 @@ router.get('/stock/:symbol/events', async (req, res) => {
 });
 
 // GET /api/screen - 篩選股票 (支持分頁與篩選)
-router.get('/screen', async (req, res) => {
+router.get(['/stocks', '/screen'], async (req, res) => {
     try {
         const {
             search = '',
@@ -1592,6 +1592,124 @@ router.get('/stock/:symbol/health-history', async (req, res) => {
     }
 });
 
+
+// GET /api/health-check/backtest-stats - 獲取智慧評分回測數據
+router.get('/health-check/backtest-stats', async (req, res) => {
+    try {
+        const dateRes = await query(`
+            SELECT DISTINCT calc_date 
+            FROM stock_health_scores 
+            ORDER BY calc_date DESC 
+            LIMIT 15
+        `);
+        
+        const dates = dateRes.rows.map(r => {
+            const d = new Date(r.calc_date);
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        });
+
+        if (dates.length < 2) {
+            return res.json({ success: true, data: [] });
+        }
+
+        const stats = [];
+        for (let i = 0; i < Math.min(dates.length - 1, 5); i++) {
+            const currDate = dates[i+1];
+            const nextDate = dates[i];
+
+            // Fetch TAIEX performance for benchmark
+            const taiexRes = await query(`
+                WITH p AS (SELECT close_price FROM daily_prices WHERE symbol = 'TAIEX' AND trade_date = $1),
+                     c AS (SELECT close_price FROM daily_prices WHERE symbol = 'TAIEX' AND trade_date = $2)
+                SELECT ((c.close_price - p.close_price) / p.close_price * 100) as taiex_return
+                FROM p, c
+            `, [currDate, nextDate]);
+            const taiexReturn = taiexRes.rows[0]?.taiex_return || 0;
+
+            const perfRes = await query(`
+                WITH prev AS (
+                    SELECT symbol, close_price as price_prev, smart_rating, grade
+                    FROM stock_health_scores
+                    WHERE calc_date = $1
+                ),
+                curr AS (
+                    SELECT symbol, close_price as price_curr
+                    FROM stock_health_scores
+                    WHERE calc_date = $2
+                )
+                SELECT 
+                    prev.smart_rating,
+                    prev.grade,
+                    COUNT(*) as count,
+                    ROUND(AVG((curr.price_curr - prev.price_prev) / prev.price_prev * 100), 2) as avg_return_pct,
+                    ROUND(COUNT(CASE WHEN curr.price_curr > prev.price_prev THEN 1 END) * 100.0 / COUNT(*), 2) as win_rate_pct,
+                    ROUND(COUNT(CASE WHEN (curr.price_curr - prev.price_prev) / prev.price_prev * 100 > $3 THEN 1 END) * 100.0 / COUNT(*), 2) as active_win_rate_pct
+                FROM prev
+                JOIN curr ON prev.symbol = curr.symbol
+                WHERE prev.price_prev > 0
+                GROUP BY prev.smart_rating, prev.grade
+            `, [currDate, nextDate, taiexReturn]);
+
+            if (perfRes.rows.length > 5) {
+                stats.push({
+                    recommend_date: currDate,
+                    test_date: nextDate,
+                    taiex_return: taiexReturn ? parseFloat(Number(taiexReturn).toFixed(2)) : 0,
+                    metrics: perfRes.rows
+                });
+            }
+        }
+
+        res.json({ success: true, data: stats });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET /api/health-check/backtest-category-stocks - 獲取回測類別下的個股清單
+router.get('/health-check/backtest-category-stocks', async (req, res) => {
+    const { recommend_date, test_date, category, type } = req.query;
+    try {
+        let whereClause = '';
+        if (type === 'rating') whereClause = 'p.smart_rating = $3';
+        else if (type === 'grade') whereClause = 'p.grade = $3';
+        else if (type === 'dimension') {
+            // For dimension scores (profit_score, etc), we show high-score stocks
+            const validDimensions = ['profit_score', 'growth_score', 'safety_score', 'value_score', 'dividend_score', 'chip_score', 'overall_score'];
+            if (!validDimensions.includes(category)) throw new Error('Invalid dimension');
+            whereClause = `p.${category} >= 75`;
+        } else {
+            throw new Error('Invalid query type');
+        }
+        
+        const sql = `
+            WITH prev AS (
+                SELECT symbol, name, close_price as p0, smart_rating, grade, profit_score, growth_score, safety_score, value_score, dividend_score, chip_score, overall_score
+                FROM stock_health_scores
+                WHERE calc_date = $1
+            ),
+            curr AS (
+                SELECT symbol, close_price as p1
+                FROM stock_health_scores
+                WHERE calc_date = $2
+            )
+            SELECT 
+                p.symbol, p.name, p.smart_rating, p.grade,
+                p.p0 as recommend_price,
+                c.p1 as test_price,
+                ROUND(((c.p1 - p.p0) / p.p0 * 100), 2) as return_pct
+            FROM prev p
+            JOIN curr c ON p.symbol = c.symbol
+            WHERE ${whereClause} AND p.p0 > 0
+            ORDER BY return_pct DESC
+            LIMIT 100
+        `;
+        const result = await query(sql, [recommend_date, test_date, category]);
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
 
 // GET /api/market-margin - 獲取大盤融資融券餘額
 router.get('/market-margin', async (req, res) => {

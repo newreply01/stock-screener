@@ -201,6 +201,15 @@ async function calcAllScores() {
     const srMap = {};
     srRes.rows.forEach(r => { srMap[r.symbol] = r; });
 
+    // Batch fetch: Latest AI Sentiment Scores
+    const aiRes = await query(`
+        SELECT DISTINCT ON (symbol) symbol, sentiment_score
+        FROM ai_reports
+        ORDER BY symbol, created_at DESC
+    `);
+    const aiMap = {};
+    aiRes.rows.forEach(r => { aiMap[r.symbol] = parseFloat(r.sentiment_score); });
+
     // Now calculate scores for each stock
     let processed = 0;
     let skipped = 0;
@@ -325,16 +334,21 @@ async function calcAllScores() {
             priceLevelScore = (0.5 - pos) * 2; // Near low = 1, Near high = -1
         }
 
-        // 3. Sentiment Signal (Base on Health Score -1 to 1)
-        const sentimentScore = (overall - 50) / 50;
+        // 3. Sentiment Signal (Base on Health Score or AI Sentiment)
+        // If AI Sentiment is available (0-100), normalize to -1 to 1. 
+        // Otherwise fallback to fundamental-based sentiment.
+        const aiScore = aiMap[sym];
+        const sentimentScore = (!isNaN(aiScore)) 
+            ? (aiScore - 50) / 50 
+            : (overall - 50) / 50;
 
         // Composite Smart Score: Tech 40%, Price 30%, Sentiment 30%
         const compositeScore = (techScore * 0.4) + (priceLevelScore * 0.3) + (sentimentScore * 0.3);
         
         let smartRating = "觀望";
-        if (compositeScore > 0.6) smartRating = "強力買進";
+        if (compositeScore > 0.45) smartRating = "強力買進";
         else if (compositeScore > 0.15) smartRating = "買進";
-        else if (compositeScore < -0.6) smartRating = "強力賣出";
+        else if (compositeScore < -0.45) smartRating = "強力賣出";
         else if (compositeScore < -0.15) smartRating = "賣出";
 
         batchValues.push([

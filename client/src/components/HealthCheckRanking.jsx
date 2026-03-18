@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Heart, Search, Filter, ChevronLeft, ChevronRight, ArrowUpDown, TrendingUp, TrendingDown, Shield, Target, Coins, Users, Award, BarChart3, PieChart, Activity, Layout, Zap, AlertCircle, Brain } from 'lucide-react';
+import { Heart, Search, Filter, ChevronLeft, ChevronRight, ArrowUpDown, TrendingUp, TrendingDown, Shield, Target, Coins, Users, Award, BarChart3, PieChart, Activity, Layout, Zap, AlertCircle, Brain, Info } from 'lucide-react';
 import { API_BASE } from '../utils/api';
 import { useGlobalFilters } from '../context/GlobalFilterContext';
 import GlobalFilterBar from './GlobalFilterBar';
@@ -12,6 +12,7 @@ import StockChart from './StockChart';
 import AIReportView from './AIReportView';
 import QuickDiagnosisView from './QuickDiagnosisView';
 import StockAnalyzer from './StockAnalyzer';
+import HealthBacktestDashboard from './HealthBacktestDashboard';
 
 const GRADE_STYLES = {
     green: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-300', badge: 'bg-emerald-500' },
@@ -103,6 +104,7 @@ export default function HealthCheckRanking({ onSelectStock }) {
         { id: 'quick_diagnosis', label: '快速診斷', icon: Zap },
         { id: 'health', label: '健診分析', icon: Shield },
         { id: 'ai_report', label: 'AI分析報告', icon: Activity },
+        { id: 'backtest', label: '回測監控', icon: Target },
         { id: 'valuation', label: '估價模型', icon: Coins },
         { id: 'trend', label: '趨勢強弱', icon: Activity },
         { id: 'chart', label: '股價量圖', icon: BarChart3 },
@@ -226,22 +228,29 @@ export default function HealthCheckRanking({ onSelectStock }) {
                 {/* Grade Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {[
-                        { label: '目前篩選', value: `${total} 檔`, icon: Filter, color: 'text-violet-600', bg: 'bg-violet-50', active: false, logic: '當前過濾條件' },
-                        { label: '優秀', value: gradeCounts['優秀'] || 0, icon: Award, color: 'text-emerald-600', bg: 'bg-emerald-50', active: grade === '優秀', logic: '總分 ≥ 75', onClick: () => { setGrade(grade === '優秀' ? '' : '優秀'); setPage(1); } },
-                        { label: '良好', value: gradeCounts['良好'] || 0, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50', active: grade === '良好', logic: '60 ≤ 總分 < 75', onClick: () => { setGrade(grade === '良好' ? '' : '良好'); setPage(1); } },
-                        { label: '普通', value: gradeCounts['普通'] || 0, icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50', active: grade === '普通', logic: '45 ≤ 總分 < 60', onClick: () => { setGrade(grade === '普通' ? '' : '普通'); setPage(1); } },
-                        { label: '待改善', value: gradeCounts['待改善'] || 0, icon: AlertCircle, color: 'text-rose-600', bg: 'bg-rose-50', active: grade === '待改善', logic: '總分 < 45', onClick: () => { setGrade(grade === '待改善' ? '' : '待改善'); setPage(1); } }
+                        { label: '目前篩選', value: `${total} 檔`, icon: Filter, color: 'text-violet-600', bg: 'bg-violet-50', active: false, logic: '當前所有過濾條件下的個股總數' },
+                        { label: '優秀', value: gradeCounts['優秀'] || 0, icon: Award, color: 'text-emerald-600', bg: 'bg-emerald-50', active: grade === '優秀', logic: '綜合分數 ≥ 75 分', onClick: () => { setGrade(grade === '優秀' ? '' : '優秀'); setPage(1); } },
+                        { label: '良好', value: gradeCounts['良好'] || 0, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50', active: grade === '良好', logic: '綜合分數介於 60 ~ 74 分', onClick: () => { setGrade(grade === '良好' ? '' : '良好'); setPage(1); } },
+                        { label: '普通', value: gradeCounts['普通'] || 0, icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50', active: grade === '普通', logic: '綜合分數介於 45 ~ 59 分', onClick: () => { setGrade(grade === '普通' ? '' : '普通'); setPage(1); } },
+                        { label: '待改善', value: gradeCounts['待改善'] || 0, icon: AlertCircle, color: 'text-rose-600', bg: 'bg-rose-50', active: grade === '待改善', logic: '綜合分數低於 45 分', onClick: () => { setGrade(grade === '待改善' ? '' : '待改善'); setPage(1); } }
                     ].map((stat, i) => (
                         <div 
                             key={i} 
                             onClick={stat.onClick}
-                            className={`${stat.bg} p-4 rounded-xl border-2 transition-all cursor-pointer shadow-sm ${stat.active ? 'border-current ring-2 ring-offset-1 ring-slate-100' : 'border-slate-200 hover:border-slate-300'}`}
+                            className={`${stat.bg} p-4 rounded-xl border-2 transition-all cursor-pointer shadow-sm group relative ${stat.active ? 'border-current ring-2 ring-offset-1 ring-slate-100' : 'border-slate-200 hover:border-slate-300'}`}
                             style={stat.active ? { borderColor: 'currentColor' } : {}}
                         >
                             <div className="flex items-center justify-between mb-1">
                                 <div className="flex items-center gap-2">
                                     <stat.icon className={`w-4 h-4 ${stat.color}`} />
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{stat.label}</span>
+                                </div>
+                                <div className="relative group/info">
+                                    <Info className="w-3.5 h-3.5 text-slate-300 hover:text-slate-500 transition-colors" />
+                                    <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded-lg opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible lg:group-hover:opacity-100 lg:group-hover:visible transition-all z-50 shadow-xl pointer-events-none">
+                                        <div className="font-bold mb-1 border-b border-white/20 pb-1">{stat.label} 條件說明</div>
+                                        {stat.logic}
+                                    </div>
                                 </div>
                             </div>
                             <div className={`text-2xl font-black ${stat.color} tabular-nums`}>{stat.value}</div>
@@ -252,22 +261,32 @@ export default function HealthCheckRanking({ onSelectStock }) {
                 {/* Smart Rating Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     {[
-                        { label: '強力買進', value: smartRatingCounts['強力買進'] || 0, icon: Zap, color: 'text-rose-600', bg: 'bg-rose-50', active: smartRating === '強力買進', logic: '評比 > 0.6', onClick: () => { setSmartRating(smartRating === '強力買進' ? '' : '強力買進'); setPage(1); } },
-                        { label: '買進', value: smartRatingCounts['買進'] || 0, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', active: smartRating === '買進', logic: '評比 > 0.15', onClick: () => { setSmartRating(smartRating === '買進' ? '' : '買進'); setPage(1); } },
-                        { label: '觀望', value: smartRatingCounts['觀望'] || 0, icon: Activity, color: 'text-blue-600', bg: 'bg-blue-50', active: smartRating === '觀望', logic: '觀望', onClick: () => { setSmartRating(smartRating === '觀望' ? '' : '觀望'); setPage(1); } },
-                        { label: '賣出', value: smartRatingCounts['賣出'] || 0, icon: TrendingDown, color: 'text-orange-600', bg: 'bg-orange-50', active: smartRating === '賣出', logic: '賣出', onClick: () => { setSmartRating(smartRating === '賣出' ? '' : '賣出'); setPage(1); } },
-                        { label: '強力賣出', value: smartRatingCounts['強力賣出'] || 0, icon: AlertCircle, color: 'text-slate-600', bg: 'bg-slate-50', active: smartRating === '強力賣出', logic: '強力賣出', onClick: () => { setSmartRating(smartRating === '強力賣出' ? '' : '強力賣出'); setPage(1); } }
+                        { label: '強力買進', value: smartRatingCounts['強力買進'] || 0, icon: Zap, color: 'text-rose-600', bg: 'bg-rose-50', active: smartRating === '強力買進', logic: '智慧評分 > 0.45。代表技術面、位置、情緒三者均處於極佳狀態。', onClick: () => { setSmartRating(smartRating === '強力買進' ? '' : '強力買進'); setPage(1); } },
+                        { label: '買進', value: smartRatingCounts['買進'] || 0, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', active: smartRating === '買進', logic: '智慧評分介於 0.15 ~ 0.45。整體面向上看好。', onClick: () => { setSmartRating(smartRating === '買進' ? '' : '買進'); setPage(1); } },
+                        { label: '觀望', value: smartRatingCounts['觀望'] || 0, icon: Activity, color: 'text-blue-600', bg: 'bg-blue-50', active: smartRating === '觀望', logic: '智慧評分介於 -0.15 ~ 0.15。市場方向不明朗或指標互相抵消。', onClick: () => { setSmartRating(smartRating === '觀望' ? '' : '觀望'); setPage(1); } },
+                        { label: '賣出', value: smartRatingCounts['賣出'] || 0, icon: TrendingDown, color: 'text-orange-600', bg: 'bg-orange-50', active: smartRating === '賣出', logic: '智慧評分介於 -0.45 ~ -0.15。整體面向趨於保守或看空。', onClick: () => { setSmartRating(smartRating === '賣出' ? '' : '賣出'); setPage(1); } },
+                        { label: '強力賣出', value: smartRatingCounts['強力賣出'] || 0, icon: AlertCircle, color: 'text-slate-600', bg: 'bg-slate-50', active: smartRating === '強力賣出', logic: '智慧評分 < -0.45。代表技術面過熱、位置偏高且情緒不佳。', onClick: () => { setSmartRating(smartRating === '強力賣出' ? '' : '強力賣出'); setPage(1); } }
                     ].map((stat, i) => (
                         <div 
                             key={i} 
                             onClick={stat.onClick}
-                            className={`${stat.bg} p-4 rounded-xl border-2 transition-all cursor-pointer shadow-sm ${stat.active ? 'border-current ring-2 ring-offset-1 ring-slate-100' : 'border-slate-200 hover:border-slate-300'}`}
+                            className={`${stat.bg} p-4 rounded-xl border-2 transition-all cursor-pointer shadow-sm group relative ${stat.active ? 'border-current ring-2 ring-offset-1 ring-slate-100' : 'border-slate-200 hover:border-slate-300'}`}
                             style={stat.active ? { borderColor: 'currentColor' } : {}}
                         >
                             <div className="flex items-center justify-between mb-1">
                                 <div className="flex items-center gap-2">
                                     <stat.icon className={`w-4 h-4 ${stat.color}`} />
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{stat.label}</span>
+                                </div>
+                                <div className="relative group/info">
+                                    <Info className="w-3.5 h-3.5 text-slate-300 hover:text-slate-500 transition-colors" />
+                                    <div className="absolute bottom-full right-0 mb-2 w-56 p-2 bg-slate-800 text-white text-[10px] rounded-lg opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible lg:group-hover:opacity-100 lg:group-hover:visible transition-all z-50 shadow-xl pointer-events-none">
+                                        <div className="font-bold mb-1 border-b border-white/20 pb-1">{stat.label} 條件說明</div>
+                                        <div className="space-y-1">
+                                            <p>{stat.logic}</p>
+                                            <p className="border-t border-white/10 pt-1 text-slate-400 italic">智慧評分 = 技術指標(40%) + 價格位階(30%) + 市場情緒(30%)</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div className={`text-2xl font-black ${stat.color} tabular-nums`}>{stat.value}</div>
@@ -358,6 +377,8 @@ export default function HealthCheckRanking({ onSelectStock }) {
                             <div className="p-8"><StockAnalyzer symbol={selectedStock.symbol} /></div>
                         ) : activeTab === 'ai_report' ? (
                             <div className="p-0"><AIReportView symbol={selectedStock.symbol} name={selectedStock.name} /></div>
+                        ) : activeTab === 'backtest' ? (
+                            <div className="p-0"><HealthBacktestDashboard /></div>
                         ) : activeTab === 'valuation' ? (
                             <div className="p-8"><ValuationRiverView symbol={selectedStock.symbol} /></div>
                         ) : activeTab === 'pk' ? (

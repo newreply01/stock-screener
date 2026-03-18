@@ -30,6 +30,7 @@ app.use('/api/stream', streamRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/broker', brokerRoutes);
 app.use('/api', screenerRoutes);
+app.use('/api/screener', screenerRoutes); // Alias for frontend compatibility
 
 const distPath = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(distPath));
@@ -43,9 +44,11 @@ if (!process.env.VERCEL) {
     try {
         const { startScheduler } = require('./scheduler');
         startScheduler();
-        const PORT = process.env.PORT || 3000;
-        app.listen(PORT, () => console.log('Server started on port ' + PORT));
-    } catch (e) {}
+        const PORT = process.env.PORT || 5678;
+        app.listen(PORT, '127.0.0.1', () => console.log('Server started on port ' + PORT));
+    } catch (e) {
+        console.error('Failed to start server:', e);
+    }
 }
 
 module.exports = app;

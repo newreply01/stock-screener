@@ -1,9 +1,0 @@
-Table: fm_balance_sheet
-Columns: stock_id, date, type, value, origin_name
-
-Table: fm_financial_statements
-Columns: stock_id, date, type, value, item
-
-Table: fm_month_revenue
-Columns: stock_id, date, country, revenue, revenue_month, revenue_year
-

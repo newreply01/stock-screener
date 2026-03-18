@@ -1,7 +1,0 @@
-symbol
-name
-market
-industry
-updated_at
-stock_type
-listing_date
