@@ -1,5 +1,7 @@
 const { query, pool } = require('./db');
 const https = require('https');
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 // 安全檢查：僅在明確啟用爬蟲的環境中執行 (例如本地 WSL)
 // 避免在 Zeabur 或其他雲端平台中誤啟動
@@ -35,10 +37,7 @@ async function getTargetSymbols() {
     try {
         const res = await query(`
             SELECT symbol, market FROM stocks 
-            WHERE (industry IS NOT NULL 
-              AND industry NOT LIKE '%權證%'
-              AND industry NOT LIKE '%牛證%'
-              AND industry NOT LIKE '%熊證%')
+            WHERE symbol ~ '^(\\d{4,5}|00\\d{4})$'
                OR symbol = 'TAIEX'
         `);
         const symbols = res.rows.map(r => ({

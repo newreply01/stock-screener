@@ -62,6 +62,11 @@ export default function HealthBacktestDashboard() {
             console.error('Fetch category stocks error:', e);
         } finally {
             setListLoading(false);
+            // Scroll to list
+            setTimeout(() => {
+                const el = document.getElementById('backtest-stock-list-container');
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
         }
     };
 
@@ -101,8 +106,8 @@ export default function HealthBacktestDashboard() {
 
     const currentDay = stats[selectedDateIdx];
     const metrics = currentDay?.metrics || [];
-    const smartRatings = metrics.filter(m => m?.smart_rating).sort((a, b) => (parseFloat(b.avg_return_pct) || 0) - (parseFloat(a.avg_return_pct) || 0));
-    const grades = metrics.filter(m => !m?.smart_rating && m?.grade).sort((a, b) => (parseFloat(b.avg_return_pct) || 0) - (parseFloat(a.avg_return_pct) || 0));
+    const smartRatings = metrics.filter(m => m?.smart_rating && !m?.grade).sort((a, b) => (parseFloat(b.avg_return_pct) || 0) - (parseFloat(a.avg_return_pct) || 0));
+    const grades = metrics.filter(m => m?.grade && !m?.smart_rating).sort((a, b) => (parseFloat(b.avg_return_pct) || 0) - (parseFloat(a.avg_return_pct) || 0));
 
     return (
         <div className="space-y-8 p-6 bg-white animate-in fade-in duration-500">
@@ -269,60 +274,115 @@ export default function HealthBacktestDashboard() {
                 </div>
             </div>
 
-            {/* Stock List Modal */}
-            {showStockList && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
-                        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                            <div>
-                                <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
-                                    {selectedCategory?.smart_rating || selectedCategory?.grade} 相關個股
-                                </h3>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                    回測表現：{selectedCategory?.avg_return_pct}% · 共 {categoryStocks.length} 檔
-                                </p>
-                            </div>
-                            <button 
-                                onClick={() => setShowStockList(false)}
-                                className="p-2 hover:bg-white rounded-full transition-colors text-slate-400 hover:text-slate-600"
-                            >
-                                <Activity className="w-6 h-6 rotate-45" />
-                            </button>
+            {/* Stock List (Inline) */}
+            {(selectedCategory || categoryStocks.length > 0) && (
+                <div id="backtest-stock-list-container" className="mt-8 space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
+                        <div>
+                            <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                                <Activity className="w-6 h-6 text-teal-600" />
+                                {selectedCategory?.smart_rating || selectedCategory?.grade || '選定'} 相關個股
+                            </h3>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                回測表現：{selectedCategory?.avg_return_pct || 0}% · 共 {categoryStocks.length} 檔
+                            </p>
                         </div>
-                        
-                        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                            {listLoading ? (
-                                <div className="h-64 flex items-center justify-center text-slate-400 font-bold">讀取中...</div>
-                            ) : categoryStocks.length === 0 ? (
-                                <div className="h-64 flex items-center justify-center text-slate-400 font-bold">查無符合條件的個股</div>
-                            ) : (
+                        <button 
+                            onClick={() => {
+                                setSelectedCategory(null);
+                                setCategoryStocks([]);
+                            }}
+                            className="px-4 py-2 bg-white text-slate-400 hover:text-rose-500 rounded-xl text-xs font-black shadow-sm transition-all border border-slate-100"
+                        >
+                            關閉清單
+                        </button>
+                    </div>
+                    
+                    <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+                        {listLoading ? (
+                            <div className="h-64 flex items-center justify-center text-slate-400 font-bold bg-slate-50/30">讀取中...</div>
+                        ) : categoryStocks.length === 0 ? (
+                            <div className="h-64 flex items-center justify-center text-slate-400 font-bold bg-slate-50/30">查無符合條件的個股</div>
+                        ) : (
+                            <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
-                                    <thead className="sticky top-0 bg-white z-10 border-b border-slate-100">
-                                        <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-left">
-                                            <th className="px-4 py-3">股票</th>
-                                            <th className="px-4 py-3 text-right">推薦價</th>
-                                            <th className="px-4 py-3 text-right">回測價</th>
-                                            <th className="px-4 py-3 text-right">漲跌%</th>
+                                    <thead>
+                                        <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-left">
+                                            <th className="px-6 py-4">股票</th>
+                                            <th className="px-6 py-4 text-center">健診計算日</th>
+                                            <th className="px-4 py-4 text-center">綜合</th>
+                                            <th className="px-4 py-4 text-center">操作建議</th>
+                                            <th className="px-4 py-4 text-center">等級</th>
+                                            <th className="px-6 py-4 text-right">推薦價</th>
+                                            <th className="px-6 py-4 text-right">回測價</th>
+                                            <th className="px-6 py-4 text-right">漲跌%</th>
+                                            <th className="px-6 py-4 text-right">大盤相比</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
-                                        {categoryStocks.map(stock => (
-                                            <tr key={stock.symbol} className="hover:bg-slate-50 transition-colors group">
-                                                <td className="px-4 py-4">
-                                                    <div className="font-black text-slate-800">{stock.name}</div>
-                                                    <div className="text-[10px] font-bold text-slate-400">{stock.symbol}</div>
-                                                </td>
-                                                <td className="px-4 py-4 text-right font-bold text-slate-600 tabular-nums">{stock.recommend_price}</td>
-                                                <td className="px-4 py-4 text-right font-bold text-slate-600 tabular-nums">{stock.test_price}</td>
-                                                <td className={`px-4 py-4 text-right font-black tabular-nums ${stock.return_pct >= 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
-                                                    {stock.return_pct > 0 ? '+' : ''}{stock.return_pct}%
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {categoryStocks.map(stock => {
+                                            const relativeReturn = (parseFloat(stock.return_pct) - (parseFloat(currentDay?.taiex_return) || 0)).toFixed(2);
+                                            
+                                            // Score color helper
+                                            const getScoreColor = (s) => {
+                                                if (s >= 75) return 'text-emerald-600';
+                                                if (s >= 60) return 'text-blue-600';
+                                                if (s >= 45) return 'text-orange-600';
+                                                return 'text-rose-600';
+                                            };
+
+                                            const SMART_RATING_BG = {
+                                                "強力買進": "bg-emerald-500",
+                                                "買進": "bg-green-500",
+                                                "觀望": "bg-slate-500",
+                                                "賣出": "bg-orange-500",
+                                                "強力賣出": "bg-red-500"
+                                            };
+
+                                            const GRADE_BG = {
+                                                "優秀": "bg-emerald-500",
+                                                "良好": "bg-blue-500",
+                                                "普通": "bg-amber-500",
+                                                "待改善": "bg-red-500"
+                                            };
+
+                                            return (
+                                                <tr key={stock.symbol} className="hover:bg-teal-50/30 transition-colors group">
+                                                    <td className="px-6 py-4">
+                                                        <div className="font-black text-slate-800 group-hover:text-teal-700 transition-colors">{stock.name}</div>
+                                                        <div className="text-[10px] font-bold text-slate-400">{stock.symbol}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center font-bold text-slate-500 tabular-nums text-xs">
+                                                        {currentDay?.recommend_date}
+                                                    </td>
+                                                    <td className={`px-4 py-4 text-center font-black ${getScoreColor(stock.overall_score)}`}>
+                                                        {stock.overall_score}
+                                                    </td>
+                                                    <td className="px-4 py-4 text-center">
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white whitespace-nowrap ${SMART_RATING_BG[stock.smart_rating] || 'bg-slate-400'}`}>
+                                                            {stock.smart_rating}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-center">
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white whitespace-nowrap ${GRADE_BG[stock.grade] || 'bg-slate-400'}`}>
+                                                            {stock.grade}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right font-bold text-slate-600 tabular-nums">{stock.recommend_price}</td>
+                                                    <td className="px-6 py-4 text-right font-bold text-slate-600 tabular-nums">{stock.test_price}</td>
+                                                    <td className={`px-6 py-4 text-right font-black tabular-nums ${stock.return_pct >= 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
+                                                        {stock.return_pct > 0 ? '+' : ''}{stock.return_pct}%
+                                                    </td>
+                                                    <td className={`px-6 py-4 text-right font-bold tabular-nums text-xs ${parseFloat(relativeReturn) >= 0 ? 'text-rose-400' : 'text-slate-300'}`}>
+                                                        {parseFloat(relativeReturn) > 0 ? '+' : ''}{relativeReturn}%
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

@@ -303,7 +303,7 @@ export default function HealthCheckRanking({ onSelectStock }) {
                                     <th className="px-4 py-3 text-left w-12 sticky left-0 bg-slate-50 z-10">#</th>
                                     <th className="px-4 py-3 text-left sticky left-12 bg-slate-50 z-10">股票</th>
                                     <th className="px-3 py-3 text-center cursor-pointer" onClick={() => toggleSort('overall_score')}>綜合</th>
-                                    <th className="px-2 py-3 text-center">系統建議</th>
+                                    <th className="px-2 py-3 text-center">操作建議</th>
                                     <th className="px-2 py-3 text-center">等級</th>
                                     <th className="px-2 py-3 text-center">獲利</th>
                                     <th className="px-2 py-3 text-center">成長</th>

@@ -1647,7 +1647,7 @@ router.get('/health-check/backtest-stats', async (req, res) => {
                 FROM prev
                 JOIN curr ON prev.symbol = curr.symbol
                 WHERE prev.price_prev > 0
-                GROUP BY prev.smart_rating, prev.grade
+                GROUP BY GROUPING SETS ((prev.smart_rating), (prev.grade))
             `, [currDate, nextDate, taiexReturn]);
 
             if (perfRes.rows.length > 5) {
@@ -1694,7 +1694,7 @@ router.get('/health-check/backtest-category-stocks', async (req, res) => {
                 WHERE calc_date = $2
             )
             SELECT 
-                p.symbol, p.name, p.smart_rating, p.grade,
+                p.symbol, p.name, p.smart_rating, p.grade, p.overall_score,
                 p.p0 as recommend_price,
                 c.p1 as test_price,
                 ROUND(((c.p1 - p.p0) / p.p0 * 100), 2) as return_pct

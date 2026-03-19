@@ -14,7 +14,7 @@ async function calculateAndStoreIndicators() {
         console.log('🚀 開始計算技術指標...');
 
         // 1. 取得所有股票代碼
-        const stocksRes = await query('SELECT symbol FROM stocks');
+        const stocksRes = await query("SELECT symbol FROM stocks WHERE symbol ~ '^(\\d{4,5}|00\\d{4})$'");
         const stocks = stocksRes.rows;
         console.log(`📋 共找到 ${stocks.length} 檔股票`);
 
@@ -182,7 +182,10 @@ async function calculateAndStoreIndicators() {
 
 
 if (require.main === module) {
-    calculateAndStoreIndicators();
+    calculateAndStoreIndicators().catch(err => {
+        console.error('Fatal error:', err);
+        process.exit(1);
+    });
 }
 
 module.exports = { calculateAndStoreIndicators };

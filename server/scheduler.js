@@ -50,19 +50,8 @@ function getLiveSchedulerStatus() {
 function startScheduler() {
     // 每交易日 15:00 更新行情 (初步價格同步)
     const fetcherTask1500 = cron.schedule('0 15 * * 1-5', async () => {
-        isTaskRunning['twse_fetcher.js'] = true;
-        console.log(' 定時排程開始 (15:00)：抓取今日行情...');
-        await logScriptStatus('twse_fetcher.js', 'RUNNING', '正在執行盤後行情初步抓取');
-        try {
-            await catchUp();
-            console.log(' (15:00) 今日行情抓取完成');
-            await logScriptStatus('twse_fetcher.js', 'SUCCESS', '盤後行情初步抓取完成');
-        } catch (err) {
-            console.error(' (15:00) 行情抓取失敗:', err.message);
-            await logScriptStatus('twse_fetcher.js', 'FAILED', `執行失敗: ${err.message}`);
-        } finally {
-            isTaskRunning['twse_fetcher.js'] = false;
-        }
+        console.log('📅 定時排程開始 (15:00)：抓取今日行情...');
+        await runTaskSafely('twse_fetcher.js', catchUp, '盤後行情初步抓取');
     }, {
         scheduled: true,
         timezone: 'Asia/Taipei'
@@ -71,19 +60,8 @@ function startScheduler() {
 
     // 每交易日 21:45 補抓籌碼資料 (三大法人、融資融券更新後)
     const fetcherTask2145 = cron.schedule('45 21 * * 1-5', async () => {
-        isTaskRunning['twse_fetcher.js'] = true;
-        console.log(' 定時排程開始 (21:45)：補抓今日籌碼資料...');
-        await logScriptStatus('twse_fetcher.js', 'RUNNING', '正在補抓今日法人與資券資料');
-        try {
-            await catchUp();
-            console.log(' (21:45) 今日籌碼資料補全完成');
-            await logScriptStatus('twse_fetcher.js', 'SUCCESS', '今日法人與資券補抓完成');
-        } catch (err) {
-            console.error(' (21:45) 籌碼補抓失敗:', err.message);
-            await logScriptStatus('twse_fetcher.js', 'FAILED', `補抓失敗: ${err.message}`);
-        } finally {
-            isTaskRunning['twse_fetcher.js'] = false;
-        }
+        console.log('📅 定時排程開始 (21:45)：補抓今日籌碼資料...');
+        await runTaskSafely('twse_fetcher.js', catchUp, '今日法人與資券補抓');
     }, {
         scheduled: true,
         timezone: 'Asia/Taipei'
@@ -92,19 +70,8 @@ function startScheduler() {
 
     // 每小時更新新聞
     const newsTask = cron.schedule('0 * * * *', async () => {
-        isTaskRunning['news_fetcher.js'] = true;
-        console.log(' 定時排程開始：更新新聞...');
-        await logScriptStatus('news_fetcher.js', 'RUNNING', '正在執行每小時新聞更新');
-        try {
-            await syncAllNews();
-            console.log(' 新聞更新完成');
-            await logScriptStatus('news_fetcher.js', 'SUCCESS', '新聞更新完成');
-        } catch (err) {
-            console.error(' 新聞更新失敗:', err.message);
-            await logScriptStatus('news_fetcher.js', 'FAILED', `更新失敗: ${err.message}`);
-        } finally {
-            isTaskRunning['news_fetcher.js'] = false;
-        }
+        console.log('📰 定時排程開始：更新新聞...');
+        await runTaskSafely('news_fetcher.js', syncAllNews, '每小時新聞更新');
     }, {
         scheduled: true,
         timezone: 'Asia/Taipei'
@@ -113,19 +80,8 @@ function startScheduler() {
 
     // 每週六 04:00 更新基本面資料 (FinMind)
     const finmindTask = cron.schedule('0 4 * * 6', async () => {
-        isTaskRunning['finmind_fetcher.js'] = true;
         console.log('🚀 定時排程開始：更新基本面資料...');
-        await logScriptStatus('finmind_fetcher.js', 'RUNNING', '正在執行基本面資料更新');
-        try {
-            await syncAllStocksFinancials();
-            console.log('✅ 基本面資料更新完成');
-            await logScriptStatus('finmind_fetcher.js', 'SUCCESS', '基本面資料更新完成');
-        } catch (err) {
-            console.error('❌ 基本面更新失敗:', err.message);
-            await logScriptStatus('finmind_fetcher.js', 'FAILED', `基本面更新失敗: ${err.message}`);
-        } finally {
-            isTaskRunning['finmind_fetcher.js'] = false;
-        }
+        await runTaskSafely('finmind_fetcher.js', syncAllStocksFinancials, '每週基本面更新');
     }, {
         scheduled: true,
         timezone: 'Asia/Taipei'
@@ -134,19 +90,8 @@ function startScheduler() {
 
     // 每小時更新 FinMind 每日異動資料 (分點買賣、本益比、持股分級)
     const finmindDailyTask = cron.schedule('15 * * * *', async () => {
-        isTaskRunning['finmind_daily'] = true;
         console.log('🚀 定時排程開始：更新 FinMind 每日異動資料...');
-        await logScriptStatus('finmind_fetcher.js', 'RUNNING', '正在執行每小時分點與籌碼更新');
-        try {
-            await syncDailyStocksData();
-            console.log('✅ FinMind 每日異動資料更新完成');
-            await logScriptStatus('finmind_fetcher.js', 'SUCCESS', '每小時分點與籌碼更新完成');
-        } catch (err) {
-            console.error('❌ FinMind 每日更新失敗:', err.message);
-            await logScriptStatus('finmind_fetcher.js', 'FAILED', `每日更新失敗: ${err.message}`);
-        } finally {
-            isTaskRunning['finmind_daily'] = false;
-        }
+        await runTaskSafely('finmind_fetcher.js', syncDailyStocksData, '每小時分點與籌碼更新');
     }, {
         scheduled: true,
         timezone: 'Asia/Taipei'
@@ -155,18 +100,8 @@ function startScheduler() {
 
     // 每日 04:00 同步交易日資訊 (FinMind)
     const tradingDateTask = cron.schedule('0 4 * * *', async () => {
-        isTaskRunning['trading_date_sync'] = true;
         console.log('📅 定時排程開始 (04:00)：同步交易日資訊...');
-        try {
-            await syncTradingDate();
-            console.log('📅 (04:00) 交易日資訊同步完成');
-            await logScriptStatus('finmind_fetcher.js', 'SUCCESS', '交易日資訊同步完成');
-        } catch (err) {
-            console.error('📅 (04:00) 交易日同步失敗:', err.message);
-            await logScriptStatus('finmind_fetcher.js', 'FAILED', `交易日同步失敗: ${err.message}`);
-        } finally {
-            isTaskRunning['trading_date_sync'] = false;
-        }
+        await runTaskSafely('finmind_fetcher.js', syncTradingDate, '每日交易日資訊同步');
     }, {
         scheduled: true,
         timezone: 'Asia/Taipei'
@@ -175,19 +110,8 @@ function startScheduler() {
 
     // 每交易日 15:30 第一次計算全股健診排行 (初步價格更新後)
     const healthTask1530 = cron.schedule('30 15 * * 1-5', async () => {
-        isTaskRunning['calc_health_scores.js'] = true;
         console.log('🏥 定時排程開始 (15:30)：計算全股健診排行 (初步)...');
-        await logScriptStatus('calc_health_scores.js', 'RUNNING', '正在計算初步全股健診排行');
-        try {
-            await runHealthCheck();
-            console.log('🏥 (15:30) 全股健診排行計算完成');
-            await logScriptStatus('calc_health_scores.js', 'SUCCESS', '初步健診排行計算完成');
-        } catch (err) {
-            console.error('🏥 (15:30) 健診排行計算失敗:', err.message);
-            await logScriptStatus('calc_health_scores.js', 'FAILED', `初步計算失敗: ${err.message}`);
-        } finally {
-            isTaskRunning['calc_health_scores.js'] = false;
-        }
+        await runTaskSafely('calc_health_scores.js', runHealthCheck, '初步全股健診排行計算');
     }, {
         scheduled: true,
         timezone: 'Asia/Taipei'
@@ -196,19 +120,8 @@ function startScheduler() {
 
     // 每交易日 15:45 計算技術指標 (價格同步後)
     const indicatorsTask = cron.schedule('45 15 * * 1-5', async () => {
-        isTaskRunning['calculate_indicators.js'] = true;
         console.log('📈 定時排程開始 (15:45)：計算技術指標...');
-        await logScriptStatus('calculate_indicators.js', 'RUNNING', '正在計算技術指標');
-        try {
-            await calculateAndStoreIndicators();
-            console.log('📈 (15:45) 技術指標計算完成');
-            await logScriptStatus('calculate_indicators.js', 'SUCCESS', '技術指標計算完成');
-        } catch (err) {
-            console.error('📈 (15:45) 技術指標計算失敗:', err.message);
-            await logScriptStatus('calculate_indicators.js', 'FAILED', `計算失敗: ${err.message}`);
-        } finally {
-            isTaskRunning['calculate_indicators.js'] = false;
-        }
+        await runTaskSafely('calculate_indicators.js', calculateAndStoreIndicators, '技術指標計算');
     }, {
         scheduled: true,
         timezone: 'Asia/Taipei'
@@ -217,19 +130,8 @@ function startScheduler() {
 
     // 每交易日 22:15 第二次計算全股健診排行 (籌碼資料補全後)
     const healthTask2215 = cron.schedule('15 22 * * 1-5', async () => {
-        isTaskRunning['calc_health_scores.js'] = true;
         console.log('🏥 定時排程開始 (22:15)：計算全股健診排行 (最終)...');
-        await logScriptStatus('calc_health_scores.js', 'RUNNING', '正在計算最終全股健診排行');
-        try {
-            await runHealthCheck();
-            console.log('🏥 (22:15) 全股健診排行計算完成');
-            await logScriptStatus('calc_health_scores.js', 'SUCCESS', '最終健診排行計算完成');
-        } catch (err) {
-            console.error('🏥 (22:15) 健診排行計算失敗:', err.message);
-            await logScriptStatus('calc_health_scores.js', 'FAILED', `最終計算失敗: ${err.message}`);
-        } finally {
-            isTaskRunning['calc_health_scores.js'] = false;
-        }
+        await runTaskSafely('calc_health_scores.js', runHealthCheck, '最終全股健診排行計算');
     }, {
         scheduled: true,
         timezone: 'Asia/Taipei'
@@ -239,20 +141,11 @@ function startScheduler() {
     // 每交易日 16:30 補抓今日歷史 1 分K (盤後資料完整後執行)
     if (syncHistoricalMinuteBatch) {
         const histTickTask = cron.schedule('30 16 * * 1-5', async () => {
-            isTaskRunning['historical_tick_sync.js'] = true;
             const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
             console.log(`📈 定時排程開始：補抓 ${today} 歷史 1 分K...`);
-            await logScriptStatus('historical_tick_sync.js', 'RUNNING', `正在補抓 ${today} 歷史分時資料`);
-            try {
-                await syncHistoricalMinuteBatch(today, 100); // 今日，前 100 大股票
-                console.log('📈 歷史 1 分K 補抓完成');
-                await logScriptStatus('historical_tick_sync.js', 'SUCCESS', `${today} 歷史分時補抓完成`);
-            } catch (err) {
-                console.error('📈 歷史 1 分K 補抓失敗:', err.message);
-                await logScriptStatus('historical_tick_sync.js', 'FAILED', `補抓失敗: ${err.message}`);
-            } finally {
-                isTaskRunning['historical_tick_sync.js'] = false;
-            }
+            await runTaskSafely('historical_tick_sync.js', async () => {
+                await syncHistoricalMinuteBatch(today, 100);
+            }, `${today} 歷史分時補抓`);
         }, {
             scheduled: true,
             timezone: 'Asia/Taipei'
@@ -274,6 +167,26 @@ function startScheduler() {
     });
 
     console.log(' 排程系統已啟動 (時區: Asia/Taipei)');
+}
+
+// 輔助函式：確保非同步任務在失敗時會紀錄狀態
+async function runTaskSafely(taskName, taskFn, description) {
+    if (isTaskRunning[taskName]) {
+        console.log(`⚠️ 任務 ${taskName} 正正在執行中，跳過本次調度。`);
+        return;
+    }
+    
+    isTaskRunning[taskName] = true;
+    await logScriptStatus(taskName, 'RUNNING', `正在執行: ${description}`);
+    try {
+        await taskFn();
+        await logScriptStatus(taskName, 'SUCCESS', `${description}完成`);
+    } catch (err) {
+        console.error(`❌ 任務 ${taskName} 執行失敗:`, err.message);
+        await logScriptStatus(taskName, 'FAILED', `執行失敗: ${err.message}`);
+    } finally {
+        isTaskRunning[taskName] = false;
+    }
 }
 
 module.exports = { startScheduler, getLiveSchedulerStatus };

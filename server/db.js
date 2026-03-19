@@ -45,6 +45,7 @@ const pool = new Pool(poolConfig);
 
 const query = (text, params) => pool.query(text, params);
 
+const end = () => pool.end();
 const initDatabase = async () => {};
 
-module.exports = { pool, query, initDatabase };
+module.exports = { pool, query, end, initDatabase };

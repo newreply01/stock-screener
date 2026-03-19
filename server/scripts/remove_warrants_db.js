@@ -5,7 +5,7 @@ async function cleanDatabaseWarrants() {
   console.log('--- 移除資料庫中所有權證資料 ---');
   try {
     // We target symbols that are NOT 4-digit (stocks) AND NOT 6-digit starting with 00 (ETFs)
-    const filter = `NOT (symbol ~ '^\\d{4}$' OR symbol ~ '^00\\d{4}$')`;
+    const filter = `NOT (symbol ~ '^(\\d{4,5}|00\\d{4})$' OR symbol IN ('TAIEX', 'TSE', 'OTC'))`;
     
     // Some tables might not have ON DELETE CASCADE, so we delete manually just in case
     console.log('正在清理子資料表...');
@@ -24,14 +24,14 @@ async function cleanDatabaseWarrants() {
     await query(`DELETE FROM financial_statements WHERE ${filter}`);
     
     // Some use 'stock_id'
-    await query(`DELETE FROM fm_stock_news WHERE NOT (stock_id ~ '^\\d{4}$' OR stock_id ~ '^00\\d{4}$')`);
-    await query(`DELETE FROM fm_stock_per WHERE NOT (stock_id ~ '^\\d{4}$' OR stock_id ~ '^00\\d{4}$')`);
+    await query(`DELETE FROM fm_stock_news WHERE NOT (stock_id ~ '^(\\d{4,5}|00\\d{4})$')`);
+    await query(`DELETE FROM fm_stock_per WHERE NOT (stock_id ~ '^(\\d{4,5}|00\\d{4})$')`);
     
     // fm_margin_trading, fm_shareholding uses 'stock_id' instead of 'symbol'
-    await query(`DELETE FROM fm_margin_trading WHERE NOT (stock_id ~ '^\\d{4}$' OR stock_id ~ '^00\\d{4}$')`);
-    await query(`DELETE FROM fm_shareholding WHERE NOT (stock_id ~ '^\\d{4}$' OR stock_id ~ '^00\\d{4}$')`);
+    await query(`DELETE FROM fm_margin_trading WHERE NOT (stock_id ~ '^(\\d{4,5}|00\\d{4})$')`);
+    await query(`DELETE FROM fm_shareholding WHERE NOT (stock_id ~ '^(\\d{4,5}|00\\d{4})$')`);
     // fm_broker_trading uses 'stock_id'
-    await query(`DELETE FROM fm_broker_trading WHERE NOT (stock_id ~ '^\\d{4}$' OR stock_id ~ '^00\\d{4}$')`);
+    await query(`DELETE FROM fm_broker_trading WHERE NOT (stock_id ~ '^(\\d{4,5}|00\\d{4})$')`);
     
     console.log('正在清理主資料表 (stocks)...');
     const res = await query(`DELETE FROM stocks WHERE ${filter}`);

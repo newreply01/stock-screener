@@ -126,7 +126,7 @@ async function fetchTWSE(dateObj) {
         for (const row of table.data) {
             const symbol = row[0];
             const name = row[1];
-            if (!/^\d{4,6}$/.test(symbol) && symbol !== 'TAIEX' && symbol !== 'IX0001') continue;
+            if (!/^(\d{4,5}|00\d{4})$/.test(symbol) && symbol !== 'TAIEX' && symbol !== 'IX0001') continue;
 
             await ensureStock(symbol, name);
 
@@ -179,7 +179,7 @@ async function fetchTPEx(dateObj) {
         for (const row of dataRows) {
             const symbol = row[0];
             const name = row[1];
-            if (!/^\d{4,6}$/.test(symbol)) continue;
+            if (!/^(\d{4,5}|00\d{4})$/.test(symbol)) continue;
 
             await ensureStock(symbol, name);
             await query(`INSERT INTO stocks (symbol, name, market) VALUES ($1, $2, 'tpex') ON CONFLICT (symbol) DO NOTHING`, [symbol, name]);
@@ -232,7 +232,7 @@ async function fetchFundamentals(dateObj) {
         let count = 0;
         for (const row of json.data) {
             const symbol = row[0];
-            if (!/^\d{4,6}$/.test(symbol)) continue;
+            if (!/^(\d{4,5}|00\d{4})$/.test(symbol)) continue;
 
             await ensureStock(symbol);
 
@@ -320,7 +320,7 @@ async function fetchInstitutional(dateObj) {
         for (const row of json.data) {
             const symbol = row[0].trim();
             // 放寬過濾條件，只要是數字開頭且長度 4-6 碼都抓
-            if (!/^\d{4,6}$/.test(symbol)) {
+            if (!/^(\d{4,5}|00\d{4})$/.test(symbol)) {
                 skipCount++;
                 continue;
             }
@@ -386,7 +386,7 @@ async function fetchTPExInstitutional(dateObj) {
         let skipCount = 0;
         for (const row of dataRows) {
             const symbol = row[0].trim();
-            if (!/^\d{4,6}$/.test(symbol)) {
+            if (!/^(\d{4,5}|00\d{4})$/.test(symbol)) {
                 skipCount++;
                 continue;
             }

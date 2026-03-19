@@ -173,7 +173,7 @@ async function bulkUpsert(client, table, columns, conflictKeys, rows) {
 async function getAllStockSymbols() {
     const res = await pool.query(`
         SELECT symbol FROM stocks 
-        WHERE symbol ~ '^\\d{4}$' OR symbol ~ '^00\\d{4}$'
+        WHERE symbol ~ '^\\d{4,5}$' OR symbol ~ '^00\\d{4}$'
         OR symbol IN ('TAIEX', 'TSE', 'OTC') 
         ORDER BY symbol ASC
     `);
