@@ -1,5 +1,26 @@
 export const API_BASE = import.meta.env.VITE_API_URL || '/api';
-import { authFetch } from './auth';
+import { authFetch, getToken } from './auth';
+
+/**
+ * 統一 API 請求 wrapper
+ * 自動處理認證 header、錯誤格式化與 JSON 解析
+ * @param {string} url - API URL
+ * @param {object} options - fetch options
+ * @param {boolean} requiresAuth - 是否需要攜帶認證 token
+ */
+async function apiRequest(url, options = {}, requiresAuth = false) {
+    const fetchFn = requiresAuth ? authFetch : fetch;
+    const res = await fetchFn(url, options);
+    if (!res.ok) {
+        let errorMsg = `API 請求失敗 (${res.status})`;
+        try {
+            const errData = await res.json();
+            errorMsg = errData.error || errData.message || errorMsg;
+        } catch (_) {}
+        throw new Error(errorMsg);
+    }
+    return res.json();
+}
 
 export async function screenStocks(params = {}) {
     const searchParams = new URLSearchParams();
@@ -8,9 +29,7 @@ export async function screenStocks(params = {}) {
             searchParams.append(key, value);
         }
     });
-    const res = await fetch(`${API_BASE}/screen?${searchParams.toString()}`);
-    if (!res.ok) throw new Error('篩選請求失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/screen?${searchParams.toString()}`);
 }
 
 export async function searchStocks(queryStr, limit = 10) {
@@ -18,40 +37,30 @@ export async function searchStocks(queryStr, limit = 10) {
     const searchParams = new URLSearchParams();
     searchParams.append('q', queryStr);
     searchParams.append('limit', limit);
-    const res = await fetch(`${API_BASE}/stocks/search?${searchParams.toString()}`);
-    if (!res.ok) throw new Error('搜尋請求失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/stocks/search?${searchParams.toString()}`);
 }
 
 export async function getStats(params = {}) {
     const searchParams = new URLSearchParams();
     if (params.date) searchParams.append('date', params.date);
-    const res = await fetch(`${API_BASE}/stats?${searchParams.toString()}`);
-    if (!res.ok) throw new Error('統計請求失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/stats?${searchParams.toString()}`);
 }
 
 export async function getMarketSummary(params = {}) {
     const searchParams = new URLSearchParams();
     if (params.market) searchParams.append('market', params.market);
-    const res = await fetch(`${API_BASE}/market-summary?${searchParams.toString()}`);
-    if (!res.ok) throw new Error('獲取市場概況失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/market-summary?${searchParams.toString()}`);
 }
 
 export async function getMarketFocus(params = {}) {
     const searchParams = new URLSearchParams();
     if (params.market) searchParams.append('market', params.market);
-    const res = await fetch(`${API_BASE}/market-focus?${searchParams.toString()}`);
-    if (!res.ok) throw new Error('獲取市場焦點失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/market-focus?${searchParams.toString()}`);
 }
 
 
 export async function getMarketMargin() {
-    const res = await fetch(`${API_BASE}/market-margin`);
-    if (!res.ok) throw new Error('獲取大盤融資失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/market-margin`);
 }
 
 export async function getInstitutionalRank(params = {}) {
@@ -61,61 +70,51 @@ export async function getInstitutionalRank(params = {}) {
             searchParams.append(key, value);
         }
     });
-    const res = await fetch(`${API_BASE}/institutional-rank?${searchParams.toString()}`);
-    if (!res.ok) throw new Error('獲取法人排行失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/institutional-rank?${searchParams.toString()}`);
+}
+
+export async function getInstitutionalTotal(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.days) searchParams.append('days', params.days);
+    return apiRequest(`${API_BASE}/institutional-total?${searchParams.toString()}`);
 }
 
 export async function getNews(category = 'all', limit = 10) {
-    const res = await fetch(`${API_BASE}/news?category=${category}&limit=${limit}`);
-    if (!res.ok) throw new Error('獲取新聞失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/news?category=${category}&limit=${limit}`);
 }
 
 export async function getHistory(symbol, limit = 200, period = '日K') {
     if (!symbol) return [];
-    const res = await fetch(`${API_BASE}/history/${symbol}?limit=${limit}&period=${encodeURIComponent(period)}`);
-    if (!res.ok) throw new Error('獲取歷史資料失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/history/${symbol}?limit=${limit}&period=${encodeURIComponent(period)}`);
 }
 
 export async function getComparisonData(symbols, limit = 100) {
     if (!symbols || symbols.length === 0) return {};
     const symbolStr = symbols.join(',');
-    const res = await fetch(`${API_BASE}/compare?symbols=${symbolStr}&limit=${limit}`);
-    if (!res.ok) throw new Error('獲取多股比較資料失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/compare?symbols=${symbolStr}&limit=${limit}`);
 }
 
 export async function getStockFinancials(symbol) {
     if (!symbol) return null;
-    const res = await fetch(`${API_BASE}/stock/${symbol}/financials`);
-    if (!res.ok) throw new Error('獲取財務資料失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/stock/${symbol}/financials`);
 }
 
 export async function getInstitutionalData(symbol, limit = 60) {
     if (!symbol) return [];
-    const res = await fetch(`${API_BASE}/stock/${symbol}/institutional?limit=${limit}`);
-    if (!res.ok) throw new Error('獲取籌碼資料失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/stock/${symbol}/institutional?limit=${limit}`);
 }
 
 export async function getAIReport(symbol) {
     if (!symbol) return null;
-    const res = await fetch(`${API_BASE}/stock/${symbol}/ai-report`);
-    if (!res.ok) throw new Error('獲取 AI 報告失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/stock/${symbol}/ai-report`);
 }
 
 export async function getUserSettings() {
-    const res = await authFetch(`${API_BASE}/auth/settings`);
-    if (!res.ok) throw new Error('獲取使用者設定失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/auth/settings`, {}, true);
 }
 
 export async function updateUserSettings(settings) {
-    const res = await authFetch(`${API_BASE}/auth/settings`, {
+    return apiRequest(`${API_BASE}/auth/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings)
@@ -125,96 +124,72 @@ export async function updateUserSettings(settings) {
 }
 
 export async function getWatchlists() {
-    const res = await authFetch(`${API_BASE}/watchlists`);
-    if (!res.ok) throw new Error('獲取自選股失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/watchlists`, {}, true);
 }
 
 export async function addStockToWatchlist(watchlistId, symbol) {
-    const res = await authFetch(`${API_BASE}/watchlists/${watchlistId}/symbols`, {
+    return apiRequest(`${API_BASE}/watchlists/${watchlistId}/symbols`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ symbol })
-    });
-    if (!res.ok) throw new Error('加入自選股失敗');
-    return res.json();
+    }, true);
 }
 
 export async function removeStockFromWatchlist(watchlistId, symbol) {
-    const res = await authFetch(`${API_BASE}/watchlists/${watchlistId}/symbols/${symbol}`, {
+    return apiRequest(`${API_BASE}/watchlists/${watchlistId}/symbols/${symbol}`, {
         method: 'DELETE'
-    });
-    if (!res.ok) throw new Error('移除自選股失敗');
-    return res.json();
+    }, true);
 }
 
 export async function getSavedFilters() {
-    const res = await authFetch(`${API_BASE}/filters`);
-    if (!res.ok) throw new Error('獲取篩選器失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/filters`, {}, true);
 }
 
 export async function saveFilter(name, filters) {
-    const res = await authFetch(`${API_BASE}/filters`, {
+    return apiRequest(`${API_BASE}/filters`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, filters })
-    });
-    if (!res.ok) throw new Error('儲存篩選器失敗');
-    return res.json();
+    }, true);
 }
 
 export async function deleteFilter(id) {
-    const res = await authFetch(`${API_BASE}/filters/${id}`, {
+    return apiRequest(`${API_BASE}/filters/${id}`, {
         method: 'DELETE'
-    });
-    if (!res.ok) throw new Error('刪除篩選器失敗');
-    return res.json();
+    }, true);
 }
 export async function getBrokerTrading(symbol, period = '日K') {
     if (!symbol) return { buyers: [], sellers: [], date: null };
-    const res = await fetch(`${API_BASE}/stock/${symbol}/broker-trading?period=${encodeURIComponent(period)}`);
-    if (!res.ok) throw new Error('獲取分點進出失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/stock/${symbol}/broker-trading?period=${encodeURIComponent(period)}`);
 }
 
 export async function getMarginTrading(symbol, limit = 60) {
     if (!symbol) return { data: [] };
-    const res = await fetch(`${API_BASE}/stock/${symbol}/margin-trading?limit=${limit}`);
-    if (!res.ok) throw new Error('獲取融資融券失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/stock/${symbol}/margin-trading?limit=${limit}`);
 }
 export async function getBrokerTrace(symbol, limit = 60, period = '日K') {
     if (!symbol) return { data: [] };
-    const res = await fetch(`${API_BASE}/stock/${symbol}/broker-trace?limit=${limit}&period=${encodeURIComponent(period)}`);
-    if (!res.ok) throw new Error('獲取分點進跡失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/stock/${symbol}/broker-trace?limit=${limit}&period=${encodeURIComponent(period)}`);
 }
 
 export async function getRealtimeData(symbol) {
     if (!symbol) return null;
-    const res = await fetch(`${API_BASE}/realtime/${symbol}`);
-    if (!res.ok) throw new Error('獲取即時行情失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/realtime/${symbol}`);
 }
 
 export async function getRealtimeTicks(symbol, date) {
     if (!symbol) return { data: [], date: null };
     const dateParam = date ? `&date=${date}` : '';
-    const res = await fetch(`${API_BASE}/realtime/realtime-ticks?symbol=${symbol}${dateParam}`);
-    if (!res.ok) throw new Error('獲取盤中分時資料失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/realtime/realtime-ticks?symbol=${symbol}${dateParam}`);
 }
 
 export async function getRealtimeActive() {
-    const res = await fetch(`${API_BASE}/realtime/realtime-active`);
-    if (!res.ok) throw new Error('獲取即時熱門標的失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/realtime/realtime-active`);
 }
 
 export async function getRealtimeBatch(symbols) {
     if (!symbols || symbols.length === 0) return { success: true, data: {} };
-    const res = await fetch(`${API_BASE}/realtime/batch`, {
+    return apiRequest(`${API_BASE}/realtime/batch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ symbols })
@@ -224,39 +199,29 @@ export async function getRealtimeBatch(symbols) {
 }
 
 export async function getMarketIndex() {
-    const res = await fetch(`${API_BASE}/realtime/market-index`);
-    if (!res.ok) throw new Error('獲取大盤指數失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/realtime/market-index`);
 }
 
 export async function getIndustries() {
-    const res = await fetch(`${API_BASE}/stocks/industries`);
-    if (!res.ok) throw new Error('獲取產業清單失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/stocks/industries`);
 }
 
 export async function getHealthHistory(symbol) {
     if (!symbol) return { data: [] };
-    const res = await fetch(`${API_BASE}/stock/${symbol}/health-history`);
-    if (!res.ok) throw new Error('獲取健診歷史失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/stock/${symbol}/health-history`);
 }
 
 export async function getQuickDiagnosis(symbol) {
     if (!symbol) return null;
-    const res = await fetch(`${API_BASE}/stock/${symbol}/quick-diagnosis`);
-    if (!res.ok) throw new Error('獲取快速診斷失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/stock/${symbol}/quick-diagnosis`);
 }
 
 export async function getPromptTemplates() {
-    const res = await authFetch(`${API_BASE}/admin/prompts`);
-    if (!res.ok) throw new Error('獲取提示詞模板列表失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/admin/prompts`, {}, true);
 }
 
 export async function getPromptTemplate(name) {
-    const res = await authFetch(`${API_BASE}/admin/prompts/${name}`);
+    return apiRequest(`${API_BASE}/admin/prompts/${name}`);
     if (!res.ok) throw new Error(`獲取提示詞模板 ${name} 失敗`);
     return res.json();
 }
@@ -278,9 +243,7 @@ export async function getPromptHistory(name) {
 }
 
 export async function getPromptVersion(id) {
-    const res = await authFetch(`${API_BASE}/admin/prompts/version/${id}`);
-    if (!res.ok) throw new Error('獲取提示詞單一版本失敗');
-    return res.json();
+    const res = await authFetch(`${API_BASE}/admin/prompts/version/${id}`, {}, true);
 }
 
 export async function overwritePromptVersion(id, content, note) {
@@ -289,21 +252,17 @@ export async function overwritePromptVersion(id, content, note) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content, note })
     });
-    if (!res.ok) throw new Error('覆蓋提示詞版本失敗');
-    return res.json();
 }
 
 export async function deletePromptVersion(id) {
     const res = await authFetch(`${API_BASE}/admin/prompts/version/${id}`, {
         method: 'DELETE'
-    });
-    if (!res.ok) throw new Error('刪除提示詞版本失敗');
-    return res.json();
+    }, true);
 }
 
 
 export async function generateAIReport(symbol) {
-    const res = await fetch(`${API_BASE}/stock/${symbol}/generate-ai-report`, {
+    return apiRequest(`${API_BASE}/stock/${symbol}/generate-ai-report`, {
         method: 'POST'
     });
     if (!res.ok) throw new Error(`生成 AI 報告失敗`);
@@ -312,26 +271,20 @@ export async function generateAIReport(symbol) {
 
 // ==================== 持倉分析 API ====================
 export async function analyzePositionAPI(symbol) {
-    const res = await fetch(`${API_BASE}/position/analyze/${symbol}`);
-    if (!res.ok) throw new Error('持倉分析失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/position/analyze/${symbol}`);
 }
 
 export async function analyzeBatchPositions(symbols) {
-    const res = await fetch(`${API_BASE}/position/analyze-batch`, {
+    return apiRequest(`${API_BASE}/position/analyze-batch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ symbols })
     });
-    if (!res.ok) throw new Error('批量持倉分析失敗');
-    return res.json();
 }
 
 // ==================== 分析權重設定 API ====================
 export async function getAnalysisSettings() {
-    const res = await authFetch(`${API_BASE}/position/settings`);
-    if (!res.ok) throw new Error('獲取分析權重設定失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/position/settings`);
 }
 
 export async function updateAnalysisSettings(weights) {
@@ -339,16 +292,12 @@ export async function updateAnalysisSettings(weights) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(weights)
-    });
-    if (!res.ok) throw new Error('更新分析權重設定失敗');
-    return res.json();
+    }, true);
 }
 
 // ==================== 歷史評分走勢 API ====================
 export async function getPositionHistory(symbol, days = 30) {
     if (!symbol) return { data: [] };
-    const res = await fetch(`${API_BASE}/position/history/${symbol}?days=${days}`);
-    if (!res.ok) throw new Error('獲取歷史評分失敗');
-    return res.json();
+    return apiRequest(`${API_BASE}/position/history/${symbol}?days=${days}`);
 }
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import MarketStats from './components/MarketStats'
 import ScreenerConfigPage from './components/ScreenerConfigPage'
@@ -26,6 +27,8 @@ import { useAuth } from './context/AuthContext';
 import { useGlobalFilters } from './context/GlobalFilterContext'
 
 function App() {
+  const navigate = useNavigate()
+  const location = useLocation()
   const { requireLogin, user, showLoginModal, setShowLoginModal } = useAuth()
   const { marketForApi, stockTypesForApi, industryForApi } = useGlobalFilters()
   const [results, setResults] = useState({ data: [], total: 0, page: 1, totalPages: 0, latestDate: null })
@@ -43,14 +46,6 @@ function App() {
     } catch { return { symbol: '2330', name: '台積電', industry: '半導體業' }; }
   })
   const [detailStock, setDetailStock] = useState(null)
-  const [currentView, setCurrentView] = useState(() => {
-    return localStorage.getItem('muchstock-current-view') || 'market-overview';
-  });
-
-  // Persist view and stock state
-  useEffect(() => {
-    localStorage.setItem('muchstock-current-view', currentView);
-  }, [currentView]);
 
   useEffect(() => {
     if (mainStock) {
@@ -70,7 +65,7 @@ function App() {
 
   useEffect(() => { 
     if (user) fetchUserWatchlists() 
-  }, [currentView, user])
+  }, [location.pathname, user])
 
   const toggleWatchlist = async (symbol) => {
     if (!requireLogin()) return;
@@ -91,14 +86,13 @@ function App() {
     const handleSearch = (e) => {
       setSearchTerm(e.detail)
       setPage(1)
-      // 清除舊的主選股票，讓 search 完後的結果能自動遞補 (配合 line 94)
       setMainStock(null)
-      if (currentView !== 'stock-detail') setCurrentView('stock-detail')
+      if (!location.pathname.startsWith('/stock')) navigate(`/stock/${e.detail?.symbol || '2330'}`)
     }
     const handleSelect = (e) => {
       const stock = e.detail
       setMainStock(stock)
-      if (currentView !== 'stock-detail') setCurrentView('stock-detail')
+      if (!location.pathname.startsWith('/stock')) navigate(`/stock/${stock?.symbol || '2330'}`)
     }
     const handleSwitchView = (e) => {
       let targetView = e.detail;
@@ -111,16 +105,36 @@ function App() {
 
       console.log('App: Switching view to', targetView, 'with filters', incomingFilters);
 
-      // 未登入不可進入自選股或投資組合
       if (['watchlist', 'portfolio'].includes(targetView) && !requireLogin()) {
         return;
       }
 
-      setCurrentView(targetView)
       if (incomingFilters) {
         setFilters(prev => ({ ...prev, ...incomingFilters }));
         setPage(1);
       }
+
+      const routesMap = {
+        'market-overview': '/',
+        'screener-config': '/screener',
+        'stock-detail': `/stock/${mainStock?.symbol || '2330'}`,
+        'watchlist': '/watchlist',
+        'portfolio': '/portfolio',
+        'institutional': '/institutional',
+        'sentiment': '/sentiment',
+        'dashboard': '/dashboard',
+        'trading': '/trading',
+        'explorer': '/explorer',
+        'health-ranking': '/health-ranking',
+        'monitor': '/monitor',
+        'admin-users': '/admin/users',
+        'admin-prompts': '/admin/prompts',
+        'position-analysis': '/position-analysis',
+        'profile': '/profile',
+        'news': '/news'
+      };
+      
+      navigate(routesMap[targetView] || '/');
       window.scrollTo(0, 0)
     }
     window.addEventListener('muchstock-view', handleSwitchView)
@@ -131,7 +145,7 @@ function App() {
       window.removeEventListener('muchstock-view', handleSwitchView)
       window.removeEventListener('muchstock-select', handleSelect)
     }
-  }, [currentView, requireLogin])
+  }, [location.pathname, requireLogin, navigate, mainStock])
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -171,82 +185,39 @@ function App() {
 
   useEffect(() => { fetchStats(); fetchData() }, [fetchData, fetchStats])
 
+  const getActiveView = (path) => {
+    if (path === '/') return 'market-overview';
+    if (path.startsWith('/screener')) return 'screener-config';
+    if (path.startsWith('/stock/')) return 'stock-detail';
+    if (path.startsWith('/watchlist')) return 'watchlist';
+    if (path.startsWith('/portfolio')) return 'portfolio';
+    if (path.startsWith('/institutional')) return 'institutional';
+    if (path.startsWith('/sentiment')) return 'sentiment';
+    if (path.startsWith('/dashboard')) return 'dashboard';
+    if (path.startsWith('/trading')) return 'trading';
+    if (path.startsWith('/explorer')) return 'explorer';
+    if (path.startsWith('/health-ranking')) return 'health-ranking';
+    if (path.startsWith('/monitor')) return 'monitor';
+    if (path.startsWith('/admin/users')) return 'admin-users';
+    if (path.startsWith('/admin/prompts')) return 'admin-prompts';
+    if (path.startsWith('/position-analysis')) return 'position-analysis';
+    if (path.startsWith('/profile')) return 'profile';
+    if (path.startsWith('/news')) return 'news';
+    return 'market-overview';
+  };
+  const activeViewName = getActiveView(location.pathname);
+
   return (
-    <Layout currentView={currentView}>
+    <Layout currentView={activeViewName}>
       <MarketStats stats={stats} fallbackDate={results?.latestDate} />
       <div className="max-w-[1600px] mx-auto px-4 py-8">
-        {currentView === 'screener-config' ? (
-          <ScreenerConfigPage
-            onFilter={(f) => { setFilters(f); setPage(1); }}
-            onClear={() => { setFilters({}); setPage(1); setMainStock(null); }}
-            filters={filters}
-            onBack={() => setCurrentView('dashboard')}
-            results={results}
-            loading={loading}
-            sortBy={sortBy}
-            sortDir={sortDir}
-            onSort={(c) => {
-              if (sortBy === c) setSortDir(p => p === 'desc' ? 'asc' : 'desc');
-              else { setSortBy(c); setSortDir('desc'); }
-              setPage(1);
-            }}
-            page={page}
-            onPageChange={setPage}
-            onStockClick={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }}
-            watchedSymbols={watchedSymbols}
-            onToggleWatchlist={toggleWatchlist}
-          />
-        ) : currentView === 'watchlist' ? (
-          <WatchlistDashboard
-            onStockClick={(s) => { setMainStock(s); setDetailStock(s) }}
-            watchedSymbols={watchedSymbols}
-            onToggleWatchlist={toggleWatchlist}
-          />
-        ) : currentView === 'profile' ? (
-          <ProfilePage />
-        ) : currentView === 'portfolio' ? (
-          <PortfolioDashboard 
-            onStockClick={(s) => { setMainStock(s); setDetailStock(s); setCurrentView('stock-detail'); }}
-          />
-        ) : currentView === 'institutional' ? (
-          <InstitutionalRankView
-            watchedSymbols={watchedSymbols}
-            onToggleWatchlist={toggleWatchlist}
-          />
-        ) : currentView === 'sentiment' ? (
-          <MarketSentimentView />
-        ) : currentView === 'market-overview' ? (
-          <MarketDashboard onStockSelect={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }} />
-        ) : currentView === 'trading' ? (
-          <TradingDashboard 
-            watchlists={watchlists} 
-            watchedSymbols={watchedSymbols} 
-          />
-        ) : currentView === 'explorer' ? (
-          <RealtimeExplorer onStockSelect={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }} />
-        ) : currentView === 'health-ranking' ? (
-          <HealthCheckRanking onSelectStock={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }} />
-        ) : currentView === 'monitor' ? (
-          <MonitorPage />
-        ) : currentView === 'admin-users' ? (
-          <AdminUserManagement />
-        ) : currentView === 'admin-prompts' ? (
-          <AIPromptManager />
-        ) : currentView === 'position-analysis' ? (
-          <PositionAnalysis />
-        ) : currentView === 'stock-detail' ? (
-          <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
-            <StockDetail stock={mainStock} isInline={true} />
-          </div>
-        ) : currentView === 'dashboard' ? (
-          <PatternAnalysisDashboard
-            selectedStock={mainStock}
-            symbol={mainStock?.symbol}
-            activePatterns={activePatterns}
-            onPatternsChange={setActivePatterns}
-            onStockSelect={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }}
-          >
-            <ResultTable
+        <Routes>
+          <Route path="/screener" element={
+            <ScreenerConfigPage
+              onFilter={(f) => { setFilters(f); setPage(1); }}
+              onClear={() => { setFilters({}); setPage(1); setMainStock(null); }}
+              filters={filters}
+              onBack={() => navigate('/dashboard')}
               results={results}
               loading={loading}
               sortBy={sortBy}
@@ -258,15 +229,81 @@ function App() {
               }}
               page={page}
               onPageChange={setPage}
-              onStockClick={(s) => { setMainStock(s); setDetailStock(null); setCurrentView('stock-detail'); }}
+              onStockClick={(s) => { setMainStock(s); setDetailStock(null); navigate(`/stock/\${s.symbol}`); }}
               watchedSymbols={watchedSymbols}
               onToggleWatchlist={toggleWatchlist}
-              onCompare={setActiveCompareSymbols}
             />
-          </PatternAnalysisDashboard>
-        ) : <NewsBoard />}
+          } />
+          <Route path="/watchlist" element={
+            <WatchlistDashboard
+              onStockClick={(s) => { setMainStock(s); setDetailStock(s); }}
+              watchedSymbols={watchedSymbols}
+              onToggleWatchlist={toggleWatchlist}
+            />
+          } />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/portfolio" element={
+            <PortfolioDashboard 
+              onStockClick={(s) => { setMainStock(s); setDetailStock(s); navigate(`/stock/\${s.symbol}`); }}
+            />
+          } />
+          <Route path="/institutional" element={
+            <InstitutionalRankView
+              watchedSymbols={watchedSymbols}
+              onToggleWatchlist={toggleWatchlist}
+            />
+          } />
+          <Route path="/sentiment" element={<MarketSentimentView />} />
+          <Route path="/" element={<MarketDashboard onStockSelect={(s) => { setMainStock(s); setDetailStock(null); navigate(`/stock/\${s.symbol}`); }} />} />
+          <Route path="/trading" element={
+            <TradingDashboard 
+              watchlists={watchlists} 
+              watchedSymbols={watchedSymbols} 
+            />
+          } />
+          <Route path="/explorer" element={<RealtimeExplorer onStockSelect={(s) => { setMainStock(s); setDetailStock(null); navigate(`/stock/\${s.symbol}`); }} />} />
+          <Route path="/health-ranking" element={<HealthCheckRanking onSelectStock={(s) => { setMainStock(s); setDetailStock(null); navigate(`/stock/\${s.symbol}`); }} />} />
+          <Route path="/monitor" element={<MonitorPage />} />
+          <Route path="/admin/users" element={<AdminUserManagement />} />
+          <Route path="/admin/prompts" element={<AIPromptManager />} />
+          <Route path="/position-analysis" element={<PositionAnalysis />} />
+          <Route path="/stock/:symbol" element={
+            <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
+              <StockDetail stock={mainStock} isInline={true} />
+            </div>
+          } />
+          <Route path="/dashboard" element={
+            <PatternAnalysisDashboard
+              selectedStock={mainStock}
+              symbol={mainStock?.symbol}
+              activePatterns={activePatterns}
+              onPatternsChange={setActivePatterns}
+              onStockSelect={(s) => { setMainStock(s); setDetailStock(null); navigate(`/stock/\${s.symbol}`); }}
+            >
+              <ResultTable
+                results={results}
+                loading={loading}
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onSort={(c) => {
+                  if (sortBy === c) setSortDir(p => p === 'desc' ? 'asc' : 'desc');
+                  else { setSortBy(c); setSortDir('desc'); }
+                  setPage(1);
+                }}
+                page={page}
+                onPageChange={setPage}
+                onStockClick={(s) => { setMainStock(s); setDetailStock(null); navigate(`/stock/\${s.symbol}`); }}
+                watchedSymbols={watchedSymbols}
+                onToggleWatchlist={toggleWatchlist}
+                onCompare={setActiveCompareSymbols}
+              />
+            </PatternAnalysisDashboard>
+          } />
+          <Route path="/news" element={<NewsBoard />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </div>
-      {detailStock && currentView !== 'dashboard' && (
+      {detailStock && activeViewName !== 'dashboard' && (
         <StockDetail
           stock={detailStock}
           onClose={() => setDetailStock(null)}
@@ -282,7 +319,6 @@ function App() {
       )}
       <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
     </Layout>
-
   )
 }
 export default App

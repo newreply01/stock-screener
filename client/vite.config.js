@@ -8,7 +8,7 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
-    port: 20000,
+    port: 32000,
     host: true,
     proxy: {
       '/api': {

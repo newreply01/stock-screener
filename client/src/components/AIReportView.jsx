@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Bot, Sparkles, TrendingUp, TrendingDown, AlertCircle, RefreshCcw } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { getAIReport, generateAIReport } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -40,7 +41,6 @@ export default function AIReportView({ symbol, name }) {
         try {
             const res = await generateAIReport(symbol);
             if (res.success) {
-                // After generation, we can either use the returned content or just refetch
                 await fetchReport();
             } else {
                 alert('生成失敗: ' + (res.error || '未知錯誤'));
@@ -62,7 +62,6 @@ export default function AIReportView({ symbol, name }) {
 
     // 渲染情緒儀表板
     const renderSentimentMeter = (score) => {
-        // score is 0.0 to 1.0 (0 = extreme bearish, 1 = extreme bullish)
         const percentage = Math.max(0, Math.min(100, score * 100));
 
         let sentimentText = '中性觀望';
@@ -135,7 +134,6 @@ export default function AIReportView({ symbol, name }) {
         );
     };
 
-
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 h-full flex flex-col">
             <div className="flex items-center justify-between">
@@ -181,7 +179,6 @@ export default function AIReportView({ symbol, name }) {
                 </div>
             ) : reportData ? (
                 <div className="flex flex-col gap-6 flex-1">
-                    {/* Sentiment Dashboard (Always at top, horizontal) */}
                     {renderSentimentMeter(reportData.sentiment_score ?? 0.5)}
 
                     <div className="grid grid-cols-1 gap-6 flex-1 min-h-0">
@@ -194,7 +191,6 @@ export default function AIReportView({ symbol, name }) {
                             </div>
                         )}
 
-                        {/* Report Content */}
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
                             <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
                                 <h3 className="font-black text-slate-800 flex items-center gap-2">
@@ -206,48 +202,14 @@ export default function AIReportView({ symbol, name }) {
                                         AI 智能即時生成
                                     </div>
                                     <span className="text-[10px] uppercase font-black tracking-widest text-slate-400 bg-white px-2 py-1 rounded border border-slate-200 shadow-sm">
-                                        {new Date().toLocaleDateString('zh-TW')}
+                                        {new Date(reportData.created_at || Date.now()).toLocaleDateString('zh-TW')}
                                     </span>
                                 </div>
                             </div>
 
                             <div className="p-6 md:p-8 flex-1 overflow-y-auto w-full custom-scrollbar">
-                                <div className="prose prose-slate prose-sm md:prose-base max-w-none w-full">
-                                    {reportData.report.split('\n').map((paragraph, idx) => {
-                                        if (!paragraph.trim()) return <br key={idx} />;
-
-                                        // Step-by-step formatting to avoid HTML injection conflicts
-                                        let formattedText = paragraph;
-
-                                        // 1. Process Headings (Start with #### or specific keywords)
-                                        if (paragraph.trim().startsWith('####') || /^(技術面.*?分析|基本面.*?分析|行情綜述|綜合結論|綜合評析|投資建議|籌碼面.*?分析|近期新聞分析|最終評語|分析模型|綜合分析)/.test(paragraph.trim())) {
-                                            const title = paragraph.replace(/^####\s*/, '').replace(/\*/g, '');
-                                            // Highlight numbers in title if any
-                                            const highlightedTitle = title.replace(/([+-]?\d+(?:\.\d+)?%?)/g, '<span class="font-black text-slate-800">$1</span>');
-                                            formattedText = `<strong class="text-indigo-900 text-lg border-l-4 border-indigo-500 pl-3 block mt-6 mb-3">${highlightedTitle}</strong>`;
-                                        } else {
-                                            // 2. Process non-heading lines
-                                            // Highlight numbers
-                                            formattedText = formattedText.replace(/([+-]?\d+(?:\.\d+)?%?)/g, '<span class="font-black text-slate-900">$1</span>');
-                                            
-                                            // Highlight Positive/Negative Keywords
-                                            formattedText = formattedText.replace(/(成長|強勢|多頭|看多|獲利|增加|提升|領先|收益|紅盤|買進)/g, '<span class="text-indigo-600 font-black">$1</span>');
-                                            formattedText = formattedText.replace(/(衰退|弱勢|空頭|看空|虧損|減少|下降|滯後|損益|平盤|賣出)/g, '<span class="text-red-600 font-black">$1</span>');
-
-                                            // Handle bold (**text**)
-                                            formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-900 font-bold bg-indigo-50/50 px-1 rounded">$1</strong>');
-                                            // Remove remaining single stars
-                                            formattedText = formattedText.replace(/\*/g, '');
-                                        }
-
-                                        return (
-                                            <p
-                                                key={idx}
-                                                className="text-slate-800 leading-loose text-[15px] mb-4 text-justify font-medium"
-                                                dangerouslySetInnerHTML={{ __html: formattedText }}
-                                            />
-                                        );
-                                    })}
+                                <div className="prose prose-slate prose-sm md:prose-base max-w-none w-full ai-report-content">
+                                    <ReactMarkdown>{reportData.report}</ReactMarkdown>
                                 </div>
                             </div>
                             

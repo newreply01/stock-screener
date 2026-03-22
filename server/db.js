@@ -38,7 +38,10 @@ const poolConfig = {
     ssl: useSSL ? { 
         require: true,
         rejectUnauthorized: false 
-    } : false
+    } : false,
+    max: 20,                // 最大連線數
+    idleTimeoutMillis: 30000, // 閒置連線 30 秒後回收
+    connectionTimeoutMillis: 5000 // 建立連線逾時 5 秒
 };
 
 const pool = new Pool(poolConfig);

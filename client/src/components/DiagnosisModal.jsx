@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const API_BASE = 'http://localhost:20000/api';
+const API_BASE = '/api';
 
 export default function DiagnosisModal({ isOpen, onClose, stock }) {
     const [reportData, setReportData] = useState(null);

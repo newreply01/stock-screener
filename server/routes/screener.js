@@ -4,6 +4,7 @@ const { query } = require('../db');
 const { generateAIReport } = require('../utils/ai_service');
 const { analyzePosition, analyzeMultiple } = require('../position_analyzer');
 const { getTaiwanDate, formatTaiwanTime, TZ, getTaiwanDateString } = require('../utils/timeUtils');
+const { requireAuth, requireRole } = require('../middleware/auth');
 
 // 日期格式化助手 (解決時區偏移問題)
 const formatLocalDate = (date) => {
@@ -20,6 +21,31 @@ const formatLocalDate = (date) => {
 };
 
 // GET /api/stock/:symbol/quick-diagnosis - 獲取快速診斷摘要 (評分、支撐壓力、技術面)
+// GET /api/institutional-total - 三大法人全市場統計
+router.get('/institutional-total', async (req, res) => {
+    try {
+        const { days = 30 } = req.query;
+        // 彙整每日法人淨額 (單位: 億元)
+        const sql = `
+            SELECT 
+                TO_CHAR(date, 'YYYY-MM-DD') as date,
+                SUM(CASE WHEN name = 'Foreign_Investor' THEN (buy - sell) / 100000000.0 ELSE 0 END) as foreign_net,
+                SUM(CASE WHEN name = 'Investment_Trust' THEN (buy - sell) / 100000000.0 ELSE 0 END) as trust_net,
+                SUM(CASE WHEN name = 'Dealer_self' OR name = 'Dealer_Hedging' THEN (buy - sell) / 100000000.0 ELSE 0 END) as dealer_net,
+                SUM(CASE WHEN name = 'total' THEN (buy - sell) / 100000000.0 ELSE 0 END) as total_net
+            FROM fm_total_institutional
+            WHERE date >= CURRENT_DATE - INTERVAL '1 day' * $1
+            GROUP BY date
+            ORDER BY date DESC
+        `;
+        const result = await query(sql, [Math.min(120, parseInt(days))]);
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Institutional total error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 router.get('/stock/:symbol/quick-diagnosis', async (req, res) => {
     console.log(`DEBUG: Quick diagnosis for ${req.params.symbol} triggered`);
     try {
@@ -562,7 +588,8 @@ router.get('/stock/:symbol/chart-data', async (req, res) => {
 // --- AI Prompt Management APIs ---
 
 // GET /api/admin/prompts - 獲取所有提示詞模板列表 (去重)
-router.get('/admin/prompts', async (req, res) => {
+// ⚠️ 以下 admin 路由需要管理員權限
+router.get('/admin/prompts', requireAuth, requireRole('admin'), async (req, res) => {
     try {
         const result = await query('SELECT DISTINCT name FROM ai_prompt_templates ORDER BY name');
         res.json({ success: true, data: result.rows.map(r => r.name) });
@@ -573,7 +600,7 @@ router.get('/admin/prompts', async (req, res) => {
 });
 
 // GET /api/admin/prompts/:name - 獲取特定模板的當前生效版本
-router.get('/admin/prompts/:name', async (req, res) => {
+router.get('/admin/prompts/:name', requireAuth, requireRole('admin'), async (req, res) => {
     try {
         const { name } = req.params;
         const result = await query('SELECT * FROM ai_prompt_templates WHERE name = $1 AND is_active = true ORDER BY version DESC LIMIT 1', [name]);
@@ -588,7 +615,7 @@ router.get('/admin/prompts/:name', async (req, res) => {
 });
 
 // GET /api/admin/prompts/:name/history - 獲取特定模板的所有版本紀錄
-router.get('/admin/prompts/:name/history', async (req, res) => {
+router.get('/admin/prompts/:name/history', requireAuth, requireRole('admin'), async (req, res) => {
     try {
         const { name } = req.params;
         const result = await query('SELECT id, version, is_active, note, created_at FROM ai_prompt_templates WHERE name = $1 ORDER BY version DESC', [name]);
@@ -600,7 +627,7 @@ router.get('/admin/prompts/:name/history', async (req, res) => {
 });
 
 // POST /api/admin/prompts/:name - 建立新版本的模板 (並將其設為生效)
-router.post('/admin/prompts/:name', async (req, res) => {
+router.post('/admin/prompts/:name', requireAuth, requireRole('admin'), async (req, res) => {
     try {
         const { name } = req.params;
         const { content, note } = req.body;
@@ -630,7 +657,7 @@ router.post('/admin/prompts/:name', async (req, res) => {
 });
 
 // GET /api/admin/prompts/version/:id - 獲取特定 ID 的模板內容
-router.get('/admin/prompts/version/:id', async (req, res) => {
+router.get('/admin/prompts/version/:id', requireAuth, requireRole('admin'), async (req, res) => {
     try {
         const { id } = req.params;
         const result = await query('SELECT * FROM ai_prompt_templates WHERE id = $1', [id]);
@@ -645,7 +672,7 @@ router.get('/admin/prompts/version/:id', async (req, res) => {
 });
 
 // PUT /api/admin/prompts/version/:id - 覆蓋特定 ID 的模板內容
-router.put('/admin/prompts/version/:id', async (req, res) => {
+router.put('/admin/prompts/version/:id', requireAuth, requireRole('admin'), async (req, res) => {
     try {
         const { id } = req.params;
         const { content, note } = req.body;
@@ -663,7 +690,7 @@ router.put('/admin/prompts/version/:id', async (req, res) => {
 });
 
 // DELETE /api/admin/prompts/version/:id - 刪除特定 ID 的模板 (僅允許刪除未生效的版本)
-router.delete('/admin/prompts/version/:id', async (req, res) => {
+router.delete('/admin/prompts/version/:id', requireAuth, requireRole('admin'), async (req, res) => {
     try {
         const { id } = req.params;
         const result = await query('DELETE FROM ai_prompt_templates WHERE id = $1 AND is_active = false RETURNING id', [id]);
@@ -677,8 +704,8 @@ router.delete('/admin/prompts/version/:id', async (req, res) => {
     }
 });
 
-// POST /api/stock/:symbol/generate-ai-report - 手動觸發 AI 報告生成
-router.post('/stock/:symbol/generate-ai-report', async (req, res) => {
+// POST /api/stock/:symbol/generate-ai-report - 手動觸發 AI 報告生成 (需登入)
+router.post('/stock/:symbol/generate-ai-report', requireAuth, async (req, res) => {
     try {
         const { symbol } = req.params;
         // 這裡可以檢查權限，暫時允許所有請求
@@ -1147,6 +1174,7 @@ router.get('/institutional-rank', async (req, res) => {
         res.status(500).json({ success: false, error: err.message });
     }
 });
+
 
 // GET /api/market-stats - 市場統計
 router.get('/market-stats', async (req, res) => {

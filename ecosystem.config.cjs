@@ -4,7 +4,7 @@ module.exports = {
       name: 'stock-server',
       script: './server/index.js',
       env: {
-        PORT: 20000,
+        PORT: 31000,
         NODE_ENV: 'production'
       },
       instances: 1,

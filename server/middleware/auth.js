@@ -1,6 +1,10 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'muchstock-default-secret-change-me';
+// 強制要求 JWT_SECRET 必須設定於環境變數，禁止使用 fallback 預設值
+if (!process.env.JWT_SECRET) {
+    throw new Error('[FATAL] JWT_SECRET 未設定！請在 .env 檔案中加入 JWT_SECRET=<長度至少32字元的安全亂數>。\n啟動中止以保護系統安全。');
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
 function generateToken(user) {
     return jwt.sign(

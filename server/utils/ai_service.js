@@ -282,11 +282,21 @@ ${promptTemplate}
             if (scoreMatch) sentimentScore = parseInt(scoreMatch[1]);
         }
 
+        // Save to current reports table
         await query(
             `INSERT INTO ai_reports (symbol, content, sentiment_score, updated_at)
              VALUES ($1, $2, $3, NOW())
              ON CONFLICT (symbol) 
              DO UPDATE SET content = EXCLUDED.content, sentiment_score = EXCLUDED.sentiment_score, updated_at = NOW()`,
+            [symbol, finalContent, sentimentScore]
+        );
+
+        // Save to history table (daily grain)
+        await query(
+            `INSERT INTO ai_reports_history (symbol, report_date, content, sentiment_score)
+             VALUES ($1, CURRENT_DATE, $2, $3)
+             ON CONFLICT (symbol, report_date) 
+             DO UPDATE SET content = EXCLUDED.content, sentiment_score = EXCLUDED.sentiment_score`,
             [symbol, finalContent, sentimentScore]
         );
 

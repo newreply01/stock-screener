@@ -2,7 +2,7 @@
 cd /home/xg/stock-screener
 pkill -9 node || true
 sleep 2
-export PORT=20000
+export PORT=31000
 export ENABLE_CRAWLER=true
 mkdir -p logs
 setsid /usr/bin/node server/index.js > logs/server.log 2>&1 &

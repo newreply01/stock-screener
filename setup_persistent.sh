@@ -4,7 +4,7 @@ export NVM_DIR="$HOME/.nvm"
 cd /home/xg/stock-screener
 
 # Kill any existing processes on these ports to be sure
-fuser -k 3000/tcp 20000/tcp || true
+fuser -k 3000/tcp 32000/tcp || true
 
 echo "Starting backend..."
 nohup node server/index.js > /home/xg/server_final.log 2>&1 &

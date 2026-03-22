@@ -43,7 +43,7 @@ router.get('/status', async (req, res) => {
 
         // 2.5 取得各個 JS 程式的最後執行狀態 + 記憶體中即時狀態
         const liveStatusMap = getLiveSchedulerStatus ? getLiveSchedulerStatus() : {};
-        const scriptNames = ['twse_fetcher.js', 'news_fetcher.js', 'finmind_fetcher.js', 'calc_health_scores.js', 'realtime_crawler.js'];
+        const scriptNames = ['twse_fetcher.js', 'news_fetcher.js', 'finmind_fetcher.js', 'calc_health_scores.js', 'realtime_crawler.js', 'updateDailyStats'];
         const scriptStatusList = [];
 
         try {
@@ -91,62 +91,153 @@ router.get('/status', async (req, res) => {
 
         // 將資料轉成前端好用的格式，並加上排程說明
         const syncDetails = progressRes.rows.map(row => {
-            let description = '';
+            // 對應 FinMind 資料集名稱設定說明 (可依實際狀況調整)
+            let description = ''; // 排程說明
+            let usage = '';       // 資料用途說明
             let script = '';
+            let name = row.dataset; // 友善名稱
+
+            // 對應 FinMind 資料集名稱設定說明 (可依實際狀況調整)
             // 對應 FinMind 資料集名稱設定說明 (可依實際狀況調整)
             switch (row.dataset) {
-                // 盤後行情 / 籌碼 / 期貨
                 case 'TaiwanStockPrice':
-                case 'TaiwanStockDayTrading':
-                case 'TaiwanStockMarginPurchaseShortSale':
-                case 'TaiwanStockInstitutional':
-                case 'TaiwanStockInstitutionalInvestorsBuySell':
-                case 'TaiwanStockTotalInstitutionalInvestors':
-                case 'TaiwanStockTotalMarginPurchaseShortSale':
-                case 'TaiwanFuturesDaily':
-                case 'TaiwanOptionDaily':
-                case 'TaiwanFutOptDailyInfo':
-                case 'TaiwanSecuritiesTraderInfo':
-                case 'TaiwanFuturesInstitutionalInvestors':
-                case 'TaiwanOptionInstitutionalInvestors':
+                    name = '台股日K線';
+                    usage = '收盤價、成交量、最高/最低價';
                     script = 'twse_fetcher.js';
                     description = '15:00 初步 / 21:45 補全';
                     break;
-                // 新聞
-                case 'News':
-                case 'TaiwanStockNews':
-                    script = 'news_fetcher.js';
-                    description = '每小時更新';
+                case 'TaiwanStockDayTrading':
+                    name = '當沖交易';
+                    usage = '每日現股當沖買賣成交金額與股數';
+                    script = 'twse_fetcher.js';
+                    description = '15:00 初步 / 21:45 補全';
                     break;
-                // 基本面 / 靜態資訊
+                case 'TaiwanStockMarginPurchaseShortSale':
+                    name = '融資融券 (個股)';
+                    usage = '各別股票之信用交易餘額與增減';
+                    script = 'twse_fetcher.js';
+                    description = '15:00 初步 / 21:45 補全';
+                    break;
+                case 'TaiwanStockTotalMarginPurchaseShortSale':
+                    name = '融資融券 (全市場)';
+                    usage = '全市場（大盤）信用交易總額與增減';
+                    script = 'finmind_fetcher.js';
+                    description = '21:45 更新';
+                    break;
+                case 'TaiwanStockInstitutional':
+                case 'TaiwanStockInstitutionalInvestorsBuySell':
+                    name = '三大法人買賣超 (個股)';
+                    usage = '各別股票之法人買賣金額與張數';
+                    script = 'twse_fetcher.js';
+                    description = '15:00 初步 / 21:45 補全';
+                    break;
+                case 'TaiwanStockTotalInstitutionalInvestors':
+                    name = '三大法人買賣超 (全市場)';
+                    usage = '全市場（大盤）法人買賣超總計';
+                    script = 'finmind_fetcher.js';
+                    description = '21:45 更新';
+                    break;
                 case 'TaiwanStockFinancialStatements':
+                    name = '財務報表 (損益表)';
+                    usage = '各別股票之損益表 (每季)';
+                    script = 'finmind_fetcher.js';
+                    description = '每週六 04:00 更新';
+                    break;
                 case 'TaiwanStockBalanceSheet':
+                    name = '財務報表 (資產負債表)';
+                    usage = '各別股票之資產負債表 (每季)';
+                    script = 'finmind_fetcher.js';
+                    description = '每週六 04:00 更新';
+                    break;
                 case 'TaiwanStockCashFlowsStatement':
+                    name = '財務報表 (現金流量表)';
+                    usage = '各別股票之現金流量表 (每季)';
+                    script = 'finmind_fetcher.js';
+                    description = '每週六 04:00 更新';
+                    break;
                 case 'TaiwanStockMonthRevenue':
+                    name = '每月營收';
+                    usage = '每月營收動態與 YoY 成長率';
+                    script = 'finmind_fetcher.js';
+                    description = '每小時 15 分偵測';
+                    break;
                 case 'TaiwanStockDividend':
-                case 'TaiwanStockInfo':
-                case 'TaiwanStockDelisting':
+                    name = '股利政策';
+                    usage = '歷史配股配息日期與金額';
                     script = 'finmind_fetcher.js';
                     description = '每週六 04:00 更新';
                     break;
                 case 'TaiwanStockBrokerTrading':
-                case 'TaiwanStockPER':
-                case 'TaiwanStockHoldingSharesPer':
-                case 'FinMindDaily':
+                    name = '分點進出';
+                    usage = '各大證券分點個股買賣明細 (籌碼)';
                     script = 'finmind_fetcher.js';
                     description = '每小時 15 分 (600筆/hr)';
                     break;
-                case 'TaiwanStockTradingDate':
+                case 'TaiwanStockPER':
+                    name = '評分/本益比';
+                    usage = '日計本益比、本淨比與現金殖利率';
                     script = 'finmind_fetcher.js';
-                    description = '每日 04:00 更新';
+                    description = '每小時 15 分 (600筆/hr)';
+                    break;
+                case 'TaiwanStockHoldingSharesPer':
+                    name = '股東持股分級';
+                    usage = '大戶/散戶每週持股比例變動';
+                    script = 'finmind_fetcher.js';
+                    description = '每小時 15 分 (600筆/hr)';
+                    break;
+                case 'TaiwanStockInfo':
+                    name = '個股基本資料';
+                    usage = '產業分類、股本、上市日期等';
+                    script = 'finmind_fetcher.js';
+                    description = '每週六 04:00 更新';
+                    break;
+                case 'TaiwanStockNews':
+                case 'News':
+                    name = '財經新聞';
+                    usage = '即時新聞推播與歷史查詢';
+                    script = 'news_fetcher.js';
+                    description = '每小時更新';
+                    break;
+                case 'TaiwanStockTotalReturnIndex':
+                    name = '報酬指數';
+                    usage = '大盤加權與報酬指數';
+                    script = 'twse_fetcher.js';
+                    description = '15:00 更新';
+                    break;
+                case 'TaiwanSecuritiesTraderInfo':
+                    name = '證券商資訊';
+                    usage = '券商代碼、名稱與分點基本資訊';
+                    script = 'finmind_fetcher.js';
+                    description = '每月 1 日更新';
+                    break;
+                case 'TaiwanStockDelisting':
+                    name = '下市櫃資訊';
+                    usage = '歷史已下市或合併之股份紀錄';
+                    script = 'finmind_fetcher.js';
+                    description = '每月更新';
+                    break;
+                case 'TaiwanStockTradingDate':
+                    name = '交易日曆';
+                    usage = '證交所開休市日期對照表';
+                    script = 'finmind_fetcher.js';
+                    description = '每年年初更新';
+                    break;
+                case 'FinMindDaily':
+                    name = 'FinMind 綜合日更新';
+                    usage = '綜合更新：分點進出、本益比、持股分級';
+                    script = 'finmind_fetcher.js';
+                    description = '每小時 (分點) / 每日 (持股)';
                     break;
                 default:
                     script = '未知';
-                    description = '15:00 初步 / 21:45 補全';
+                    description = '背景自動擷取中';
+                    usage = '相關個股數據';
             }
 
             return {
-                dataset: row.dataset,
+                id: row.dataset,
+                dataset: name,
+                usage: usage,
                 last_updated: row.last_updated,
                 script: script,
                 description: description
@@ -158,7 +249,9 @@ router.get('/status', async (req, res) => {
             const rtRes = await pool.query('SELECT MAX(trade_time) as last_tick FROM realtime_ticks');
             if (rtRes.rows.length > 0 && rtRes.rows[0].last_tick) {
                 syncDetails.unshift({
+                    id: 'Realtime行情數據',
                     dataset: 'Realtime行情數據',
+                    usage: '當前盤中即時報價與成交明細',
                     last_updated: rtRes.rows[0].last_tick,
                     script: 'realtime_crawler.js',
                     description: '盤中每數秒更新'
@@ -192,7 +285,10 @@ router.get('/status', async (req, res) => {
  */
 router.get('/ingestion-stats', async (req, res) => {
     try {
-        const days = parseInt(req.query.days) || 14;
+        const dateRes = await pool.query('SELECT CURRENT_DATE, NOW()');
+        console.log(`[Monitor] DB Time: ${JSON.stringify(dateRes.rows[0])}, Node Time: ${new Date().toISOString()}`);
+
+        const days = req.query.days || 14;
 
         // 由於我們可能沒有在所有資料表紀錄 inserted_at，
         // 一個變通方式是直接用 trade_date / date 欄位來統計該日期的資料筆數。
@@ -207,6 +303,7 @@ router.get('/ingestion-stats', async (req, res) => {
             GROUP BY trade_date_str 
             ORDER BY trade_date_str ASC
         `);
+        console.log(`[Monitor] PriceStats rows: ${priceStatsRes.rows.length}`);
 
         // 2. 三大法人買賣資料筆數
         const instStatsRes = await pool.query(`
@@ -262,12 +359,13 @@ router.get('/ingestion-stats', async (req, res) => {
 
         // 5. 即時行情 (筆數較大)
         const realtimeStatsRes = await pool.query(`
-            SELECT TO_CHAR(trade_time, 'YYYY-MM-DD') as trade_date_str, COUNT(*) as count 
-            FROM realtime_ticks 
-            WHERE trade_time >= CURRENT_DATE - INTERVAL '${days} days'
-            GROUP BY trade_date_str 
-            ORDER BY trade_date_str ASC
+            SELECT date_str as trade_date_str, SUM(count) as count FROM (
+                SELECT TO_CHAR(trade_time, 'YYYY-MM-DD') as date_str, COUNT(*) as count FROM realtime_ticks WHERE trade_time >= CURRENT_DATE - INTERVAL '${days} days' GROUP BY date_str
+                UNION ALL
+                SELECT TO_CHAR(trade_time, 'YYYY-MM-DD') as date_str, COUNT(*) as count FROM realtime_ticks_history WHERE trade_time >= CURRENT_DATE - INTERVAL '${days} days' GROUP BY date_str
+            ) t GROUP BY date_str ORDER BY date_str ASC
         `);
+        console.log(`[Monitor] RealtimeStats rows: ${realtimeStatsRes.rows.length}`);
 
         // 6. 全市場統計類 (整合當沖、期權、全市場統計)
         const extraStatsRes = await pool.query(`
@@ -277,10 +375,6 @@ router.get('/ingestion-stats', async (req, res) => {
                 SELECT TO_CHAR(date, 'YYYY-MM-DD') as date_str, COUNT(*) as count FROM fm_total_institutional WHERE date >= CURRENT_DATE - INTERVAL '${days} days' GROUP BY date_str
                 UNION ALL
                 SELECT TO_CHAR(date, 'YYYY-MM-DD') as date_str, COUNT(*) as count FROM fm_total_margin WHERE date >= CURRENT_DATE - INTERVAL '${days} days' GROUP BY date_str
-                UNION ALL
-                SELECT TO_CHAR(date, 'YYYY-MM-DD') as date_str, COUNT(*) as count FROM fm_futures_daily WHERE date >= CURRENT_DATE - INTERVAL '${days} days' GROUP BY date_str
-                UNION ALL
-                SELECT TO_CHAR(date, 'YYYY-MM-DD') as date_str, COUNT(*) as count FROM fm_option_daily WHERE date >= CURRENT_DATE - INTERVAL '${days} days' GROUP BY date_str
             ) t GROUP BY date_str
         `);
 

@@ -11,9 +11,9 @@ pm2 delete all || true
 echo "Starting backend with 0.0.0.0 binding..."
 pm2 start server/index.js --name backend
 
-echo "Starting frontend with 0.0.0.0 binding on port 20000..."
+echo "Starting frontend with 0.0.0.0 binding on port 32000..."
 cd client
-pm2 start "npm run dev -- --host 0.0.0.0 --port 20000" --name frontend
+pm2 start "npm run dev -- --host 0.0.0.0 --port 32000" --name frontend
 
 pm2 save
 echo "PM2 Setup v3 Complete"

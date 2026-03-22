@@ -101,7 +101,6 @@ export default function HealthCheckRanking({ onSelectStock }) {
     const TABS = [
         { id: 'ranking', label: '健診排行', icon: Award },
         { id: 'analyzer', label: '股票分析 (Beta)', icon: Brain },
-        { id: 'quick_diagnosis', label: '快速診斷', icon: Zap },
         { id: 'health', label: '健診分析', icon: Shield },
         { id: 'ai_report', label: 'AI分析報告', icon: Activity },
         { id: 'backtest', label: '回測監控', icon: Target },
@@ -369,10 +368,11 @@ export default function HealthCheckRanking({ onSelectStock }) {
                                 <h3 className="text-xl font-bold text-slate-700">尚未選擇分析標的</h3>
                                 <p className="text-sm mt-2">請從排行中點擊股票進行分析</p>
                             </div>
-                        ) : activeTab === 'quick_diagnosis' ? (
-                            <div className="p-8"><QuickDiagnosisView symbol={selectedStock.symbol} /></div>
                         ) : activeTab === 'health' ? (
-                            <div className="p-0"><HealthCheckView symbol={selectedStock.symbol} /></div>
+                            <div className="p-0">
+                                <QuickDiagnosisView symbol={selectedStock.symbol} />
+                                <HealthCheckView symbol={selectedStock.symbol} />
+                            </div>
                         ) : activeTab === 'analyzer' ? (
                             <div className="p-8"><StockAnalyzer symbol={selectedStock.symbol} /></div>
                         ) : activeTab === 'ai_report' ? (

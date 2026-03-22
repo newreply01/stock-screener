@@ -62,6 +62,9 @@ function startScheduler() {
     const fetcherTask2145 = cron.schedule('45 21 * * 1-5', async () => {
         console.log('📅 定時排程開始 (21:45)：補抓今日籌碼資料...');
         await runTaskSafely('twse_fetcher.js', catchUp, '今日法人與資券補抓');
+        const { syncTotalInstitutional, syncTotalMargin } = require('./finmind_fetcher');
+        await runTaskSafely('finmind_total_institutional', syncTotalInstitutional, '大盤三大法人同步');
+        await runTaskSafely('finmind_total_margin', syncTotalMargin, '大盤融資券同步');
     }, {
         scheduled: true,
         timezone: 'Asia/Taipei'
@@ -107,6 +110,17 @@ function startScheduler() {
         timezone: 'Asia/Taipei'
     });
     initTaskTracking('trading_date_sync', tradingDateTask);
+    
+    // 每月 1 日 04:30 更新券商分點資訊 (FinMind)
+    const brokerTask = cron.schedule('30 4 1 * *', async () => {
+        console.log('🏢 定時排程開始 (04:30)：更新券商分點資訊...');
+        const { syncBrokers } = require('./finmind_fetcher');
+        await runTaskSafely('finmind_brokers', syncBrokers, '每月券商資訊更新');
+    }, {
+        scheduled: true,
+        timezone: 'Asia/Taipei'
+    });
+    initTaskTracking('finmind_brokers', brokerTask);
 
     // 每交易日 15:30 第一次計算全股健診排行 (初步價格更新後)
     const healthTask1530 = cron.schedule('30 15 * * 1-5', async () => {
@@ -152,6 +166,20 @@ function startScheduler() {
         });
         initTaskTracking('historical_tick_sync.js', histTickTask);
     }
+
+    // 每日 23:55 更新系統寫入統計表
+    const statsUpdateTask = cron.schedule('55 23 * * *', async () => {
+        const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
+        console.log(`📊 定時排程開始 (23:55)：更新 ${todayStr} 系統寫入筆數統計...`);
+        const { updateDailyStats } = require('./utils/statsAggregator');
+        await runTaskSafely('updateDailyStats', async () => {
+            await updateDailyStats(todayStr);
+        }, '系統寫入統計表每日更新');
+    }, {
+        scheduled: true,
+        timezone: 'Asia/Taipei'
+    });
+    initTaskTracking('update_ingestion_stats', statsUpdateTask);
 
     // 系統狀態監控 (每 5 分鐘執行一次)
     cron.schedule('*/5 * * * *', async () => {

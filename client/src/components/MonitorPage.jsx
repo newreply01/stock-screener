@@ -17,7 +17,7 @@ export default function MonitorPage() {
             const statusJson = await statusRes.json();
 
             // Fetch stats
-            const statsRes = await fetch('/api/monitor/ingestion-stats?days=14');
+            const statsRes = await fetch('/api/monitor/ingestion-stats?days=7');
             const statsJson = await statsRes.json();
 
             if (statusJson.success) setStatusData(statusJson);
@@ -64,35 +64,31 @@ export default function MonitorPage() {
 
     // ─── Static definitions (no backend needed) ────────────────────────────────
     // Maps FinMind dataset name → script name + badge colour
-    const DATASET_SCRIPT_MAP = {
-        'TaiwanStockPrice': { script: 'twse_fetcher.js', color: 'bg-green-100 text-green-800' },
-        'TaiwanStockDayTrading': { script: 'twse_fetcher.js', color: 'bg-green-100 text-green-800' },
-        'TaiwanStockMarginPurchaseShortSale': { script: 'twse_fetcher.js', color: 'bg-green-100 text-green-800' },
-        'TaiwanStockInstitutional': { script: 'twse_fetcher.js', color: 'bg-green-100 text-green-800' },
-        'TaiwanStockInstitutionalInvestorsBuySell': { script: 'twse_fetcher.js', color: 'bg-green-100 text-green-800' },
-        'TaiwanStockTotalInstitutionalInvestors': { script: 'twse_fetcher.js', color: 'bg-green-100 text-green-800' },
-        'TaiwanStockTotalMarginPurchaseShortSale': { script: 'twse_fetcher.js', color: 'bg-green-100 text-green-800' },
-        'TaiwanFuturesDaily': { script: 'twse_fetcher.js', color: 'bg-green-100 text-green-800' },
-        'TaiwanOptionDaily': { script: 'twse_fetcher.js', color: 'bg-green-100 text-green-800' },
-        'TaiwanFutOptDailyInfo': { script: 'twse_fetcher.js', color: 'bg-green-100 text-green-800' },
-        'TaiwanSecuritiesTraderInfo': { script: 'twse_fetcher.js', color: 'bg-green-100 text-green-800' },
-        'TaiwanFuturesInstitutionalInvestors': { script: 'twse_fetcher.js', color: 'bg-green-100 text-green-800' },
-        'TaiwanOptionInstitutionalInvestors': { script: 'twse_fetcher.js', color: 'bg-green-100 text-green-800' },
-        'News': { script: 'news_fetcher.js', color: 'bg-orange-100 text-orange-800' },
-        'TaiwanStockNews': { script: 'news_fetcher.js', color: 'bg-orange-100 text-orange-800' },
-        'TaiwanStockFinancialStatements': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
-        'TaiwanStockBalanceSheet': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
-        'TaiwanStockCashFlowsStatement': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
-        'TaiwanStockMonthRevenue': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
-        'TaiwanStockDividend': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
-        'TaiwanStockInfo': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
-        'TaiwanStockBrokerTrading': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
-        'TaiwanStockPER': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
-        'TaiwanStockHoldingSharesPer': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
-        'TaiwanStockTotalReturnIndex': { script: 'twse_fetcher.js', color: 'bg-green-100 text-green-800' },
-        'TaiwanStockTradingDate': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
-        'TaiwanStockDelisting': { script: 'finmind_fetcher.js', color: 'bg-indigo-100 text-indigo-800' },
-        'Realtime行情數據': { script: 'realtime_crawler.js', color: 'bg-blue-100 text-blue-800 border border-blue-200' },
+        const DATASET_SCRIPT_MAP = {
+        'TaiwanStockPrice': { script: 'twse_fetcher.js', color: 'bg-blue-100 text-blue-800 border border-blue-200' },
+        'TaiwanStockPriceTick': { script: 'realtime_crawler.js', color: 'bg-green-100 text-green-800 border border-green-200' },
+        'TaiwanStockInstitutional': { script: 'twse_fetcher.js', color: 'bg-blue-100 text-blue-800 border border-blue-200' },
+        'TaiwanStockInstitutionalInvestorsBuySell': { script: 'twse_fetcher.js', color: 'bg-blue-100 text-blue-800 border border-blue-200' },
+        'TaiwanStockMarginPurchaseShortSale': { script: 'twse_fetcher.js', color: 'bg-blue-100 text-blue-800 border border-blue-200' },
+        'TaiwanStockDayTrading': { script: 'twse_fetcher.js', color: 'bg-blue-100 text-blue-800 border border-blue-200' },
+        'TaiwanStockMonthRevenue': { script: 'finmind_fetcher.js', color: 'bg-purple-100 text-purple-800 border border-purple-200' },
+        'TaiwanStockTotalInstitutionalInvestors': { script: 'finmind_fetcher.js', color: 'bg-purple-100 text-purple-800 border border-purple-200' },
+        'TaiwanStockTotalMarginPurchaseShortSale': { script: 'finmind_fetcher.js', color: 'bg-purple-100 text-purple-800 border border-purple-200' },
+        'TaiwanStockTotalReturnIndex': { script: 'twse_fetcher.js', color: 'bg-blue-100 text-blue-800 border border-blue-200' },
+        'TaiwanStockFinancialStatements': { script: 'finmind_fetcher.js', color: 'bg-purple-100 text-purple-800 border border-purple-200' },
+        'TaiwanStockBalanceSheet': { script: 'finmind_fetcher.js', color: 'bg-purple-100 text-purple-800 border border-purple-200' },
+        'TaiwanStockCashFlowsStatement': { script: 'finmind_fetcher.js', color: 'bg-purple-100 text-purple-800 border border-purple-200' },
+        'TaiwanStockPER': { script: 'finmind_fetcher.js', color: 'bg-purple-100 text-purple-800 border border-purple-200' },
+        'TaiwanStockBrokerTrading': { script: 'finmind_fetcher.js', color: 'bg-purple-100 text-purple-800 border border-purple-200' },
+        'TaiwanStockHoldingSharesPer': { script: 'finmind_fetcher.js', color: 'bg-purple-100 text-purple-800 border border-purple-200' },
+        'TaiwanStockDividend': { script: 'finmind_fetcher.js', color: 'bg-purple-100 text-purple-800 border border-purple-200' },
+        'TaiwanStockInfo': { script: 'finmind_fetcher.js', color: 'bg-purple-100 text-purple-800 border border-purple-200' },
+        'TaiwanStockDelisting': { script: 'finmind_fetcher.js', color: 'bg-purple-100 text-purple-800 border border-purple-200' },
+        'TaiwanStockTradingDate': { script: 'finmind_fetcher.js', color: 'bg-purple-100 text-purple-800 border border-purple-200' },
+        'TaiwanSecuritiesTraderInfo': { script: 'finmind_fetcher.js', color: 'bg-purple-100 text-purple-800 border border-purple-200' },
+        'News': { script: 'news_fetcher.js', color: 'bg-orange-100 text-orange-800 border border-orange-200' },
+        'FinMindDaily': { script: 'finmind_fetcher.js', color: 'bg-purple-100 text-purple-800 border border-purple-200' },
+        'Realtime行情數據': { script: 'realtime_crawler.js', color: 'bg-green-100 text-green-800 border border-green-200' }
     };
 
     // Known background scripts — names/descriptions always shown; status from API
@@ -102,6 +98,7 @@ export default function MonitorPage() {
         { script: 'news_fetcher.js', desc: '財經新聞同步', schedule: '每小時' },
         { script: 'finmind_fetcher.js', desc: '財報基本面資料 (損益表、毛利、營收、分點、持股分級、本益比)', schedule: '每小時 (分點/籌碼) / 每週六 04:00 (財報)' },
         { script: 'calc_health_scores.js', desc: '全股個股健診排行計算', schedule: '15:30 (初算) / 22:15 (最終)' },
+        { script: 'updateDailyStats', desc: '每日系統寫入筆數匯總計算', schedule: '每天 23:55' },
     ];
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -199,7 +196,7 @@ export default function MonitorPage() {
             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
                 <div className="flex items-center gap-2 mb-6">
                     <Calendar className="w-5 h-5 text-brand-primary" />
-                    <h2 className="text-lg font-bold text-gray-900">近 14 天資料擷取筆數 (寫入趨勢)</h2>
+                    <h2 className="text-lg font-bold text-gray-900">近 7 天資料擷取筆數 (寫入趨勢)</h2>
                 </div>
 
                 {statsData.length > 0 ? (
@@ -320,9 +317,9 @@ export default function MonitorPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {statusData?.sync_progress?.map((item, idx) => {
+                            {statusData?.sync_progress?.filter(d => DATASET_SCRIPT_MAP[d.id])?.map((item, idx) => {
                                 const isStale = new Date() - new Date(item.last_updated) > 3 * 24 * 60 * 60 * 1000;
-                                const scriptInfo = DATASET_SCRIPT_MAP[item.dataset] || { script: '未知', color: 'bg-gray-100 text-gray-600' };
+                                const scriptInfo = DATASET_SCRIPT_MAP[item.id] || { script: '未知', color: 'bg-gray-100 text-gray-600' };
 
                                 return (
                                     <tr key={idx} className="hover:bg-gray-50 transition-colors">
