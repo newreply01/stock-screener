@@ -27,7 +27,7 @@ async function sync() {
         console.log(`[Sync-Supabase] 遠端目前最大 ID: ${lastRemoteId}`);
 
         // 2. 從本地抓取比該 ID 大的資料 (分批處理)
-        const batchSize = 1000;
+        const batchSize = 5000;
         const localRes = await localPool.query(
             "SELECT * FROM realtime_ticks WHERE id > $1 ORDER BY id ASC LIMIT $2",
             [lastRemoteId, batchSize]
