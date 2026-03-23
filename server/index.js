@@ -73,7 +73,7 @@ app.get('/api/health', async (req, res) => {
                 database: 'error',
                 server: 'ok'
             },
-            error: process.env.NODE_ENV !== 'production' ? err.message : '資料庫連線異常'
+            error: err.message || '資料庫連線異常'
         });
     }
 });

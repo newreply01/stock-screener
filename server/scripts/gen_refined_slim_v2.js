@@ -23,15 +23,29 @@ async function run() {
     console.log('🚀 [Slim-V2] 開始產生精煉版資料庫備份...');
 
     // 1. 取得最新交易日 (用於 Ticks)
-    const latestTickerDayRes = await pool.query("SELECT MAX(DATE(trade_time)) as last_day FROM realtime_ticks");
-    const lastDay = latestTickerDayRes.rows[0].last_day;
-    const lastDayStr = lastDay ? lastDay.toISOString().split('T')[0] : null;
-    console.log(`📅 最新交易日: ${lastDayStr}`);
+    const latestTickerDayRes = await pool.query("SELECT MAX(trade_time) as last_time FROM realtime_ticks");
+    const lastTime = latestTickerDayRes.rows[0].last_time;
+    // 使用台北時間解析日期
+    let lastDayStr = null;
+    if (lastTime) {
+        // 如果是 Date 物件，轉換為 TPE 時間字串
+        const tpeDate = new Date(new Date(lastTime).getTime() + 8 * 3600 * 1000);
+        lastDayStr = tpeDate.toISOString().split('T')[0];
+    }
+    console.log(`📅 最新交易日 (TPE): ${lastDayStr}`);
 
     // 2. 導出 Schema 結構 (不含資料)
     console.log('🏗️  正在導出表結構...');
-    // 首先寫入清空 Schema 的指令（確保解決 Supabase 上的依附性問題）
-    fs.writeFileSync(dumpPath, "DROP SCHEMA public CASCADE;\nCREATE SCHEMA public;\nGRANT ALL ON SCHEMA public TO postgres;\nGRANT ALL ON SCHEMA public TO public;\n\n");
+    // 首先寫入清空 Schema 的指令以及停用約束檢查的設定
+    fs.writeFileSync(dumpPath, `
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO public;
+
+-- Disable triggers and FK checks for faster/safer loading
+SET session_replication_role = 'replica';
+\n`);
     
     const schemaDumpCmd = `PGPASSWORD='${dbPass}' pg_dump -h localhost -p ${dbPort} -U ${dbUser} -d ${dbName} --schema-only --no-owner --no-privileges >> ${dumpPath}`;
     execSync(schemaDumpCmd);
@@ -39,7 +53,6 @@ async function run() {
     // 3. 準備大批量數據導出函式
     const appendTableData = async (tableName, columns, queryStr) => {
         console.log(`📦 正在導出 ${tableName}...`);
-        // 使用 TEXT 格式 (TSV) 並確保表名帶有 public 前綴以解決 search_path 被清空的問題
         const copyCmd = `PGPASSWORD='${dbPass}' psql -h localhost -p ${dbPort} -U ${dbUser} -d ${dbName} -c "COPY (${queryStr}) TO STDOUT WITH (FORMAT TEXT, ENCODING 'UTF8')" >> ${dumpPath}.tmp`;
         fs.appendFileSync(dumpPath, `\n\n-- Data for ${tableName}\nCOPY public.${tableName} (${columns}) FROM stdin;\n`);
         execSync(copyCmd);
@@ -52,8 +65,8 @@ async function run() {
     // 4. 定義過濾邏輯與欄位
     const symbolFilter = "(symbol ~ '^\\d{4}$' OR symbol ~ '^00.*')";
     const stockJoinFilter = "(s.symbol ~ '^\\d{4}$' OR s.symbol ~ '^00.*')";
-    const dateLimit = "trade_date >= CURRENT_DATE - INTERVAL '3 years'";
-    const priceDateLimit = "trade_date >= CURRENT_DATE - INTERVAL '3 years'";
+    const dateLimit = "trade_date >= CURRENT_DATE - INTERVAL '2.5 years'";
+    const priceDateLimit = "trade_date >= CURRENT_DATE - INTERVAL '2.5 years'";
 
     // 5. 執行各表導出
     
@@ -79,10 +92,10 @@ async function run() {
     
     // 大盤彙總
     await appendTableData('fm_total_institutional', 'date, name, buy, sell',
-        `SELECT date, name, buy, sell FROM fm_total_institutional WHERE date >= CURRENT_DATE - INTERVAL '3 years'`);
+        `SELECT date, name, buy, sell FROM fm_total_institutional WHERE date >= CURRENT_DATE - INTERVAL '2.5 years'`);
     
     await appendTableData('fm_total_margin', 'date, name, margin_purchase_buy, margin_purchase_sell, margin_purchase_cash_repayment, margin_purchase_yesterday_balance, margin_purchase_today_balance, short_sale_buy, short_sale_sell, short_sale_cash_repayment, short_sale_yesterday_balance, short_sale_today_balance',
-        `SELECT date, name, margin_purchase_buy, margin_purchase_sell, margin_purchase_cash_repayment, margin_purchase_yesterday_balance, margin_purchase_today_balance, short_sale_buy, short_sale_sell, short_sale_cash_repayment, short_sale_yesterday_balance, short_sale_today_balance FROM fm_total_margin WHERE date >= CURRENT_DATE - INTERVAL '3 years'`);
+        `SELECT date, name, margin_purchase_buy, margin_purchase_sell, margin_purchase_cash_repayment, margin_purchase_yesterday_balance, margin_purchase_today_balance, short_sale_buy, short_sale_sell, short_sale_cash_repayment, short_sale_yesterday_balance, short_sale_today_balance FROM fm_total_margin WHERE date >= CURRENT_DATE - INTERVAL '2.5 years'`);
 
     // Realtime Ticks
     if (lastDayStr) {
@@ -90,6 +103,9 @@ async function run() {
         await appendTableData('realtime_ticks', 'id, symbol, trade_time, price, open_price, high_price, low_price, volume, trade_volume, buy_intensity, sell_intensity, five_levels, created_at, previous_close',
             `SELECT id, symbol, trade_time, price, open_price, high_price, low_price, volume, trade_volume, buy_intensity, sell_intensity, five_levels, created_at, previous_close FROM realtime_ticks WHERE DATE(trade_time) = '${lastDayStr}' AND ${symbolFilter}`);
     }
+
+    // 6. 重設設定
+    fs.appendFileSync(dumpPath, "\n-- Reset replication role\nSET session_replication_role = 'origin';\n");
 
     console.log(`\n✅ 備份完成: ${dumpPath}`);
     const stats = execSync(`ls -lh ${dumpPath}`).toString();

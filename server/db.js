@@ -3,7 +3,7 @@ const { Pool } = require('pg');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
-const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.SUPABASE_URL;
 
 const host = process.env.POSTGRES_HOST || process.env.DB_HOST || 'localhost';
 const isVercel = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
