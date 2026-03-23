@@ -1332,7 +1332,7 @@ router.get(['/stocks/compare', '/compare'], async (req, res) => {
                     ORDER BY calc_date DESC LIMIT 1
                 )
                 SELECT 
-                    h.symbol, h.name, h.industry, h.market,
+                    h.symbol, s.name, s.industry, s.market,
                     COALESCE(p.close_price, h.close_price)::numeric as "closePrice",
                     COALESCE(p.change_percent, h.change_percent)::numeric as "changePercent",
                     h.pe, h.pb, 
@@ -1342,6 +1342,7 @@ router.get(['/stocks/compare', '/compare'], async (req, res) => {
                     h.avg_cash_dividend as "avgCashDividend",
                     h.inst_net_buy as "instNetBuy5d"
                 FROM latest_health h
+                JOIN stocks s ON h.symbol = s.symbol
                 LEFT JOIN latest_price p ON true
             `;
             const scoreRes = await query(sql, [sym]);

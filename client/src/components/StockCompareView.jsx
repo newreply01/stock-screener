@@ -129,8 +129,10 @@ export default function StockCompareView({ initialSymbols = [] }) {
                         const stock = stocks.find(s => s.symbol === sym);
                         return (
                             <div key={sym} className="flex items-center gap-2 px-3 py-1.5 rounded-full border-2 font-bold text-sm" style={{ borderColor: COMPARE_COLORS[idx], color: COMPARE_COLORS[idx] }}>
-                                <span>{stock?.name || sym}</span>
-                                <span className="text-xs opacity-60">{sym}</span>
+                                <span className="text-xs font-mono">{sym}</span>
+                                {stock?.name && stock.name !== sym && (
+                                    <span className="opacity-80">{stock.name}</span>
+                                )}
                                 {symbols.length > 2 && (
                                     <button onClick={() => removeSymbol(sym)} className="ml-1 hover:opacity-70">
                                         <X className="w-3.5 h-3.5" />
