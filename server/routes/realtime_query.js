@@ -219,9 +219,17 @@ router.get('/:symbol', async (req, res) => {
             return res.status(404).json({ success: false, message: 'No data found' });
         }
         
+        const row = result.rows[0];
+        const price = parseFloat(row.price);
+        const prev = parseFloat(row.previous_close);
+        if (price && prev) {
+            row.change = (price - prev).toFixed(2);
+            row.change_percent = (((price - prev) / prev) * 100).toFixed(2);
+        }
+        
         res.json({
             success: true,
-            data: result.rows[0]
+            data: row
         });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });

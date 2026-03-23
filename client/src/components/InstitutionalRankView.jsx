@@ -79,8 +79,9 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
   const MarketMarginView = () => {
     const chartData = [...marginData].reverse().map(d => ({
         ...d,
-        marginBalance: parseFloat((d.margin_purchase_today_balance / 100000000).toFixed(2)),
-        shortBalance: parseFloat((d.short_sale_today_balance / 1000).toFixed(0)), // 張
+        marginBalance: parseFloat((d.margin_balance / 100000000).toFixed(2)),
+        shortBalance: parseFloat((d.short_balance / 1000).toFixed(0)), // 單位: 千張
+        indexPrice: parseFloat(d.index_price || 0)
     }));
 
     return (
@@ -111,16 +112,28 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
                                 tickFormatter={(str) => str.split('-').slice(1).join('/')}
                             />
                             <YAxis 
+                                yAxisId="left"
                                 fontSize={10} 
                                 fontWeight="bold" 
                                 axisLine={false}
                                 tickLine={false}
                                 domain={['auto', 'auto']}
                             />
+                            <YAxis 
+                                yAxisId="right"
+                                orientation="right"
+                                fontSize={10} 
+                                fontWeight="bold" 
+                                axisLine={false}
+                                tickLine={false}
+                                domain={['auto', 'auto']}
+                                hide={false}
+                            />
                             <Tooltip 
                                 contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                             />
-                            <Area type="monotone" dataKey="marginBalance" name="融資餘額" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorMargin)" />
+                            <Area yAxisId="left" type="monotone" dataKey="marginBalance" name="融資餘額" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorMargin)" />
+                            <Line yAxisId="right" type="monotone" dataKey="indexPrice" name="加權指數" stroke="#3b82f6" strokeWidth={2} dot={false} />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
@@ -131,10 +144,9 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
                     <thead>
                         <tr className="bg-slate-50 border-b border-slate-100">
                             <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider">日期</th>
-                            <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-right">融資買進 (億)</th>
-                            <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-right">融資賣出 (億)</th>
                             <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-right">融資餘額 (億)</th>
-                            <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-right">融券餘額 (張)</th>
+                            <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-right">加權指數</th>
+                            <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-right">融券餘額 (千張)</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -142,16 +154,13 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
                             <tr key={`${row.date}-${row.name}`} className="hover:bg-slate-50/50 transition-colors">
                                 <td className="px-6 py-4 text-sm font-bold text-slate-600 tabular-nums">{row.date}</td>
                                 <td className="px-6 py-4 text-sm font-black text-right tabular-nums text-red-500">
-                                    {parseFloat(row.margin_purchase_buy / 100000000).toFixed(1)}
+                                    {parseFloat(row.margin_balance / 100000000).toFixed(1)}
                                 </td>
-                                <td className="px-6 py-4 text-sm font-black text-right tabular-nums text-green-600">
-                                    {parseFloat(row.margin_purchase_sell / 100000000).toFixed(1)}
-                                </td>
-                                <td className="px-6 py-4 text-sm font-black text-right tabular-nums text-slate-800">
-                                    {parseFloat(row.margin_purchase_today_balance / 100000000).toFixed(1)}
+                                <td className="px-6 py-4 text-sm font-black text-right tabular-nums text-blue-600">
+                                    {row.index_price ? parseFloat(row.index_price).toLocaleString() : '-'}
                                 </td>
                                 <td className="px-6 py-4 text-sm font-black text-right tabular-nums text-slate-800">
-                                    {parseInt(row.short_sale_today_balance).toLocaleString()}
+                                    {parseFloat(row.short_balance / 1000).toFixed(1)}
                                 </td>
                             </tr>
                         ))}

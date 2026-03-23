@@ -15,9 +15,10 @@ import {
     ChevronDown,
     Zap
 } from 'lucide-react';
-import { getMarketIndex, getRealtimeBatch, getRealtimeData, getRealtimeTicks } from '../utils/api';
+import { getMarketIndex, getRealtimeBatch, getRealtimeData, getRealtimeTicks, addStockToWatchlist } from '../utils/api';
 import MarketIndexCard from './MarketIndexCard';
 import StockChart from './StockChart';
+import StockSearchAutocomplete from './StockSearchAutocomplete';
 
 const getPriceColor = (price, prev) => {
     if (!price || !prev) return 'text-gray-400';
@@ -301,6 +302,33 @@ const TradingDashboard = ({ watchlists = [], watchedSymbols = new Set() }) => {
                         </div>
                     </div>
 
+                    {/* Add Stock Search */}
+                    <div className="p-3 border-b border-gray-700 bg-gray-900/20">
+                        <StockSearchAutocomplete 
+                            onSelectStock={async (stock) => {
+                                try {
+                                    // Use first watchlist as default
+                                    if (watchlists.length > 0) {
+                                        await addStockToWatchlist(watchlists[0].id, stock.symbol);
+                                        // The App component usually manages watchlists state, 
+                                        // but since we get watchlists as props here, 
+                                        // we might need a way to refresh them.
+                                        // For now, we manually add to watchSymbols if not present.
+                                        if (!watchSymbols.includes(stock.symbol)) {
+                                            setWatchSymbols(prev => [...prev, stock.symbol]);
+                                        }
+                                        setSelectedSymbol(stock.symbol);
+                                    } else {
+                                        alert('請先建立自選清單');
+                                    }
+                                } catch (e) {
+                                    console.error('Add stock failed:', e);
+                                }
+                            }}
+                            placeholder="輸入代碼新增至自選..."
+                        />
+                    </div>
+
                     <div className="p-3 bg-gray-900/30 border-b border-gray-700 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] flex justify-between items-center">
                         <span>即時自選股</span>
                         <span>{watchSymbols.length} 標的</span>
@@ -339,8 +367,9 @@ const TradingDashboard = ({ watchlists = [], watchedSymbols = new Set() }) => {
                                                 <div className={`text-sm font-black tabular-nums ${getPriceColor(price, tick?.previous_close || 0)}`}>
                                                     {price}
                                                 </div>
-                                                <div className={`text-[10px] font-bold tabular-nums flex items-center justify-end gap-0.5 ${getChangeColor(change)}`}>
-                                                    {parseFloat(change) > 0 ? '▲' : (parseFloat(change) < 0 ? '▼' : '')}{Math.abs(parseFloat(change)).toFixed(2)}%
+                                                <div className={`text-[10px] font-bold tabular-nums flex items-center justify-end gap-1 ${getChangeColor(change)}`}>
+                                                    <span>{parseFloat(tick?.change || 0) > 0 ? '+' : ''}{tick?.change || '0.00'}</span>
+                                                    <span>({parseFloat(change) > 0 ? '▲' : (parseFloat(change) < 0 ? '▼' : '')}{Math.abs(parseFloat(change)).toFixed(2)}%)</span>
                                                 </div>
                                             </div>
                                             
