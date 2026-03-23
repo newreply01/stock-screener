@@ -307,4 +307,4 @@ ${promptTemplate}
     }
 }
 
-module.exports = { generateAIReport, generateSmartEngineReport };
+module.exports = { generateAIReport, generateSmartEngineReport, gatherStockContext };
