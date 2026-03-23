@@ -1,12 +1,12 @@
 const jwt = require('jsonwebtoken');
 
-// 強制要求 JWT_SECRET 必須設定於環境變數，禁止使用 fallback 預設值
-if (!process.env.JWT_SECRET) {
-    throw new Error('[FATAL] JWT_SECRET 未設定！請在 .env 檔案中加入 JWT_SECRET=<長度至少32字元的安全亂數>。\n啟動中止以保護系統安全。');
-}
 const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    console.error('[CRITICAL] JWT_SECRET 未設定！請在環境變數中加入 JWT_SECRET 以確保認證功能正常。');
+}
 
 function generateToken(user) {
+    if (!JWT_SECRET) throw new Error('JWT_SECRET 未設定，無法生成 Token');
     return jwt.sign(
         { id: user.id, uuid: user.uuid, email: user.email, name: user.name, nickname: user.nickname, role: user.role },
         JWT_SECRET,
@@ -16,6 +16,9 @@ function generateToken(user) {
 
 // 強制認證 — 未帶 token 直接 401
 function requireAuth(req, res, next) {
+    if (!JWT_SECRET) {
+        return res.status(500).json({ success: false, error: '伺服器設定錯誤 (JWT_SECRET Missing)' });
+    }
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ success: false, error: '請先登入' });
