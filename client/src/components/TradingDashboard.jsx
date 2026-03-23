@@ -80,8 +80,8 @@ const TradingPanel = ({ symbol, tickInfo, isConnected }) => {
                         </div>
                         <div className={`flex items-center gap-1.5 font-bold ${getPriceColor(stats?.price, stats?.previous_close)}`}>
                             <span className="text-sm">{stats?.change > 0 ? '▲' : (stats?.change < 0 ? '▼' : '')}</span>
-                            <span className="text-xl">{Math.abs(stats?.change || 0).toFixed(2)}</span>
-                            <span className="text-sm">({(stats?.change_percent || 0).toFixed(2)}%)</span>
+                            <span className="text-xl">{Number(stats?.change || 0).toFixed(2)}</span>
+                            <span className="text-sm">({Number(stats?.change_percent || 0).toFixed(2)}%)</span>
                         </div>
                     </div>
                     
@@ -141,8 +141,8 @@ const TradingPanel = ({ symbol, tickInfo, isConnected }) => {
                             {(fiveLevels && fiveLevels.length > 0 ? fiveLevels : Array(5).fill({})).map((level, i) => (
                                 <div key={i} className="grid grid-cols-4 text-sm font-mono py-2 hover:bg-white/5 rounded-xl px-2 group transition-all duration-200 border border-transparent hover:border-white/5">
                                     <span className="text-gray-400 font-black">{level?.bVol || '--'}</span>
-                                    <span className={`font-black text-base italic ${getPriceColor(level?.bid, stats?.previous_close)}`}>{level?.bid?.toFixed(2) || '--'}</span>
-                                    <span className={`text-right font-black text-base italic ${getPriceColor(level?.ask, stats?.previous_close)}`}>{level?.ask?.toFixed(2) || '--'}</span>
+                                    <span className={`font-black text-base italic ${getPriceColor(level?.bid, stats?.previous_close)}`}>{level?.bid ? Number(level.bid).toFixed(2) : '--'}</span>
+                                    <span className={`text-right font-black text-base italic ${getPriceColor(level?.ask, stats?.previous_close)}`}>{level?.ask ? Number(level.ask).toFixed(2) : '--'}</span>
                                     <span className="text-right text-gray-400 font-black">{level?.aVol || '--'}</span>
                                 </div>
                             ))}

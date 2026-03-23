@@ -117,6 +117,7 @@ async function syncBrokerTrading(symbol, date) {
             `, [item.stock_id, item.date, item.broker, item.buy, item.sell]);
         }
         console.log(`✅ [FinMind] Synced broker trading for ${symbol}: ${data.length} records.`);
+        await updateProgress('TaiwanStockBrokerTrading', symbol);
     } catch (err) {
         console.error(`❌ [FinMind] Failed to sync broker trading for ${symbol}:`, err.message);
     } finally {
@@ -438,6 +439,7 @@ async function syncStockFinancials(symbol) {
                         dividend_yield = EXCLUDED.dividend_yield
                 `, [symbol, latest.date, parseFloat(latest.PER) || 0, parseFloat(latest.PBR) || 0, parseFloat(latest.dividend_yield) || 0]);
                 console.log(`✅ [FinMind] Updated fundamentals for ${symbol}`);
+                await updateProgress('TaiwanStockPER', symbol);
             }
         } catch (err) {
             console.error(`❌ [FinMind] Failed to sync PER for ${symbol}:`, err.message);
@@ -475,6 +477,7 @@ async function syncStockPER(symbol, date) {
             `, [symbol, item.date, item.PER, item.PBR, item.dividend_yield]);
         }
         console.log(`✅ [FinMind] Synced PE/PB for ${symbol}: ${data.length} records.`);
+        await updateProgress('TaiwanStockPER', symbol);
     } catch (err) {
         console.error(`❌ [FinMind] Failed to sync PE/PB for ${symbol}:`, err.message);
     } finally {
@@ -537,6 +540,7 @@ async function syncHoldingSharesPer(symbol, date) {
             count++;
         }
         console.log(`✅ [FinMind] Synced shareholding dist for ${symbol}: ${count} records.`);
+        await updateProgress('TaiwanStockHoldingSharesPer', symbol);
     } catch (err) {
         console.error(`❌ [FinMind] Failed to sync shareholding dist for ${symbol}:`, err.message);
     } finally {

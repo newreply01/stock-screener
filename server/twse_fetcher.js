@@ -256,7 +256,7 @@ async function fetchFundamentals(dateObj) {
         }
         console.log(`[Fund] ${dateStr} 更新 ${count} 筆`);
         if (count > 0) {
-            await updateProgress('TaiwanStockFinancialStatements');
+            await updateProgress('TaiwanStockPER');
             await updateProgress('TaiwanStockTradingDate'); // 確保這也被標記為已更新
         }
     } catch (e) {
@@ -301,7 +301,7 @@ async function fetchTPExFundamentals(dateObj) {
             count++;
         }
         console.log(`[TPEx-Fund] ${rocDate} 更新 ${count} 筆`);
-        if (count > 0) await updateProgress('TaiwanStockFinancialStatements');
+        if (count > 0) await updateProgress('TaiwanStockPER');
     } catch (e) {
         console.error(`[TPEx-Fund] ${rocDate} 失敗:`, e.message);
     }
