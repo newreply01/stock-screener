@@ -1318,27 +1318,33 @@ router.get(['/stocks/compare', '/compare'], async (req, res) => {
         if (!symbols) return res.json({ success: true, data: [] });
         const symbolList = symbols.split(',');
         
-        // 取得最新的計算日期
-        const dateRes = await query('SELECT MAX(calc_date) as latest FROM stock_health_scores');
-        const latestDate = dateRes.rows[0]?.latest;
-
         const results = await Promise.all(symbolList.map(async sym => {
             const sql = `
+                WITH latest_price AS (
+                    SELECT close_price, change_percent 
+                    FROM daily_prices 
+                    WHERE symbol = $1 
+                    ORDER BY trade_date DESC LIMIT 1
+                ),
+                latest_health AS (
+                    SELECT * FROM stock_health_scores
+                    WHERE symbol = $1
+                    ORDER BY calc_date DESC LIMIT 1
+                )
                 SELECT 
-                    symbol, name, industry, market,
-                    close_price as "closePrice",
-                    change_percent as "changePercent",
-                    pe, pb, 
-                    dividend_yield as "dividendYield",
-                    roe, gross_margin as "grossMargin",
-                    revenue_growth as "revenueGrowth",
-                    avg_cash_dividend as "avgCashDividend",
-                    inst_net_buy as "instNetBuy5d"
-                FROM stock_health_scores 
-                WHERE symbol = $1 AND calc_date = $2
-                ORDER BY calc_date DESC LIMIT 1
+                    h.symbol, h.name, h.industry, h.market,
+                    COALESCE(p.close_price, h.close_price)::numeric as "closePrice",
+                    COALESCE(p.change_percent, h.change_percent)::numeric as "changePercent",
+                    h.pe, h.pb, 
+                    h.dividend_yield as "dividendYield",
+                    h.roe, h.gross_margin as "grossMargin",
+                    h.revenue_growth as "revenueGrowth",
+                    h.avg_cash_dividend as "avgCashDividend",
+                    h.inst_net_buy as "instNetBuy5d"
+                FROM latest_health h
+                LEFT JOIN latest_price p ON true
             `;
-            const scoreRes = await query(sql, [sym, latestDate]);
+            const scoreRes = await query(sql, [sym]);
             return scoreRes.rows[0] || { symbol: sym, error: 'No data' };
         }));
         
