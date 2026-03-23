@@ -51,6 +51,11 @@ Object.assign(poolConfig, {
 
 const pool = new Pool(poolConfig);
 
+// 強制資料庫連線會話時區為台北時間
+pool.on('connect', (client) => {
+    client.query("SET TIME ZONE 'Asia/Taipei'");
+});
+
 const query = (text, params) => pool.query(text, params);
 
 const end = () => pool.end();
