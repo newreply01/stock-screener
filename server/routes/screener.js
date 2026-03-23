@@ -1311,21 +1311,41 @@ router.get('/stock/:symbol/health-check', async (req, res) => {
     }
 });
 
-// GET /api/compare - 多股比較
-router.get('/compare', async (req, res) => {
+// GET /api/stocks/compare - 多股比較 (新路徑與完整指標)
+router.get(['/stocks/compare', '/compare'], async (req, res) => {
     try {
         const { symbols } = req.query;
         if (!symbols) return res.json({ success: true, data: [] });
         const symbolList = symbols.split(',');
+        
+        // 取得最新的計算日期
+        const dateRes = await query('SELECT MAX(calc_date) as latest FROM stock_health_scores');
+        const latestDate = dateRes.rows[0]?.latest;
+
         const results = await Promise.all(symbolList.map(async sym => {
-            const stockRes = await query('SELECT * FROM stocks WHERE symbol = $1', [sym]);
-            const priceRes = await query('SELECT * FROM daily_prices WHERE symbol = $1 ORDER BY trade_date DESC LIMIT 1', [sym]);
-            const fundRes = await query('SELECT * FROM fundamentals WHERE symbol = $1 ORDER BY trade_date DESC LIMIT 1', [sym]);
-            return { symbol: sym, name: stockRes.rows[0]?.name, price: priceRes.rows[0], fundamental: fundRes.rows[0] };
+            const sql = `
+                SELECT 
+                    symbol, name, industry, market,
+                    close_price as "closePrice",
+                    change_percent as "changePercent",
+                    pe, pb, 
+                    dividend_yield as "dividendYield",
+                    roe, gross_margin as "grossMargin",
+                    revenue_growth as "revenueGrowth",
+                    avg_cash_dividend as "avgCashDividend",
+                    inst_net_buy as "instNetBuy5d"
+                FROM stock_health_scores 
+                WHERE symbol = $1 AND calc_date = $2
+                ORDER BY calc_date DESC LIMIT 1
+            `;
+            const scoreRes = await query(sql, [sym, latestDate]);
+            return scoreRes.rows[0] || { symbol: sym, error: 'No data' };
         }));
-        res.json({ success: true, data: results });
+        
+        res.json({ success: true, data: results.filter(r => !r.error) });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('Stock compare error:', err);
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 
