@@ -11,8 +11,12 @@ app.use((req, res, next) => {
         const mainApp = require('../server/index');
         mainApp(req, res, next);
     } catch (err) {
-        console.error('API Error:', err);
-        res.status(500).json({ error: 'Server crashed', message: err.message });
+        console.error('CRITICAL ERROR caught in api/index.js:', err);
+        res.status(500).json({ 
+            error: 'Server crashed', 
+            message: err.message || 'Unknown error occurred during server bootstrap',
+            details: err.stack || 'No stack trace available'
+        });
     }
 });
 

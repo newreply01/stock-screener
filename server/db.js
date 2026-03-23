@@ -28,21 +28,26 @@ let useSSL = isVercel || !isLocalNetwork;
 if (process.env.DB_SSL === 'true') useSSL = true;
 if (process.env.DB_SSL === 'false') useSSL = false;
 
-const poolConfig = {
+const poolConfig = dbUrl ? {
     connectionString: dbUrl,
+} : {
     user: process.env.POSTGRES_USER || process.env.DB_USER,
     host: host,
     database: process.env.POSTGRES_DATABASE || process.env.DB_NAME,
     password: process.env.POSTGRES_PASSWORD || process.env.DB_PASSWORD,
     port: parseInt(process.env.POSTGRES_PORT || process.env.DB_PORT || '5432'),
+};
+
+// 統一補上通用設定 (SSL 與效能)
+Object.assign(poolConfig, {
     ssl: useSSL ? { 
         require: true,
         rejectUnauthorized: false 
     } : false,
-    max: 20,                // 最大連線數
-    idleTimeoutMillis: 30000, // 閒置連線 30 秒後回收
-    connectionTimeoutMillis: 5000 // 建立連線逾時 5 秒
-};
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000
+});
 
 const pool = new Pool(poolConfig);
 
