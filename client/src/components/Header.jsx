@@ -1,10 +1,38 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, Menu, Bell, Globe, LogOut, Settings, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Header({ currentView = 'dashboard' }) {
     const { user, logout, showLoginModal, setShowLoginModal } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [marketStatus, setMarketStatus] = useState({ text: '讀取中...', color: 'text-gray-400' });
+
+    useEffect(() => {
+        const fetchStatus = async () => {
+            try {
+                const response = await fetch('/api/monitor/status');
+                const data = await response.json();
+                if (data.success) {
+                    const crawler = data.script_status.find(s => s.script === 'realtime_crawler.js');
+                    if (crawler) {
+                        if (crawler.db_last_status === 'RUNNING') {
+                            setMarketStatus({ text: '交易中', color: 'text-brand-success' });
+                        } else if (crawler.message.includes('休市')) {
+                            setMarketStatus({ text: '休市中', color: 'text-gray-400' });
+                        } else {
+                            setMarketStatus({ text: crawler.db_last_status, color: 'text-yellow-400' });
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch market status:', error);
+            }
+        };
+
+        fetchStatus();
+        const interval = setInterval(fetchStatus, 60000); // 每一分鐘更新一次
+        return () => clearInterval(interval);
+    }, []);
 
     const dispatchView = (view) => {
         window.dispatchEvent(new CustomEvent('muchstock-view', { detail: view }));
@@ -19,7 +47,7 @@ export default function Header({ currentView = 'dashboard' }) {
                 <div className="container mx-auto px-4 flex justify-between items-center text-[11px] font-medium tracking-wide uppercase text-gray-400">
                     <div className="flex gap-4">
                         <span className="flex items-center gap-1"><Globe className="w-3 h-3" /> 繁體中文</span>
-                        <span>市場狀態: <span className="text-brand-success">交易中</span></span>
+                        <span>市場狀態: <span className={marketStatus.color}>{marketStatus.text}</span></span>
                     </div>
                     <div className="flex gap-4">
                         <button onClick={() => dispatchView('portfolio')} className="hover:text-white transition-colors">投資組合</button>

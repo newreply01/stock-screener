@@ -1,3 +1,4 @@
+process.env.TZ = 'Asia/Taipei';
 const express = require('express');
 const app = express();
 

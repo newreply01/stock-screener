@@ -12,6 +12,12 @@ const TPEX_INST_URL = 'https://www.tpex.org.tw/web/stock/3insti/daily_trade/3itr
 const TWSE_MARGIN_URL = 'https://www.twse.com.tw/exchangeReport/MI_MARGN?response=json&selectType=ALL';
 const TPEX_MARGIN_URL = 'https://www.tpex.org.tw/web/stock/margin_trading/margin_sbl/margin_sbl_result.php?l=zh-tw&o=json';
 
+// 市場統計資料 URL
+const TWSE_MARKET_INST_URL = 'https://www.twse.com.tw/rwd/zh/fund/BFI82U?response=json';
+const TPEX_MARKET_INST_URL = 'https://www.tpex.org.tw/web/stock/3insti/3insti_summary/3itotal_result.php?l=zh-tw&o=json';
+const TWSE_MARKET_MARGIN_URL = 'https://www.twse.com.tw/exchangeReport/MI_MARGN?response=json';
+const TPEX_MARKET_MARGIN_URL = 'https://www.tpex.org.tw/web/stock/margin_trading/margin_bal/margin_bal_result.php?l=zh-tw&o=json';
+
 // 工具函式
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const parseNumber = (str) => {
@@ -525,6 +531,196 @@ async function fetchTPExMarginTrading(dateObj) {
     }
 }
 
+// ===== 抓取大盤法人 (TWSE + TPEx) 歷史 =====
+async function fetchMarketInstitutional(dateObj) {
+    const dateStr = toDateStr(dateObj);
+    const rocDate = toRocDate(dateObj);
+    const dateHyphen = toDateHyphen(dateObj);
+    console.log(`[Market-Inst] 抓取 ${dateHyphen}...`);
+
+    let marketData = {
+        'Foreign_Investor': { buy: 0, sell: 0 },
+        'Investment_Trust': { buy: 0, sell: 0 },
+        'Dealer_self': { buy: 0, sell: 0 },
+        'Dealer_Hedging': { buy: 0, sell: 0 },
+        'total': { buy: 0, sell: 0 }
+    };
+
+    const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+    // 1. TWSE
+    try {
+        const res = await nodeFetch(`${TWSE_MARKET_INST_URL}&dayDate=${dateStr}`, { headers: { 'User-Agent': UA } });
+        const json = await res.json();
+        if (json.stat === 'OK' && json.data) {
+            for (const row of json.data) {
+                const name = row[0].trim();
+                const buy = parseNumber(row[1]) || 0;
+                const sell = parseNumber(row[2]) || 0;
+                
+                if (name.includes('外資')) {
+                    marketData.Foreign_Investor.buy += buy;
+                    marketData.Foreign_Investor.sell += sell;
+                } else if (name.includes('投信')) {
+                    marketData.Investment_Trust.buy += buy;
+                    marketData.Investment_Trust.sell += sell;
+                } else if (name.includes('自營商') && name.includes('自行買賣')) {
+                    marketData.Dealer_self.buy += buy;
+                    marketData.Dealer_self.sell += sell;
+                } else if (name.includes('自營商回補') || name.includes('避險')) {
+                    marketData.Dealer_Hedging.buy += buy;
+                    marketData.Dealer_Hedging.sell += sell;
+                } else if (name.includes('合計') || name.includes('總計')) {
+                    marketData.total.buy += buy;
+                    marketData.total.sell += sell;
+                }
+            }
+        }
+    } catch (e) { console.error(`[Market-Inst] TWSE ${dateStr} 失敗:`, e.message); }
+
+    // 2. TPEx
+    try {
+        const res = await nodeFetch(`${TPEX_MARKET_INST_URL}&d=${rocDate}`, { 
+            headers: { 
+                'User-Agent': UA,
+                'Referer': 'https://www.tpex.org.tw/zh-tw/mainboard/trading/institutional/3insti-summary.html'
+            } 
+        });
+        const json = await res.json();
+        const rows = json.aaData || (json.tables && json.tables[0] && json.tables[0].data) || json.data;
+        if (rows) {
+            for (const row of rows) {
+                const name = row[0].trim();
+                const buy = parseNumber(row[1]) || 0;
+                const sell = parseNumber(row[2]) || 0;
+
+                if (name.includes('外資')) {
+                    marketData.Foreign_Investor.buy += buy;
+                    marketData.Foreign_Investor.sell += sell;
+                } else if (name.includes('投信')) {
+                    marketData.Investment_Trust.buy += buy;
+                    marketData.Investment_Trust.sell += sell;
+                } else if (name.includes('自營商') && name.includes('自行買賣')) {
+                    marketData.Dealer_self.buy += buy;
+                    marketData.Dealer_self.sell += sell;
+                } else if (name.includes('自營商') && (name.includes('避險') || name.includes('回補'))) {
+                    marketData.Dealer_Hedging.buy += buy;
+                    marketData.Dealer_Hedging.sell += sell;
+                }
+            }
+        }
+    } catch (e) { console.error(`[Market-Inst] TPEx ${rocDate} 失敗:`, e.message); }
+
+    // Save to DB
+    for (const [name, val] of Object.entries(marketData)) {
+        if (val.buy === 0 && val.sell === 0 && name !== 'total') continue;
+        await query(
+            `INSERT INTO fm_total_institutional (date, name, buy, sell) VALUES ($1, $2, $3, $4)
+             ON CONFLICT (date, name) DO UPDATE SET buy = EXCLUDED.buy, sell = EXCLUDED.sell`,
+            [dateHyphen, name, val.buy, val.sell]
+        );
+    }
+    console.log(`[Market-Inst] ${dateHyphen} 更新完成`);
+    await updateProgress('TaiwanStockTotalInstitutionalInvestors');
+}
+
+// ===== 抓取大盤融資融券 (TWSE + TPEx) 歷史 =====
+async function fetchMarketMargin(dateObj) {
+    const dateStr = toDateStr(dateObj);
+    const rocDate = toRocDate(dateObj);
+    const dateHyphen = toDateHyphen(dateObj);
+    console.log(`[Market-Margin] 抓取 ${dateHyphen}...`);
+
+    let marginData = {
+        'MarginPurchaseMoney': { buy: 0, sell: 0, balance: 0 },
+        'ShortSale': { buy: 0, sell: 0, balance: 0 }
+    };
+
+    const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+    // 1. TWSE
+    try {
+        const res = await nodeFetch(`${TWSE_MARKET_MARGIN_URL}&date=${dateStr}`, { headers: { 'User-Agent': UA } });
+        const json = await res.json();
+        if (json.stat === 'OK' && json.tables) {
+            // 修正：標題是 "信用交易統計" 或 "融資融券餘額"
+            const table = json.tables.find(t => t.title && (t.title.includes('信用交易統計') || t.title.includes('融資融券餘額')));
+            if (table && table.data) {
+                const mRow = table.data.find(r => r[0].includes('融資金額'));
+                const sRow = table.data.find(r => r[0].includes('融券(交易單位)'));
+                if (mRow) {
+                    marginData.MarginPurchaseMoney.buy += (parseNumber(mRow[1]) || 0) * 1000;
+                    marginData.MarginPurchaseMoney.sell += (parseNumber(mRow[2]) || 0) * 1000;
+                    marginData.MarginPurchaseMoney.balance += (parseNumber(mRow[5]) || 0) * 1000;
+                }
+                if (sRow) {
+                    marginData.ShortSale.buy += parseNumber(sRow[1]) || 0;
+                    marginData.ShortSale.sell += parseNumber(sRow[2]) || 0;
+                    marginData.ShortSale.balance += parseNumber(sRow[5]) || 0;
+                }
+            }
+        }
+    } catch (e) { console.error(`[Market-Margin] TWSE ${dateStr} 失敗:`, e.message); }
+
+    // 2. TPEx
+    try {
+        const res = await nodeFetch(`${TPEX_MARKET_MARGIN_URL}&d=${rocDate}`, { 
+            headers: { 
+                'User-Agent': UA,
+                'Referer': 'https://www.tpex.org.tw/zh-tw/mainboard/trading/margin/margin-bal.html'
+            } 
+        });
+        const json = await res.json();
+        const rows = json.aaData || (json.tables && json.tables[0] && json.tables[0].data) || json.data;
+        if (rows) {
+            // TPEx rows: 0: 融資(金), 1: 融券(張)
+            const mRow = rows[0];
+            const sRow = rows[1];
+            if (mRow) {
+                marginData.MarginPurchaseMoney.buy += (parseNumber(mRow[1]) || 0) * 1000;
+                marginData.MarginPurchaseMoney.sell += (parseNumber(mRow[2]) || 0) * 1000;
+                marginData.MarginPurchaseMoney.balance += (parseNumber(mRow[4]) || 0) * 1000;
+            }
+            if (sRow) {
+                marginData.ShortSale.buy += parseNumber(sRow[1]) || 0;
+                marginData.ShortSale.sell += parseNumber(sRow[2]) || 0;
+                marginData.ShortSale.balance += parseNumber(sRow[4]) || 0;
+            }
+        }
+    } catch (e) { console.error(`[Market-Margin] TPEx ${rocDate} 失敗:`, e.message); }
+
+    // Save to DB in multi-row format (FinMind compatible)
+    for (const [name, val] of Object.entries(marginData)) {
+        await query(`
+            INSERT INTO fm_total_margin (
+                date, name, margin_purchase_buy, margin_purchase_sell, margin_purchase_today_balance,
+                short_sale_buy, short_sale_sell, short_sale_today_balance
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT (date, name) DO UPDATE SET
+                margin_purchase_buy = EXCLUDED.margin_purchase_buy,
+                margin_purchase_sell = EXCLUDED.margin_purchase_sell,
+                margin_purchase_today_balance = EXCLUDED.margin_purchase_today_balance,
+                short_sale_buy = EXCLUDED.short_sale_buy,
+                short_sale_sell = EXCLUDED.short_sale_sell,
+                short_sale_today_balance = EXCLUDED.short_sale_today_balance
+        `, [
+            dateHyphen, name, 
+            name === 'MarginPurchaseMoney' ? val.buy : 0, 
+            name === 'MarginPurchaseMoney' ? val.sell : 0, 
+            name === 'MarginPurchaseMoney' ? val.balance : 0,
+            name === 'ShortSale' ? val.buy : 0, 
+            name === 'ShortSale' ? val.sell : 0, 
+            name === 'ShortSale' ? val.balance : 0
+        ]);
+    }
+
+    console.log(`[Market-Margin] ${dateHyphen} 更新完成 (格式已過渡至多行)`);
+    // Cleanup old 'Total' row if exists
+    await query(`DELETE FROM fm_total_margin WHERE date = $1 AND name = 'Total'`, [dateHyphen]);
+    await updateProgress('TaiwanStockTotalMarginPurchaseShortSale');
+}
+
+
 // ===== 通用抓取區間迴圈 =====
 async function fetchRange(startDate, endDate) {
     console.log(`📅 執行區間抓取: ${toDateHyphen(startDate)} -> ${toDateHyphen(endDate)}`);
@@ -559,6 +755,10 @@ async function fetchRange(startDate, endDate) {
         await fetchMarginTrading(current);
         await sleep(1000);
         await fetchTPExMarginTrading(current);
+        await sleep(1000);
+        await fetchMarketInstitutional(current);
+        await sleep(1000);
+        await fetchMarketMargin(current);
 
         console.log(`⏳ 休眠 3 秒...`);
         await sleep(3000);
@@ -683,4 +883,12 @@ if (require.main === module) {
         .catch(err => { console.error(err); process.exit(1); });
 }
 
-module.exports = { catchUp, fetchRange, fetchTWSE, fetchTPEx, updateLastCloseSnapshot };
+module.exports = { 
+    catchUp, 
+    fetchRange, 
+    fetchTWSE, 
+    fetchTPEx, 
+    updateLastCloseSnapshot,
+    fetchMarketInstitutional,
+    fetchMarketMargin
+};

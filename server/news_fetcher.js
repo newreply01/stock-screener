@@ -1,6 +1,7 @@
 const { pool } = require('./db');
 const fetch = require('node-fetch');
 const nodeFetch = fetch.default || fetch;
+const NewsSentiment = require('./utils/newsSentiment');
 
 const CATEGORIES = {
     'headline': '熱門頭條',
@@ -55,7 +56,11 @@ async function saveNews(newsItems, categoryId) {
                 ON CONFLICT (news_id) DO NOTHING
             `, [newsId, categoryId, title, summary, imageUrl, publishAt]);
 
-            if (res.rowCount > 0) newCount++;
+            if (res.rowCount > 0) {
+                newCount++;
+                // 存入後自動執行情緒解析與個股關聯
+                await NewsSentiment.processNews(newsId);
+            }
         }
         return newCount;
     } catch (err) {

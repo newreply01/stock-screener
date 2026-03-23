@@ -68,19 +68,38 @@ TZ=Asia/Taipei
 JWT_SECRET=<generate-with: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))">
 ```
 
-### 啟動開發環境
+### 啟動與部署 (PM2)
 
+本專案推薦使用 PM2 進行程序管理，可確保服務在崩潰時自動重啟，並支援系統開機自啟動。
+
+#### 1. 啟動服務
 ```bash
 cd /home/xg/stock-screener
-
-# 方式一：PM2 管理（推薦，持久化服務）
+# 使用預定義配置啟動 (Port 31000)
 npx pm2 start ecosystem.config.cjs
-npx pm2 list     # 查看狀態
-npx pm2 logs     # 查看日誌
-
-# 方式二：前後端同時開發
-npm run dev      # 啟動後端 (31000) + 前端 (32000)
 ```
+
+#### 2. 設定開機自動啟動 (Auto-startup)
+由於 WSL 已開啟 `systemd` 支援，可依照以下步驟設定：
+1. **產生啟動腳本**：`npx pm2 startup systemd -u xg --hp /home/xg`
+2. **執行指令**：複製並執行上述指令產生的 `sudo` 開頭指令。
+3. **保存當前列表**：`npx pm2 save` (此步驟會將當前運行的程序保存至 `~/.pm2/dump.pm2`)。
+
+#### 3. 常用 PM2 指令
+| 指令 | 說明 |
+|---|---|
+| `npx pm2 list` | 查看當前所有程序狀態 |
+| `npx pm2 logs` | 查看所有程序日誌 (或 `npx pm2 logs stock-server`) |
+| `npx pm2 restart all` | 重啟所有服務 |
+| `npx pm2 stop all` | 停止所有服務 |
+| `npx pm2 delete all` | 刪除所有程序列表 |
+
+### 啟動開發環境 (Vite)
+若需進行前端即時開發，請執行：
+```bash
+npm run dev      # 啟動後端 (31000) + 前端開發伺服器 (32000)
+```
+
 
 ### 建置前端
 
@@ -134,3 +153,18 @@ npx jest --testPathPattern='server/tests/auth.test.js'
 -   **環境變數**: `.env` 必須包含 `JWT_SECRET`（強制要求，不可缺少）與 `FINMIND_TOKENS`。
 -   **時區處理**: 系統核心邏輯已強制轉換為 `Asia/Taipei`（台灣時間）。
 -   **Vercel 部署**: 支援 Vercel 雲端執行，請參考 `vercel.json` 配置。
+
+## 9. 資料庫維護與 Slim DB 遷移
+
+為了符合雲端環境（如 Supabase）的空間限制，本專案提供精煉版資料庫導出方案：
+
+### Slim DB 導出邏輯 (2024+ 精選方案)
+- **腳本**: `server/scripts/gen_refined_slim_dump.js`
+- **起點**: 2024-01-01 至今。
+- **篩選**: 僅包含 4 位數代號個股與 00 開頭之 ETF（排除權證、CB 等發行標的）。
+- **優化**: 排除龐大的原始行情表 (`fm_stock_price`) 與歷史比率表 (`fm_stock_per`)，改以 `daily_prices` 摘要表為主。
+- **產出**: `refined_2024_slim.sql` (約 240MB)，適合部署至 500MB 限制之 Supabase。
+
+### 本地清理
+- **腳本**: `server/scripts/cleanup_local_rows.js`
+- **功能**: 同步執行以上篩選邏輯至本地資料庫，並徹底刪除盤中即時資料表 (`realtime_ticks` 分區表)，可釋放 10GB 以上磁碟空間。

@@ -3,19 +3,33 @@ node_modules/
 .env.bak
 *.log
 testOutput*.txt
-*.sql
-*.log
 .vite/
 
-# Realtime Market Data Crawler Scripts (Excluded to save Zeabur space)
-server/realtime_crawler.js
-server/historical_tick_sync.js
-start_crawler.sh
-start_historical.sh
+# SQL dumps (too large for git)
+slim_db.sql
+final_slim.sql
+stocks_only.sql
+all_inserts_chunk_*
+final_slim_chunk_*
+insert_batch_*
+refined_slim_*.sql
+*.sql
+
+# Logs and status
+status_output.json
+*.log
+sync_output.txt
 
 # Debug & Scratch Scripts
 server/debug_*.js
 server/backfill_*.js
 server/test_*.js
+server/scripts/*.js
+!server/scripts/sync_realtime_supabase.js
+!server/scripts/gen_refined_slim_v2.js
 tmp/
 *.tmp
+node_modules/
+.env
+.env.bak
+.vite/

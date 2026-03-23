@@ -11,18 +11,35 @@ router.get('/realtime-ticks', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Missing symbol parameter' });
         }
 
-        // 如果沒有提供日期，預設使用當前日期 (台北時間)
+        // 如果沒有提供日期，優先使用當前日期 (台北時間)
         let targetDate = date;
         if (!targetDate) {
             const now = new Date();
-            const taipeiDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
-            targetDate = taipeiDate.toISOString().split('T')[0];
+            const taipeiDateStr = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' })).toISOString().split('T')[0];
             
-            // 檢查今日是否有資料，如果今日完全沒資料，且沒有提供 date 參數，
-            // 則回傳空陣列，避免誤導使用者看到歷史資料
-            const checkTodayRes = await query(`SELECT 1 FROM realtime_ticks WHERE (trade_time AT TIME ZONE 'Asia/Taipei')::date = $1::date LIMIT 1`, [targetDate]);
-            if (checkTodayRes.rows.length === 0) {
-                return res.json({ success: true, data: [], date: targetDate, message: 'Today has no data yet' });
+            // 優先檢查今日是否有資料
+            const checkTodayRes = await query(`SELECT 1 FROM realtime_ticks WHERE (trade_time AT TIME ZONE 'Asia/Taipei')::date = $1::date LIMIT 1`, [taipeiDateStr]);
+            
+            if (checkTodayRes.rows.length > 0) {
+                targetDate = taipeiDateStr;
+            } else {
+                // 如果今日沒資料（休市或開盤前），尋找資料庫中最新的日期
+                const latestRes = await query(`
+                    SELECT MAX((trade_time AT TIME ZONE 'Asia/Taipei')::date) as latest 
+                    FROM (
+                        SELECT trade_time FROM realtime_ticks LIMIT 100
+                        UNION ALL
+                        SELECT trade_time FROM realtime_ticks_history ORDER BY trade_time DESC LIMIT 1
+                    ) s
+                `);
+                
+                if (latestRes.rows.length > 0 && latestRes.rows[0].latest) {
+                    const d = new Date(latestRes.rows[0].latest);
+                    targetDate = d.toISOString().split('T')[0];
+                    console.log(`[RealtimeQuery] 今日(${taipeiDateStr})無資料，自動切換至最新日期: ${targetDate}`);
+                } else {
+                    targetDate = taipeiDateStr; // 完全沒資料才用今日
+                }
             }
         }
 

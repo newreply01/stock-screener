@@ -121,8 +121,8 @@ router.get('/status', async (req, res) => {
                 case 'TaiwanStockTotalMarginPurchaseShortSale':
                     name = '融資融券 (全市場)';
                     usage = '全市場（大盤）信用交易總額與增減';
-                    script = 'finmind_fetcher.js';
-                    description = '21:45 更新';
+                    script = 'twse_fetcher.js';
+                    description = '21:45 更新 (TWSE/TPEx 直連)';
                     break;
                 case 'TaiwanStockInstitutional':
                 case 'TaiwanStockInstitutionalInvestorsBuySell':
@@ -134,8 +134,8 @@ router.get('/status', async (req, res) => {
                 case 'TaiwanStockTotalInstitutionalInvestors':
                     name = '三大法人買賣超 (全市場)';
                     usage = '全市場（大盤）法人買賣超總計';
-                    script = 'finmind_fetcher.js';
-                    description = '21:45 更新';
+                    script = 'twse_fetcher.js';
+                    description = '21:45 更新 (TWSE/TPEx 直連)';
                     break;
                 case 'TaiwanStockFinancialStatements':
                     name = '財務報表 (損益表)';

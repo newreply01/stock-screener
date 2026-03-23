@@ -1158,11 +1158,19 @@ router.get('/institutional-rank', async (req, res) => {
         }
 
         const sql = `
-            SELECT i.symbol, s.name, s.industry, s.market, SUM(i.${field}::numeric / 1000.0) as net_buy
+            SELECT i.symbol, s.name, s.industry, s.market, 
+                   SUM(i.${field}::numeric / 1000.0) as net_buy,
+                   p.close_price, p.change_amount, p.change_percent
             FROM institutional i
             JOIN stocks s ON i.symbol = s.symbol
+            LEFT JOIN LATERAL (
+                SELECT close_price, change_amount, change_percent 
+                FROM daily_prices dp 
+                WHERE dp.symbol = i.symbol 
+                ORDER BY trade_date DESC LIMIT 1
+            ) p ON true
             ${whereClause}
-            GROUP BY i.symbol, s.name, s.industry, s.market
+            GROUP BY i.symbol, s.name, s.industry, s.market, p.close_price, p.change_amount, p.change_percent
             HAVING SUM(i.${field}) ${isSell ? '< 0' : '> 0'}
             ORDER BY net_buy ${isSell ? 'ASC' : 'DESC'}
             LIMIT 20

@@ -185,6 +185,69 @@ async function syncInstitutional(symbol) {
     }
 }
 
+async function syncTotalInstitutional(date) {
+    const client = await pool.connect();
+    try {
+        const start_date = date || '2021-01-01';
+        console.log(`🔄 [FinMind] Syncing total market institutional investors from ${start_date}...`);
+        const data = await fetchFinMind('TaiwanStockTotalInstitutionalInvestors', '', start_date);
+        
+        for (const item of data) {
+            await client.query(`
+                INSERT INTO fm_total_institutional (date, name, buy, sell)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (date, name) DO UPDATE SET
+                    buy = EXCLUDED.buy,
+                    sell = EXCLUDED.sell
+            `, [item.date, item.name, item.buy, item.sell]);
+        }
+        await updateProgress('TaiwanStockTotalInstitutionalInvestors');
+        console.log(`✅ [FinMind] Synced total institutional: ${data.length} records.`);
+    } catch (err) {
+        console.error(`❌ [FinMind] Failed to sync total institutional:`, err.message);
+    } finally {
+        client.release();
+    }
+}
+
+async function syncTotalMargin(date) {
+    const client = await pool.connect();
+    try {
+        const start_date = date || '2021-01-01';
+        console.log(`🔄 [FinMind] Syncing total market margin trading from ${start_date}...`);
+        const data = await fetchFinMind('TaiwanStockTotalMarginPurchaseShortSale', '', start_date);
+        
+        for (const item of data) {
+            await client.query(`
+                INSERT INTO fm_total_margin (
+                    date, margin_purchase_buy, margin_purchase_sell, 
+                    short_sale_buy, short_sale_sell, 
+                    short_sale_today_balance, margin_purchase_today_balance
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                ON CONFLICT ON CONSTRAINT fm_total_margin_pkey DO UPDATE SET
+                    margin_purchase_buy = EXCLUDED.margin_purchase_buy,
+                    margin_purchase_sell = EXCLUDED.margin_purchase_sell,
+                    short_sale_buy = EXCLUDED.short_sale_buy,
+                    short_sale_sell = EXCLUDED.short_sale_sell,
+                    short_sale_today_balance = EXCLUDED.short_sale_today_balance,
+                    margin_purchase_today_balance = EXCLUDED.margin_purchase_today_balance
+            `, [
+                item.date, 
+                item.MarginPurchaseBuy, item.MarginPurchaseSell, 
+                item.ShortSaleBuy, item.ShortSaleSell, 
+                item.ShortSaleTodayBalance, item.MarginPurchaseTodayBalance
+            ]);
+        }
+        await updateProgress('TaiwanStockTotalMarginPurchaseShortSale');
+        console.log(`✅ [FinMind] Synced total margin: ${data.length} records.`);
+    } catch (err) {
+        console.error(`❌ [FinMind] Failed to sync total margin:`, err.message);
+    } finally {
+        client.release();
+    }
+}
+
 async function syncFinancialRatios(symbol) {
     const client = await pool.connect();
     try {
@@ -515,6 +578,42 @@ async function syncTradingDate() {
     }
 }
 
+async function syncBrokers() {
+    const ds = 'TaiwanSecuritiesTraderInfo';
+    console.log(`🔄 [FinMind] Syncing ${ds}...`);
+    try {
+        const data = await fetchFinMind(ds, '');
+        if (data && data.length > 0) {
+            const client = await pool.connect();
+            try {
+                let count = 0;
+                await client.query('BEGIN');
+                for (const item of data) {
+                    if (!item.broker_id) continue;
+                    await client.query(`
+                        INSERT INTO brokers (id, name, market)
+                        VALUES ($1, $2, $3)
+                        ON CONFLICT (id) DO UPDATE SET
+                            name = EXCLUDED.name,
+                            market = EXCLUDED.market
+                    `, [item.broker_id, item.broker_name, item.market]);
+                    count++;
+                }
+                await client.query('COMMIT');
+                console.log(`✅ [FinMind] Synced ${ds}: ${count}/${data.length} records.`);
+                await updateProgress(ds);
+            } catch (e) {
+                await client.query('ROLLBACK');
+                throw e;
+            } finally {
+                client.release();
+            }
+        }
+    } catch (err) {
+        console.error(`❌ [FinMind] Failed to sync ${ds}:`, err.message);
+    }
+}
+
 module.exports = { 
     syncStockFinancials, 
     syncAllStocksFinancials, 
@@ -525,5 +624,8 @@ module.exports = {
     syncStockPER,
     syncHoldingSharesPer,
     syncTradingDate,
-    syncDailyStocksData
+    syncDailyStocksData,
+    syncTotalInstitutional,
+    syncTotalMargin,
+    syncBrokers
 };

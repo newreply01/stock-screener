@@ -11,7 +11,9 @@ try {
 } catch (e) {
     console.warn('Optional module historical_tick_sync not found, skipping related tasks.');
 }
-const { pool } = require('./db');
+const { pool, query } = require('./db');
+const TickArchiver = require('./utils/tickArchiver');
+const { sync: syncToSupabase } = require('./scripts/sync_realtime_supabase');
 
 async function logScriptStatus(serviceName, status, message) {
     try {
@@ -180,17 +182,42 @@ function startScheduler() {
         timezone: 'Asia/Taipei'
     });
     initTaskTracking('update_ingestion_stats', statsUpdateTask);
+    
+    // 每日 08:30 進行 Tick 資料歸檔與清空 (開盤前)
+    const tickArchiveTask = cron.schedule('30 8 * * *', async () => {
+        console.log('🏗️ 定時排程開始 (08:30)：執行 Tick 資料歸檔與今日表清空...');
+        await runTaskSafely('tick_archiving', async () => {
+            await TickArchiver.archiveAndTruncate();
+        }, 'Tick 資料歸檔與清理');
+    }, {
+        scheduled: true,
+        timezone: 'Asia/Taipei'
+    });
+    initTaskTracking('tick_archiving', tickArchiveTask);
 
-    // 系統狀態監控 (每 5 分鐘執行一次)
-    cron.schedule('*/5 * * * *', async () => {
+    // 執行 Supabase 即時同步 (每 10 分鐘)
+    cron.schedule('*/10 * * * *', async () => {
         try {
             // 檢查資料庫是否存活
             await pool.query('SELECT 1');
 
             // 寫入健康紀錄
             await logScriptStatus('scheduler', 'UP', 'Scheduler is running normally');
+
+            const now = new Date();
+            const tpeTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+            const hours = tpeTime.getHours();
+            const minutes = tpeTime.getMinutes();
+            const day = tpeTime.getDay();
+            const timeInMinutes = hours * 60 + minutes;
+
+            // 交易時段 (週一至五 09:00 - 15:40)
+            if (day >= 1 && day <= 5 && timeInMinutes >= 9 * 60 && timeInMinutes <= 15 * 60 + 40) {
+                console.log('[Sync] Triggering Supabase tick sync...');
+                await syncToSupabase();
+            }
         } catch (err) {
-            console.error('系統狀態檢查失敗:', err.message);
+            console.error('系統狀態檢查或同步失敗:', err.message);
         }
     });
 

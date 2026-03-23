@@ -175,17 +175,21 @@ async function calculateAndStoreIndicators() {
         console.log('✅ 技術指標計算與存儲完成。');
     } catch (err) {
         console.error('❌ 計算出錯:', err);
-    } finally {
-        end();
     }
 }
 
 
 if (require.main === module) {
-    calculateAndStoreIndicators().catch(err => {
-        console.error('Fatal error:', err);
-        process.exit(1);
-    });
+    calculateAndStoreIndicators()
+        .then(() => {
+            console.log('🏁 獨立執行完成。');
+            end();
+        })
+        .catch(err => {
+            console.error('Fatal error:', err);
+            end();
+            process.exit(1);
+        });
 }
 
 module.exports = { calculateAndStoreIndicators };

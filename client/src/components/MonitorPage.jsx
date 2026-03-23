@@ -200,8 +200,8 @@ export default function MonitorPage() {
                 </div>
 
                 {statsData.length > 0 ? (
-                    <div className="overflow-x-auto pt-24 -mt-16 pb-4">
-                        <div className="min-w-[800px]">
+                    <div className="pt-10 pb-4 overflow-visible">
+                        <div className="w-full">
                             {/* Simple Bar Chart Implementation using divs */}
                             <div className="flex items-end gap-1 h-64 relative border-b border-gray-200 pb-2 overflow-visible">
                                 {/* Find max value for scaling */}

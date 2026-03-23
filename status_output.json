@@ -2,254 +2,88 @@
   "db_alive": true,
   "system_status": [
     {
-      "service_name": "calc_health_scores.js",
-      "status": "SUCCESS",
-      "message": "最終健診排行計算完成",
-      "check_time": "2026-03-18T14:15:18.911Z"
-    },
-    {
       "service_name": "calculate_indicators.js",
-      "status": "FAILED",
-      "message": "計算失敗: end is not a function",
-      "check_time": "2026-03-18T07:45:45.506Z"
-    },
-    {
-      "service_name": "fetcher.js",
-      "status": "RUNNING",
-      "message": "正在補抓今日法人與資券資料",
-      "check_time": "2026-03-18T13:45:00.099Z"
+      "status": "SUCCESS",
+      "message": "手動修復後執行成功",
+      "check_time": "2026-03-22T14:06:07.212Z"
     },
     {
       "service_name": "finmind_fetcher.js",
       "status": "RUNNING",
-      "message": "正在執行每小時分點與籌碼更新",
-      "check_time": "2026-03-18T23:15:00.684Z"
-    },
-    {
-      "service_name": "historical_tick_sync.js",
-      "status": "RUNNING",
-      "message": "正在補抓 2026-03-18 歷史分時資料",
-      "check_time": "2026-03-18T08:30:00.821Z"
+      "message": "正在執行: 每小時分點與籌碼更新",
+      "check_time": "2026-03-22T13:15:00.309Z"
     },
     {
       "service_name": "news_fetcher.js",
       "status": "SUCCESS",
-      "message": "新聞更新完成",
-      "check_time": "2026-03-19T00:00:02.544Z"
+      "message": "每小時新聞更新完成",
+      "check_time": "2026-03-22T14:00:01.423Z"
     },
     {
       "service_name": "realtime_crawler.js",
       "status": "WAITING",
       "message": "休市中，等待開盤",
-      "check_time": "2026-03-19T00:14:53.614Z"
+      "check_time": "2026-03-22T14:23:41.046Z"
     },
     {
       "service_name": "scheduler",
       "status": "UP",
       "message": "Scheduler is running normally",
-      "check_time": "2026-03-19T00:10:00.170Z"
+      "check_time": "2026-03-22T14:20:00.810Z"
     }
   ],
   "sync_progress": [
     {
       "dataset": "News",
-      "last_sync_date": "2026-03-19T00:00:02.540Z"
+      "last_sync_date": "2026-03-22T14:00:01.421Z"
     },
     {
-      "dataset": "TaiwanStockFinancialStatements",
-      "last_sync_date": "2026-03-18T13:45:52.192Z"
+      "dataset": "FinMindDaily",
+      "last_sync_date": "2026-03-22T00:28:13.660Z"
     },
     {
       "dataset": "TaiwanStockTradingDate",
-      "last_sync_date": "2026-03-18T13:45:48.723Z"
+      "last_sync_date": "2026-03-21T20:00:02.039Z"
     },
     {
-      "dataset": "TaiwanStockPrice",
-      "last_sync_date": "2026-03-18T13:45:42.926Z"
+      "dataset": "TaiwanStockMarginPurchaseShortSale",
+      "last_sync_date": "2026-03-21T03:06:47.185Z"
     },
     {
       "dataset": "TaiwanStockInstitutional",
-      "last_sync_date": "2026-03-16T13:46:17.688Z"
-    },
-    {
-      "dataset": "TaiwanStockCashFlowsStatement",
-      "last_sync_date": "2026-03-15T14:05:27.386Z"
-    },
-    {
-      "dataset": "TaiwanStockBalanceSheet",
-      "last_sync_date": "2026-03-15T14:05:25.918Z"
+      "last_sync_date": "2026-03-21T03:06:39.379Z"
     },
     {
       "dataset": "TaiwanStockFinancialStatements",
-      "last_sync_date": "2026-03-15T14:05:19.586Z"
+      "last_sync_date": "2026-03-21T03:06:29.507Z"
+    },
+    {
+      "dataset": "TaiwanStockPrice",
+      "last_sync_date": "2026-03-21T03:06:20.422Z"
+    },
+    {
+      "dataset": "TaiwanStockNews",
+      "last_sync_date": "2026-03-21T02:50:05.000Z"
+    },
+    {
+      "dataset": "TaiwanStockPER",
+      "last_sync_date": "2026-03-19T16:00:00.000Z"
+    },
+    {
+      "dataset": "TaiwanStockTotalReturnIndex",
+      "last_sync_date": "2026-03-19T16:00:00.000Z"
+    },
+    {
+      "dataset": "TaiwanStockDividend",
+      "last_sync_date": "2026-03-19T16:00:00.000Z"
+    },
+    {
+      "dataset": "TaiwanStockDayTrading",
+      "last_sync_date": "2026-03-19T16:00:00.000Z"
     },
     {
       "dataset": "TaiwanStockMonthRevenue",
-      "last_sync_date": "2026-03-15T14:05:18.427Z"
-    },
-    {
-      "dataset": "TaiwanStockCashFlowsStatement",
-      "last_sync_date": "2026-03-15T14:05:11.730Z"
-    },
-    {
-      "dataset": "TaiwanStockBalanceSheet",
-      "last_sync_date": "2026-03-15T14:05:10.330Z"
-    },
-    {
-      "dataset": "TaiwanStockFinancialStatements",
-      "last_sync_date": "2026-03-15T14:05:01.740Z"
-    },
-    {
-      "dataset": "TaiwanStockMonthRevenue",
-      "last_sync_date": "2026-03-15T14:04:48.825Z"
-    },
-    {
-      "dataset": "TaiwanStockCashFlowsStatement",
-      "last_sync_date": "2026-03-15T14:04:42.124Z"
-    },
-    {
-      "dataset": "TaiwanStockBalanceSheet",
-      "last_sync_date": "2026-03-15T14:04:40.862Z"
-    },
-    {
-      "dataset": "TaiwanStockFinancialStatements",
-      "last_sync_date": "2026-03-15T14:04:33.962Z"
-    },
-    {
-      "dataset": "TaiwanStockMonthRevenue",
-      "last_sync_date": "2026-03-15T14:04:16.719Z"
-    },
-    {
-      "dataset": "TaiwanStockCashFlowsStatement",
-      "last_sync_date": "2026-03-15T14:04:09.911Z"
-    },
-    {
-      "dataset": "TaiwanStockBalanceSheet",
-      "last_sync_date": "2026-03-15T14:04:08.608Z"
-    },
-    {
-      "dataset": "TaiwanStockFinancialStatements",
-      "last_sync_date": "2026-03-15T14:04:01.378Z"
-    },
-    {
-      "dataset": "TaiwanStockMonthRevenue",
-      "last_sync_date": "2026-03-15T14:03:46.100Z"
-    },
-    {
-      "dataset": "TaiwanStockCashFlowsStatement",
-      "last_sync_date": "2026-03-15T14:03:39.328Z"
-    },
-    {
-      "dataset": "TaiwanStockBalanceSheet",
-      "last_sync_date": "2026-03-15T14:03:37.982Z"
-    },
-    {
-      "dataset": "TaiwanStockFinancialStatements",
-      "last_sync_date": "2026-03-15T14:03:30.635Z"
-    },
-    {
-      "dataset": "TaiwanStockMonthRevenue",
-      "last_sync_date": "2026-03-15T14:03:15.399Z"
-    },
-    {
-      "dataset": "TaiwanStockCashFlowsStatement",
-      "last_sync_date": "2026-03-15T14:03:08.675Z"
-    },
-    {
-      "dataset": "TaiwanStockBalanceSheet",
-      "last_sync_date": "2026-03-15T14:03:07.389Z"
-    },
-    {
-      "dataset": "TaiwanStockFinancialStatements",
-      "last_sync_date": "2026-03-15T14:03:01.013Z"
-    },
-    {
-      "dataset": "TaiwanStockMonthRevenue",
-      "last_sync_date": "2026-03-15T14:02:49.222Z"
-    },
-    {
-      "dataset": "TaiwanStockCashFlowsStatement",
-      "last_sync_date": "2026-03-15T14:02:39.701Z"
-    },
-    {
-      "dataset": "TaiwanStockBalanceSheet",
-      "last_sync_date": "2026-03-15T14:02:38.456Z"
-    },
-    {
-      "dataset": "TaiwanStockFinancialStatements",
-      "last_sync_date": "2026-03-15T14:02:33.169Z"
-    },
-    {
-      "dataset": "TaiwanStockMonthRevenue",
-      "last_sync_date": "2026-03-15T14:02:23.192Z"
-    },
-    {
-      "dataset": "TaiwanStockCashFlowsStatement",
-      "last_sync_date": "2026-03-15T14:02:16.280Z"
-    },
-    {
-      "dataset": "TaiwanStockBalanceSheet",
-      "last_sync_date": "2026-03-15T14:02:15.025Z"
-    },
-    {
-      "dataset": "TaiwanStockFinancialStatements",
-      "last_sync_date": "2026-03-15T14:02:05.530Z"
-    },
-    {
-      "dataset": "TaiwanStockMonthRevenue",
-      "last_sync_date": "2026-03-15T14:01:54.306Z"
-    },
-    {
-      "dataset": "TaiwanStockCashFlowsStatement",
-      "last_sync_date": "2026-03-15T14:01:47.682Z"
-    },
-    {
-      "dataset": "TaiwanStockBalanceSheet",
-      "last_sync_date": "2026-03-15T14:01:46.470Z"
-    },
-    {
-      "dataset": "TaiwanStockFinancialStatements",
-      "last_sync_date": "2026-03-15T14:01:41.340Z"
-    },
-    {
-      "dataset": "TaiwanStockMonthRevenue",
-      "last_sync_date": "2026-03-15T14:01:27.911Z"
-    },
-    {
-      "dataset": "TaiwanStockCashFlowsStatement",
-      "last_sync_date": "2026-03-15T14:01:14.042Z"
-    },
-    {
-      "dataset": "TaiwanStockBalanceSheet",
-      "last_sync_date": "2026-03-15T14:01:12.823Z"
-    },
-    {
-      "dataset": "TaiwanStockFinancialStatements",
-      "last_sync_date": "2026-03-15T14:01:07.681Z"
-    },
-    {
-      "dataset": "TaiwanStockMonthRevenue",
-      "last_sync_date": "2026-03-15T14:00:55.389Z"
-    },
-    {
-      "dataset": "TaiwanStockCashFlowsStatement",
-      "last_sync_date": "2026-03-15T14:00:48.687Z"
-    },
-    {
-      "dataset": "TaiwanStockBalanceSheet",
-      "last_sync_date": "2026-03-15T14:00:47.269Z"
-    },
-    {
-      "dataset": "TaiwanStockFinancialStatements",
-      "last_sync_date": "2026-03-15T14:00:35.339Z"
-    },
-    {
-      "dataset": "TaiwanStockMonthRevenue",
-      "last_sync_date": "2026-03-15T14:00:18.783Z"
-    },
-    {
-      "dataset": "TaiwanStockCashFlowsStatement",
-      "last_sync_date": "2026-03-15T14:00:12.031Z"
+      "last_sync_date": "2026-03-15T14:05:18.423Z"
     }
   ],
   "error": null
