@@ -142,13 +142,13 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
                             <tr key={`${row.date}-${row.name}`} className="hover:bg-slate-50/50 transition-colors">
                                 <td className="px-6 py-4 text-sm font-bold text-slate-600 tabular-nums">{row.date}</td>
                                 <td className="px-6 py-4 text-sm font-black text-right tabular-nums text-red-500">
-                                    {parseFloat(row.margin_purchase_buy / 100000000).toFixed(2)}
+                                    {parseFloat(row.margin_purchase_buy / 100000000).toFixed(1)}
                                 </td>
                                 <td className="px-6 py-4 text-sm font-black text-right tabular-nums text-green-600">
-                                    {parseFloat(row.margin_purchase_sell / 100000000).toFixed(2)}
+                                    {parseFloat(row.margin_purchase_sell / 100000000).toFixed(1)}
                                 </td>
                                 <td className="px-6 py-4 text-sm font-black text-right tabular-nums text-slate-800">
-                                    {parseFloat(row.margin_purchase_today_balance / 100000000).toFixed(2)}
+                                    {parseFloat(row.margin_purchase_today_balance / 100000000).toFixed(1)}
                                 </td>
                                 <td className="px-6 py-4 text-sm font-black text-right tabular-nums text-slate-800">
                                     {parseInt(row.short_sale_today_balance).toLocaleString()}
@@ -235,16 +235,16 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
                             <tr key={row.date} className="hover:bg-slate-50/50 transition-colors">
                                 <td className="px-6 py-4 text-sm font-bold text-slate-600 tabular-nums">{row.date}</td>
                                 <td className={`px-6 py-4 text-sm font-black text-right tabular-nums ${row.foreign_net > 0 ? 'text-red-500' : row.foreign_net < 0 ? 'text-green-600' : 'text-slate-400'}`}>
-                                    {row.foreign_net > 0 ? '+' : ''}{parseFloat(row.foreign_net).toFixed(2)}
+                                    {row.foreign_net > 0 ? '+' : ''}{parseFloat(row.foreign_net).toFixed(1)}
                                 </td>
                                 <td className={`px-6 py-4 text-sm font-black text-right tabular-nums ${row.trust_net > 0 ? 'text-red-500' : row.trust_net < 0 ? 'text-green-600' : 'text-slate-400'}`}>
-                                    {row.trust_net > 0 ? '+' : ''}{parseFloat(row.trust_net).toFixed(2)}
+                                    {row.trust_net > 0 ? '+' : ''}{parseFloat(row.trust_net).toFixed(1)}
                                 </td>
                                 <td className={`px-6 py-4 text-sm font-black text-right tabular-nums ${row.dealer_net > 0 ? 'text-red-500' : row.dealer_net < 0 ? 'text-green-600' : 'text-slate-400'}`}>
-                                    {row.dealer_net > 0 ? '+' : ''}{parseFloat(row.dealer_net).toFixed(2)}
+                                    {row.dealer_net > 0 ? '+' : ''}{parseFloat(row.dealer_net).toFixed(1)}
                                 </td>
                                 <td className={`px-6 py-4 text-sm font-black text-right tabular-nums ${row.total_net > 0 ? 'text-red-500' : row.total_net < 0 ? 'text-green-600' : 'text-slate-400'}`}>
-                                    {row.total_net > 0 ? '+' : ''}{parseFloat(row.total_net).toFixed(2)}
+                                    {row.total_net > 0 ? '+' : ''}{parseFloat(row.total_net).toFixed(1)}
                                 </td>
                             </tr>
                         ))}
