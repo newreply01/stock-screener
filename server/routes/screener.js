@@ -1332,7 +1332,7 @@ router.get(['/stocks/compare', '/compare'], async (req, res) => {
                     ORDER BY calc_date DESC LIMIT 1
                 )
                 SELECT 
-                    h.symbol, s.name, s.industry, s.market,
+                    s.symbol, s.name, s.industry, s.market,
                     COALESCE(p.close_price, h.close_price)::numeric as "closePrice",
                     COALESCE(p.change_percent, h.change_percent)::numeric as "changePercent",
                     h.pe, h.pb, 
@@ -1341,9 +1341,10 @@ router.get(['/stocks/compare', '/compare'], async (req, res) => {
                     h.revenue_growth as "revenueGrowth",
                     h.avg_cash_dividend as "avgCashDividend",
                     h.inst_net_buy as "instNetBuy5d"
-                FROM latest_health h
-                JOIN stocks s ON h.symbol = s.symbol
-                LEFT JOIN latest_price p ON true
+                FROM stocks s
+                LEFT JOIN latest_health h ON s.symbol = h.symbol
+                LEFT JOIN latest_price p ON s.symbol = p.symbol
+                WHERE s.symbol = $1
             `;
             const scoreRes = await query(sql, [sym]);
             return scoreRes.rows[0] || { symbol: sym, error: 'No data' };
