@@ -211,11 +211,13 @@ function startScheduler() {
             const day = tpeTime.getDay();
             const timeInMinutes = hours * 60 + minutes;
 
-            // 交易時段 (週一至五 09:00 - 15:40)
+            // 交易時段 (週一至五 09:00 - 15:40) - 暫時停用同步以測試本地效能
+            /*
             if (day >= 1 && day <= 5 && timeInMinutes >= 9 * 60 && timeInMinutes <= 15 * 60 + 40) {
                 console.log('[Sync] Triggering Supabase tick sync...');
                 await syncToSupabase();
             }
+            */
         } catch (err) {
             console.error('系統狀態檢查或同步失敗:', err.message);
         }

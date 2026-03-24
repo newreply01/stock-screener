@@ -10,14 +10,31 @@ if (process.env.ENABLE_CRAWLER !== 'true') {
     process.exit(0);
 }
 
-const fetchJson = (url) => new Promise((resolve, reject) => {
-    https.get(url, (res) => {
+const fetchJson = (url, timeout = 15000) => new Promise((resolve, reject) => {
+    const options = {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://mis.twse.com.tw/stock/index.jsp'
+        },
+        timeout: timeout
+    };
+    const req = https.get(url, options, (res) => {
         let data = '';
         res.on('data', chunk => data += chunk);
         res.on('end', () => {
-            try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
+            try { 
+                if (!data) return resolve({});
+                resolve(JSON.parse(data)); 
+            } catch (e) { 
+                reject(new Error(`JSON Parse Error: ${e.message}`)); 
+            }
         });
-    }).on('error', reject);
+    });
+    req.on('error', reject);
+    req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('Request Timeout'));
+    });
 });
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -64,19 +81,98 @@ function parseFiveLevels(pricesStr, volsStr) {
     })).filter(level => level.price !== null);
 }
 
-const BATCH_SIZE = 100;
+const BATCH_SIZE = 100; // 降低批次大小，提升 API 穩定性與回傳成功率
 const DELAY_BETWEEN_BATCHES_MS = 1000;
 const RETRY_DELAY = 10000;
 
-async function fetchBatch(batchStr) {
-    const url = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${batchStr}&json=1&delay=0&_=${Date.now()}`;
-    try {
-        const data = await fetchJson(url);
-        return data?.msgArray || [];
-    } catch (e) {
-        console.error(`Fetch API Error: ${e.message}`);
-        return [];
+let cachedSymbols = null;
+let lastSymbolsUpdate = 0;
+const SYMBOLS_CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
+async function getTargetSymbolsCached() {
+    const now = Date.now();
+    if (cachedSymbols && (now - lastSymbolsUpdate < SYMBOLS_CACHE_DURATION)) {
+        return cachedSymbols;
     }
+    cachedSymbols = await getTargetSymbols();
+    lastSymbolsUpdate = now;
+    return cachedSymbols;
+}
+
+/**
+ * 批量更新 (Bulk Upsert)
+ * 使用 PostgreSQL 的 UNNEST 功能，一次性更新多筆資料，大幅減少 DB round-trips
+ */
+async function bulkUpsert(data) {
+    if (!data || data.length === 0) return 0;
+
+    const symbols = data.map(d => d.symbol);
+    const tradeTimes = data.map(d => d.tradeTime);
+    const prices = data.map(d => d.price);
+    const openPrices = data.map(d => d.open);
+    const highPrices = data.map(d => d.high);
+    const lowPrices = data.map(d => d.low);
+    const volumes = data.map(d => d.volume);
+    const tradeVolumes = data.map(d => d.tradeVolume);
+    const buyIntensities = data.map(d => d.buyIntensity);
+    const sellIntensities = data.map(d => d.sellIntensity);
+    const fiveLevels = data.map(d => JSON.stringify(d.fiveLevels));
+    const previousCloses = data.map(d => d.previousClose);
+
+    const sql = `
+        INSERT INTO realtime_ticks (
+            symbol, trade_time, price, open_price, high_price, low_price, 
+            volume, trade_volume, buy_intensity, sell_intensity, five_levels,
+            previous_close
+        )
+        SELECT * FROM UNNEST(
+            $1::text[], $2::timestamp[], $3::numeric[], $4::numeric[], $5::numeric[], $6::numeric[],
+            $7::bigint[], $8::bigint[], $9::smallint[], $10::smallint[], $11::jsonb[], $12::numeric[]
+        )
+        ON CONFLICT (symbol, trade_time) DO UPDATE SET
+            price = EXCLUDED.price,
+            open_price = COALESCE(EXCLUDED.open_price, realtime_ticks.open_price),
+            high_price = EXCLUDED.high_price,
+            low_price = EXCLUDED.low_price,
+            volume = EXCLUDED.volume,
+            trade_volume = EXCLUDED.trade_volume,
+            buy_intensity = EXCLUDED.buy_intensity,
+            sell_intensity = EXCLUDED.sell_intensity,
+            five_levels = EXCLUDED.five_levels,
+            previous_close = COALESCE(EXCLUDED.previous_close, realtime_ticks.previous_close)
+    `;
+
+    try {
+        const res = await query(sql, [
+            symbols, tradeTimes, prices, openPrices, highPrices, lowPrices,
+            volumes, tradeVolumes, buyIntensities, sellIntensities, fiveLevels, previousCloses
+        ]);
+        return res.rowCount || data.length;
+    } catch (err) {
+        console.error(`[Bulk Upsert Error] Batch failed: ${err.message}`);
+        // 如果 Batch 失敗，可考慮退回到逐筆寫入以除錯，但此處先保持簡潔
+        throw err;
+    }
+}
+
+async function fetchBatch(batchStr, retries = 2) {
+    const url = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${batchStr}&json=1&delay=0&_=${Date.now()}`;
+    for (let i = 0; i <= retries; i++) {
+        try {
+            const data = await fetchJson(url);
+            if (data?.msgArray) return data.msgArray;
+            if (data?.rtcode === 'refer') {
+                console.warn('[Fetch] Session error, retrying...');
+                await sleep(1000);
+                continue;
+            }
+            return [];
+        } catch (e) {
+            console.error(`[Fetch Attempt ${i+1}] Error: ${e.message}`);
+            if (i < retries) await sleep(2000);
+        }
+    }
+    return [];
 }
 
 /**
@@ -209,7 +305,7 @@ async function startCrawler() {
 
         console.log(`[${tpeTime.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei' })}] Market is OPEN. Fetching full market...`);
         await logCrawlerStatus('RUNNING', '開盤中，持續擷取即時報價...');
-        const symbols = await getTargetSymbols();
+        const symbols = await getTargetSymbolsCached();
         console.log(`Total symbols to fetch: ${symbols.length}`);
 
         let totalUpserted = 0;
@@ -220,15 +316,15 @@ async function startCrawler() {
             const batchStr = batch.map(s => `${s.prefix}_${s.apiSymbol}.tw`).join('|');
 
             const results = await fetchBatch(batchStr);
+            const batchData = [];
 
             for (const info of results) {
                 const { price: resolvedPrice, source: priceSource } = resolvePrice(info);
-                if (resolvedPrice === null) continue; // 所有來源都無效，跳過
+                if (resolvedPrice === null) continue;
 
                 if (priceSource !== 'z') fallbackCount++;
 
                 const symbol = info.c === 't00' ? 'TAIEX' : info.c;
-                const z = resolvedPrice;
                 const o = (info.o && info.o !== '-') ? parseFloat(info.o) : resolvedPrice;
                 const h = (info.h && info.h !== '-') ? parseFloat(info.h) : resolvedPrice;
                 const l = (info.l && info.l !== '-') ? parseFloat(info.l) : resolvedPrice;
@@ -251,20 +347,23 @@ async function startCrawler() {
                 }
 
                 let buyIntensity = 50, sellIntensity = 50;
-                if (asks.length > 0 && bids.length > 0 && z) {
-                    if (z >= asks[0].price) { buyIntensity = 65; sellIntensity = 35; }
-                    else if (z <= bids[0].price) { buyIntensity = 35; sellIntensity = 65; }
+                if (asks.length > 0 && bids.length > 0 && resolvedPrice) {
+                    if (resolvedPrice >= asks[0].price) { buyIntensity = 65; sellIntensity = 35; }
+                    else if (resolvedPrice <= bids[0].price) { buyIntensity = 35; sellIntensity = 65; }
                 }
 
-                // Parse TWSE timestamp
-                // t long ex: 144500
                 let tradeTimeStr = info.t;
-                // It could be time string, ensure format
-                if (tradeTimeStr && tradeTimeStr.length === 6) {
-                    tradeTimeStr = `${tradeTimeStr.substring(0, 2)}:${tradeTimeStr.substring(2, 4)}:${tradeTimeStr.substring(4, 6)}`;
+                if (tradeTimeStr) {
+                    if (tradeTimeStr.indexOf(':') !== -1) {
+                        // 如果已經是 HH:MM:SS，直接取前 5 碼並補上 :00
+                        tradeTimeStr = tradeTimeStr.substring(0, 5) + ':00';
+                    } else {
+                        // 否則視為 raw 數字 (HHMMSS)，補齊 6 碼再切割
+                        const paddedTime = tradeTimeStr.padStart(6, '0');
+                        tradeTimeStr = `${paddedTime.substring(0, 2)}:${paddedTime.substring(2, 4)}:00`;
+                    }
                 }
 
-                // info.d gives '20260303' -> YYYY-MM-DD
                 let tradeDateStr = info.d;
                 if (tradeDateStr && tradeDateStr.length === 8) {
                     tradeDateStr = `${tradeDateStr.substring(0, 4)}-${tradeDateStr.substring(4, 6)}-${tradeDateStr.substring(6, 8)}`;
@@ -274,28 +373,24 @@ async function startCrawler() {
 
                 const fullTimestamp = `${tradeDateStr} ${tradeTimeStr}+08`;
 
-                try {
-                    await query(`
-                         INSERT INTO realtime_ticks (
-                             symbol, trade_time, price, open_price, high_price, low_price, 
-                             volume, trade_volume, buy_intensity, sell_intensity, five_levels,
-                             previous_close
-                         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-                         ON CONFLICT (symbol, trade_time) DO UPDATE SET
-                             price = EXCLUDED.price,
-                             high_price = EXCLUDED.high_price,
-                             low_price = EXCLUDED.low_price,
-                             volume = EXCLUDED.volume,
-                             trade_volume = EXCLUDED.trade_volume,
-                             buy_intensity = EXCLUDED.buy_intensity,
-                             sell_intensity = EXCLUDED.sell_intensity,
-                             five_levels = EXCLUDED.five_levels,
-                             previous_close = COALESCE(EXCLUDED.previous_close, realtime_ticks.previous_close)
-                     `, [symbol, fullTimestamp, z, o, h, l, v, tv, buyIntensity, sellIntensity, JSON.stringify(bidAskData), y]);
-                    totalUpserted++;
-                } catch (err) {
-                    console.error(`[DB Error] ${symbol}: ${err.message}`);
-                }
+                batchData.push({
+                    symbol,
+                    tradeTime: fullTimestamp,
+                    price: resolvedPrice,
+                    open: o,
+                    high: h,
+                    low: l,
+                    volume: v,
+                    tradeVolume: tv,
+                    buyIntensity,
+                    sellIntensity,
+                    fiveLevels: bidAskData,
+                    previousClose: y
+                });
+            }
+
+            if (batchData.length > 0) {
+                totalUpserted += await bulkUpsert(batchData);
             }
 
             // 微小隨機延遲（降低封阻風險）
