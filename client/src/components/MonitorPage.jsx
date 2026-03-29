@@ -88,7 +88,8 @@ export default function MonitorPage() {
         'TaiwanSecuritiesTraderInfo': { script: 'finmind_fetcher.js', color: 'bg-purple-100 text-purple-800 border border-purple-200' },
         'News': { script: 'news_fetcher.js', color: 'bg-orange-100 text-orange-800 border border-orange-200' },
         'FinMindDaily': { script: 'finmind_fetcher.js', color: 'bg-purple-100 text-purple-800 border border-purple-200' },
-        'Realtime行情數據': { script: 'realtime_crawler.js', color: 'bg-green-100 text-green-800 border border-green-200' }
+        'Realtime行情數據': { script: 'realtime_crawler.js', color: 'bg-green-100 text-green-800 border border-green-200' },
+        'AI_Queue': { script: 'update_ai_reports.js', color: 'bg-indigo-100 text-indigo-800 border border-indigo-200' }
     };
 
     // Known background scripts — names/descriptions always shown; status from API
@@ -98,6 +99,7 @@ export default function MonitorPage() {
         { script: 'news_fetcher.js', desc: '財經新聞同步', schedule: '每小時' },
         { script: 'finmind_fetcher.js', desc: '財報基本面資料 (損益表、毛利、營收、分點、持股分級、本益比)', schedule: '每小時 (分點/籌碼) / 每週六 04:00 (財報)' },
         { script: 'calc_health_scores.js', desc: '全股個股健診排行計算', schedule: '15:30 (初算) / 22:15 (最終)' },
+        { script: 'update_ai_reports.js', desc: 'AI 報告生成中心 (Ollama/Gemini)', schedule: '每交易日 22:30 (常駐 Worker)' },
         { script: 'updateDailyStats', desc: '每日系統寫入筆數匯總計算', schedule: '每天 23:55' },
     ];
     // ──────────────────────────────────────────────────────────────────────────

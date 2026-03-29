@@ -192,6 +192,72 @@ ${newsSection}
 }
 
 /**
+ * Generate report using local Ollama model
+ */
+async function generateOllamaReport(symbol, context, promptTemplate, modelOverride = null) {
+    const ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
+    const modelName = modelOverride || process.env.OLLAMA_MODEL || "qwen3.5:9b";
+
+    const inst_dir = (parseFloat(context.institutional.foreign_sum || 0) + parseFloat(context.institutional.trust_sum || 0)) > 0 ? "偏多買進" : "偏空賣出";
+    
+    const finalPrompt = `
+你是一位專業的股票投資分析師。請根據以下個股詳細數據和新聞，按照指定的【模板格式】生成一份深度投資分析報告。
+
+股票: ${context.name} (${context.symbol})
+最新收盤: ${context.priceData.close_price} (漲跌: ${context.priceData.change_amount}, ${parseFloat(context.priceData.change_percent || 0).toFixed(2)}%)
+技術面: RSI14=${context.priceData.rsi_14}, Bollinger%b=${((parseFloat(context.priceData.close_price) - parseFloat(context.priceData.lower_band)) / (parseFloat(context.priceData.upper_band) - parseFloat(context.priceData.lower_band))).toFixed(2)}, MACD柱=${context.priceData.macd_hist}, MA5=${context.priceData.ma_5}, MA20=${context.priceData.ma_20}, MA60=${context.priceData.ma_60}
+基本面: PE=${context.fundamentals.pe_ratio}, PB=${context.fundamentals.pb_ratio}, 殖利率=${context.fundamentals.dividend_yield}%
+營收: 最新月營收 ${context.revenue.revenue} (YoY約 ${context.revenue.prev_y_revenue ? ((parseFloat(context.revenue.revenue)/parseFloat(context.revenue.prev_y_revenue)-1)*100).toFixed(1) : '未知'}%)
+籌碼面: 近5日法人合計${inst_dir}, 融資餘額=${context.margin.margin_purchase_today_balance}
+
+新聞:
+${context.news.map(n => `- [${n.publish_at}] ${n.title}`).join('\n')}
+
+【報表模板】:
+${promptTemplate}
+
+請嚴格按照模板結構填寫內容。移除「報告生成日」標籤，直接從標題開始。
+`;
+
+    try {
+        console.log(`[AI Service] Ollama Start: ${symbol} using ${modelName}...`);
+        const startTime = Date.now();
+        
+        const response = await fetch(`${ollamaUrl}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: modelName,
+                prompt: finalPrompt,
+                stream: false,
+                options: {
+                    temperature: 0.7,
+                    num_predict: 2048
+                }
+            }),
+            signal: AbortSignal.timeout(600000) // Increase to 10 minutes for large models
+        });
+
+        if (!response.ok) {
+            throw new Error(`Ollama API error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+        console.log(`[AI Service] Ollama Finished: ${symbol} in ${duration}s`);
+        
+        return data.response;
+    } catch (err) {
+        if (err.name === 'TimeoutError') {
+            console.error(`[AI Service] Ollama Timeout for ${symbol} after 10 minutes.`);
+        } else {
+            console.error(`[AI Service] Ollama Generation error for ${symbol}:`, err.message);
+        }
+        throw err;
+    }
+}
+
+/**
  * Generate AI report using the active template and gathered data
  */
 async function generateAIReport(symbol, templateName = 'stock_analysis_report', manualContext = null) {
@@ -209,19 +275,16 @@ async function generateAIReport(symbol, templateName = 'stock_analysis_report', 
         
         let promptTemplate = templateRes.rows[0].content;
 
-        const hasKey = process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.length > 10 && process.env.GEMINI_API_KEY !== 'your_api_key_here';
+        const hasGeminiKey = process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.length > 10 && process.env.GEMINI_API_KEY !== 'your_api_key_here';
+        const hasOllama = process.env.OLLAMA_URL && process.env.OLLAMA_URL.length > 5;
         
         let finalContent = "";
         let sentimentScore = 50;
-        let isFallback = false;
+        let generationMode = "none";
 
-        if (!hasKey) {
-            finalContent = generateSmartEngineReport(symbol, context, promptTemplate);
-            isFallback = true;
-            
-            const scoreMatch = finalContent.match(/\*\*(\d+) \/ 100\*\*/);
-            if (scoreMatch) sentimentScore = parseInt(scoreMatch[1]);
-        } else {
+        if (hasGeminiKey) {
+            // Priority 1: Gemini
+            generationMode = "gemini";
             const inst_dir = (parseFloat(context.institutional.foreign_sum || 0) + parseFloat(context.institutional.trust_sum || 0)) > 0 ? "偏多買進" : "偏空賣出";
             const finalPrompt = `
 你是一位專業的股票投資分析師。請根據以下個股詳細數據和新聞，按照指定的【模板格式】生成一份深度投資分析報告。
@@ -245,9 +308,20 @@ ${promptTemplate}
             const result = await model.generateContent(finalPrompt);
             finalContent = result.response.text();
             
-            const scoreMatch = finalContent.match(/評分[^\d]*(\d+)/) || finalContent.match(/Score[^\d]*(\d+)/);
-            if (scoreMatch) sentimentScore = parseInt(scoreMatch[1]);
+        } else if (hasOllama) {
+            // Priority 2: Local Ollama
+            generationMode = "ollama";
+            console.log(`[AI Service] Using Local Ollama (${modelName || process.env.OLLAMA_MODEL}) for ${symbol}`);
+            finalContent = await generateOllamaReport(symbol, context, promptTemplate, modelName);
+        } else {
+            // Priority 3: Smart Engine (Rule-based)
+            generationMode = "smart_engine";
+            finalContent = generateSmartEngineReport(symbol, context, promptTemplate);
         }
+
+        // Extract score
+        const scoreMatch = finalContent.match(/評分[^\d]*(\d+)/) || finalContent.match(/Score[^\d]*(\d+)/) || finalContent.match(/\*\*(\d+) \/ 100\*\*/);
+        if (scoreMatch) sentimentScore = parseInt(scoreMatch[1]);
 
         // Save to current reports table
         await query(
@@ -258,20 +332,21 @@ ${promptTemplate}
             [symbol, finalContent, sentimentScore]
         );
 
-        // Save to history table (daily grain)
+        // Save to history table (using data's trade_date if available)
+        const reportDate = context.priceData.trade_date ? context.priceData.trade_date : new Date();
         await query(
             `INSERT INTO ai_reports_history (symbol, report_date, content, sentiment_score)
-             VALUES ($1, CURRENT_DATE, $2, $3)
+             VALUES ($1, $2, $3, $4)
              ON CONFLICT (symbol, report_date) 
              DO UPDATE SET content = EXCLUDED.content, sentiment_score = EXCLUDED.sentiment_score`,
-            [symbol, finalContent, sentimentScore]
+            [symbol, reportDate, finalContent, sentimentScore]
         );
 
-        return { success: true, symbol, content: finalContent, sentimentScore, isFallback };
+        return { success: true, symbol, content: finalContent, sentimentScore, generationMode };
     } catch (err) {
         console.error("AI/Engine Report Generation Error:", err);
         return { success: false, error: err.message };
     }
 }
 
-module.exports = { generateAIReport, generateSmartEngineReport, gatherStockContext };
+module.exports = { generateAIReport, generateSmartEngineReport, gatherStockContext, generateOllamaReport };

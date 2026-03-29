@@ -54,7 +54,7 @@ async function getTargetSymbols() {
     try {
         const res = await query(`
             SELECT symbol, market FROM stocks 
-            WHERE symbol ~ '^(\\d{4,5}|00\\d{4})$'
+            WHERE symbol ~ '^(\\d{4}|00\\d{3,4})$'
                OR symbol = 'TAIEX'
         `);
         const symbols = res.rows.map(r => ({

@@ -261,6 +261,39 @@ router.get('/status', async (req, res) => {
             console.error('Monitor Realtime Check Error:', rtErr);
         }
 
+        // 3.6 加入「AI 報告生成進度」
+        try {
+            const aiRes = await pool.query(`
+                SELECT 
+                    report_date, 
+                    COUNT(*) as total,
+                    COUNT(*) FILTER (WHERE status = 'completed') as completed,
+                    MAX(completed_at) as last_update
+                FROM ai_generation_queue
+                WHERE report_date = (SELECT MAX(report_date) FROM ai_generation_queue)
+                GROUP BY report_date
+            `);
+
+            if (aiRes.rows.length > 0) {
+                const row = aiRes.rows[0];
+                const dateStr = row.report_date instanceof Date 
+                    ? new Date(row.report_date).toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' })
+                    : row.report_date;
+                const percent = ((row.completed / row.total) * 100).toFixed(1);
+                
+                syncDetails.push({
+                    id: 'AI_Queue',
+                    dataset: `AI 報告生成 (${dateStr})`,
+                    usage: `對 ${dateStr} 之 2100+ 檔標的進度 AI 模型深度分析`,
+                    last_updated: row.last_update,
+                    script: 'update_ai_reports.js',
+                    description: `進度: ${row.completed} / ${row.total} (${percent}%)`
+                });
+            }
+        } catch (aiErr) {
+            console.error('Monitor AI Queue Check Error:', aiErr);
+        }
+
         res.json({
             success: true,
             status: {

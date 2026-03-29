@@ -29,9 +29,20 @@ router.get('/institutional-total', async (req, res) => {
         const sql = `
             SELECT 
                 TO_CHAR(date, 'YYYY-MM-DD') as date,
+                SUM(CASE WHEN name = 'Foreign_Investor' THEN buy / 100000000.0 ELSE 0 END) as foreign_buy,
+                SUM(CASE WHEN name = 'Foreign_Investor' THEN sell / 100000000.0 ELSE 0 END) as foreign_sell,
                 SUM(CASE WHEN name = 'Foreign_Investor' THEN (buy - sell) / 100000000.0 ELSE 0 END) as foreign_net,
+                
+                SUM(CASE WHEN name = 'Investment_Trust' THEN buy / 100000000.0 ELSE 0 END) as trust_buy,
+                SUM(CASE WHEN name = 'Investment_Trust' THEN sell / 100000000.0 ELSE 0 END) as trust_sell,
                 SUM(CASE WHEN name = 'Investment_Trust' THEN (buy - sell) / 100000000.0 ELSE 0 END) as trust_net,
+                
+                SUM(CASE WHEN name = 'Dealer_self' OR name = 'Dealer_Hedging' THEN buy / 100000000.0 ELSE 0 END) as dealer_buy,
+                SUM(CASE WHEN name = 'Dealer_self' OR name = 'Dealer_Hedging' THEN sell / 100000000.0 ELSE 0 END) as dealer_sell,
                 SUM(CASE WHEN name = 'Dealer_self' OR name = 'Dealer_Hedging' THEN (buy - sell) / 100000000.0 ELSE 0 END) as dealer_net,
+                
+                SUM(CASE WHEN name = 'total' THEN buy / 100000000.0 ELSE 0 END) as total_buy,
+                SUM(CASE WHEN name = 'total' THEN sell / 100000000.0 ELSE 0 END) as total_sell,
                 SUM(CASE WHEN name = 'total' THEN (buy - sell) / 100000000.0 ELSE 0 END) as total_net
             FROM fm_total_institutional
             WHERE date >= CURRENT_DATE - INTERVAL '1 day' * $1

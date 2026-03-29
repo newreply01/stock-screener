@@ -10,13 +10,31 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
   const [totalData, setTotalData] = useState([]);
   const [marginData, setMarginData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeType, setActiveType] = useState('foreign'); // foreign, investment, dealer
+  const [activeType, setActiveType] = useState('market_summary'); // market_summary, foreign, investment, dealer
   const [activeAction, setActiveAction] = useState('buy'); // buy, sell
   const [timeRange, setTimeRange] = useState('3d'); // 3d, 5d, 10d
   const { marketForApi, stockTypesForApi } = useGlobalFilters();
 
+  // 獨立獲取大盤匯總數據，確保在分頁切換前就有數據
+  const fetchMarketSummary = async () => {
+    try {
+      const res = await getInstitutionalTotal({ days: 30 });
+      if (res.success) setTotalData(res.data);
+    } catch (e) {
+      console.error('Fetch institutional total error:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchMarketSummary();
+  }, []);
+
   useEffect(() => {
     if (viewMode === 'rank') {
+      if (activeType === 'market_summary') {
+          setLoading(false);
+          return;
+      }
       const fetchData = async () => {
         setLoading(true);
         try {
@@ -65,6 +83,7 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
   }, [viewMode, activeType, timeRange, activeAction, marketForApi, stockTypesForApi]);
 
   const tabs = [
+    { label: '大盤彙整', id: 'market_summary', icon: <BarChart2 className="w-4 h-4" /> },
     { label: '外資', id: 'foreign', icon: <TrendingUp className="w-4 h-4" /> },
     { label: '投信', id: 'investment', icon: <Users className="w-4 h-4" /> },
     { label: '自營商', id: 'dealer', icon: <Activity className="w-4 h-4" /> },
@@ -75,6 +94,97 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
     { label: '近 5 日', id: '5d' },
     { label: '近 10 日', id: '10d' },
   ];
+
+  const MarketInstitutionalSummary = () => {
+    if (totalData.length === 0) return (
+        <div className="py-20 text-center animate-pulse">
+            <Activity className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+            <p className="text-slate-400 font-bold">大盤彙整數據加載中...</p>
+        </div>
+    );
+
+    const latest = totalData[0];
+    const items = [
+        { label: '外資及陸資', buy: latest.foreign_buy, sell: latest.foreign_sell, net: latest.foreign_net, color: 'blue' },
+        { label: '投信', buy: latest.trust_buy, sell: latest.trust_sell, net: latest.trust_net, color: 'orange' },
+        { label: '自營商', buy: latest.dealer_buy, sell: latest.dealer_sell, net: latest.dealer_net, color: 'teal' },
+        { label: '合計', buy: latest.total_buy, sell: latest.total_sell, net: latest.total_net, color: 'brand' },
+    ];
+
+    return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <div className="flex items-center justify-between">
+                <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                    <BarChart2 className="w-5 h-5 text-brand-primary" />
+                    最新大盤法人買賣彙整 ({latest.date})
+                </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {items.map((item) => (
+                    <div key={item.label} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex justify-between items-start mb-4">
+                            <span className="text-xs font-black text-slate-400 uppercase tracking-wider">{item.label}</span>
+                            <div className={`w-2 h-2 rounded-full bg-${item.color}-500 shadow-[0_0_8px_rgba(var(--color-${item.color}-500),0.5)]`}></div>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="flex justify-between text-xs font-bold">
+                                <span className="text-slate-400">買進</span>
+                                <span className="text-slate-700">{parseFloat(item.buy).toFixed(2)} 億</span>
+                            </div>
+                            <div className="flex justify-between text-xs font-bold">
+                                <span className="text-slate-400">賣出</span>
+                                <span className="text-slate-700">{parseFloat(item.sell).toFixed(2)} 億</span>
+                            </div>
+                            <div className="pt-2 border-t border-slate-50 flex justify-between items-end">
+                                <span className="text-xs font-black text-slate-500">買賣超</span>
+                                <span className={`text-xl font-black tabular-nums ${item.net > 0 ? 'text-red-500' : item.net < 0 ? 'text-green-600' : 'text-slate-400'}`}>
+                                    {item.net > 0 ? '+' : ''}{parseFloat(item.net).toFixed(2)} <span className="text-[10px]">億</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div className="bg-white overflow-hidden rounded-3xl border border-slate-100 shadow-sm mt-4">
+                <div className="p-4 bg-slate-50 border-b border-slate-100 text-xs font-black text-slate-500 uppercase tracking-widest">
+                    近 5 日市場法人動向 (單位: 億元)
+                </div>
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-white border-b border-slate-50">
+                            <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase">日期</th>
+                            <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase text-right">外資</th>
+                            <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase text-right">投信</th>
+                            <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase text-right">自營商</th>
+                            <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase text-right">合計</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                        {totalData.slice(0, 5).map((row) => (
+                            <tr key={row.date} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="px-6 py-3 text-xs font-bold text-slate-600">{row.date}</td>
+                                <td className={`px-6 py-3 text-xs font-black text-right ${row.foreign_net > 0 ? 'text-red-500' : 'text-green-600'}`}>
+                                    {row.foreign_net > 0 ? '+' : ''}{parseFloat(row.foreign_net).toFixed(1)}
+                                </td>
+                                <td className={`px-6 py-3 text-xs font-black text-right ${row.trust_net > 0 ? 'text-red-500' : 'text-green-600'}`}>
+                                    {row.trust_net > 0 ? '+' : ''}{parseFloat(row.trust_net).toFixed(1)}
+                                </td>
+                                <td className={`px-6 py-3 text-xs font-black text-right ${row.dealer_net > 0 ? 'text-red-500' : 'text-green-600'}`}>
+                                    {row.dealer_net > 0 ? '+' : ''}{parseFloat(row.dealer_net).toFixed(1)}
+                                </td>
+                                <td className={`px-6 py-3 text-xs font-black text-right ${row.total_net > 0 ? 'text-red-500' : 'text-green-600'}`}>
+                                    {row.total_net > 0 ? '+' : ''}{parseFloat(row.total_net).toFixed(1)}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+  };
 
   const MarketMarginView = () => {
     const chartData = [...marginData].reverse().map(d => ({
@@ -305,41 +415,42 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
 
       {viewMode === 'rank' ? (
         <div className="space-y-6 animate-in fade-in duration-500">
-            {/* 排行篩選控制項 */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
-                    {[
-                    { label: '買超排行', id: 'buy' },
-                    { label: '賣超排行', id: 'sell' },
-                    ].map(a => (
-                    <button
-                        key={a.id}
-                        onClick={() => setActiveAction(a.id)}
-                        className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${activeAction === a.id
-                        ? (activeAction === 'buy' ? 'bg-red-500 text-white shadow-sm' : 'bg-green-600 text-white shadow-sm')
-                        : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
-                        }`}
-                    >
-                        {a.label}
-                    </button>
-                    ))}
-                </div>
+            {activeType !== 'market_summary' && (
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                        {[
+                        { label: '買超排行', id: 'buy' },
+                        { label: '賣超排行', id: 'sell' },
+                        ].map(a => (
+                        <button
+                            key={a.id}
+                            onClick={() => setActiveAction(a.id)}
+                            className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${activeAction === a.id
+                            ? (activeAction === 'buy' ? 'bg-red-500 text-white shadow-sm' : 'bg-green-600 text-white shadow-sm')
+                            : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
+                            }`}
+                        >
+                            {a.label}
+                        </button>
+                        ))}
+                    </div>
 
-                <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
-                    {ranges.map(r => (
-                    <button
-                        key={r.id}
-                        onClick={() => setTimeRange(r.id)}
-                        className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${timeRange === r.id
-                        ? 'bg-brand-primary text-white shadow-sm'
-                        : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
-                        }`}
-                    >
-                        {r.label}
-                    </button>
-                    ))}
+                    <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                        {ranges.map(r => (
+                        <button
+                            key={r.id}
+                            onClick={() => setTimeRange(r.id)}
+                            className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${timeRange === r.id
+                            ? 'bg-brand-primary text-white shadow-sm'
+                            : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
+                            }`}
+                        >
+                            {r.label}
+                        </button>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
 
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                 {tabs.map(tab => (
@@ -357,7 +468,10 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {activeType === 'market_summary' ? (
+                <MarketInstitutionalSummary />
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {loading ? (
                 Array(6).fill(0).map((_, i) => (
                     <div key={i} className="bg-white border border-slate-100 rounded-2xl p-5 animate-pulse h-40 shadow-sm"></div>
@@ -420,6 +534,7 @@ const InstitutionalRankView = ({ watchedSymbols, onToggleWatchlist }) => {
                 </div>
                 )}
             </div>
+            )}
         </div>
       ) : viewMode === 'total' ? (
           loading && totalData.length === 0 ? (

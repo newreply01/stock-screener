@@ -154,6 +154,20 @@ function startScheduler() {
     });
     initTaskTracking('calc_health_scores.js_2215', healthTask2215);
 
+    // 每交易日 22:30 初始化 AI 生成任務佇列 (健診資料與籌碼完整後執行)
+    const aiQueueTask2230 = cron.schedule('30 22 * * 1-5', async () => {
+        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
+        console.log(`🤖 定時排程開始 (22:30)：初始化 ${today} AI 生成任務佇列...`);
+        const { initAiQueue } = require('./scripts/init_ai_queue');
+        await runTaskSafely('init_ai_queue.js', async () => {
+            await initAiQueue(today);
+        }, `${today} AI 生成任務初始化`);
+    }, {
+        scheduled: true,
+        timezone: 'Asia/Taipei'
+    });
+    initTaskTracking('init_ai_queue.js', aiQueueTask2230);
+
     // 每交易日 16:30 補抓今日歷史 1 分K (盤後資料完整後執行)
     if (syncHistoricalMinuteBatch) {
         const histTickTask = cron.schedule('30 16 * * 1-5', async () => {

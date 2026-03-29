@@ -16,6 +16,12 @@ const TOKENS = (process.env.FINMIND_TOKENS || process.env.FINMIND_TOKEN || '')
 
 const START_DATE = '2020-01-01'; // Default start date if not provided
 
+// --- 新增：核心標的過濾器 ---
+function isValidSymbol(symbol) {
+    if (!symbol || symbol === 'TAIEX' || symbol === 'IX0001') return true;
+    return /^(\d{4}|00\d{3,4})$/.test(symbol);
+}
+
 let currentTokenIndex = 0;
 function getCurrentToken() {
     if (TOKENS.length === 0) return null;
@@ -60,6 +66,11 @@ async function updateProgress(dataset, stockId = '') {
 }
 
 async function fetchFinMind(dataset, data_id, start_date = START_DATE) {
+    if (data_id && !isValidSymbol(data_id)) {
+        console.log(`🛡️ [FinMind] 攔截無效標的擷取: ${data_id}`);
+        return [];
+    }
+
     let url = `${BASE_URL}?dataset=${dataset}&data_id=${data_id}&start_date=${start_date}`;
     const token = getCurrentToken();
     if (token) {
