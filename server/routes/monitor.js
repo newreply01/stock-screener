@@ -354,4 +354,75 @@ router.get('/ingestion-stats', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/monitor/all-stocks
+ * 取得全市場股票代號與名稱，用於搜尋自動完成
+ */
+router.get('/all-stocks', async (req, res) => {
+    try {
+        const { date } = req.query;
+        if (!date) {
+            return res.status(400).json({ success: false, error: 'Date is required for enhanced stock list' });
+        }
+
+        // 取得該日期的成交量與 AI 報告完成狀態
+        const result = await pool.query(`
+            SELECT 
+                s.symbol, 
+                s.name, 
+                s.industry,
+                COALESCE(p.volume, 0)::bigint as volume,
+                (r.content IS NOT NULL) as has_report,
+                r.created_at as processed_at
+            FROM stocks s
+            LEFT JOIN (
+                SELECT symbol, volume 
+                FROM daily_prices 
+                WHERE trade_date = $1
+            ) p ON s.symbol = p.symbol
+            LEFT JOIN (
+                SELECT symbol, created_at, content
+                FROM ai_reports 
+                WHERE report_date = $1
+            ) r ON s.symbol = r.symbol
+            WHERE s.symbol ~ '^[0-9]' 
+            ORDER BY volume DESC
+        `, [date]);
+
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Failed to fetch enhanced stock list for monitor:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch stock list' });
+    }
+});
+
+/**
+ * GET /api/monitor/report-detail
+ * 取得指定個股於特定日期的 AI 分析報告
+ */
+router.get('/report-detail', async (req, res) => {
+    try {
+        const { symbol, date } = req.query;
+        if (!symbol || !date) {
+            return res.status(400).json({ success: false, error: 'Symbol and Date are required' });
+        }
+
+        const result = await pool.query(
+            `SELECT content, sentiment_score, report_date 
+             FROM ai_reports 
+             WHERE symbol = $1 AND report_date = $2`,
+            [symbol, date]
+        );
+
+        if (result.rows.length === 0) {
+            return res.json({ success: true, data: null, message: '該日期尚無分析報告' });
+        }
+
+        res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+        console.error('Failed to fetch report detail:', err);
+        res.status(500).json({ success: false, error: 'Failed to retrieve report content' });
+    }
+});
+
 module.exports = router;

@@ -105,13 +105,15 @@ if (!process.env.VERCEL) {
     // ─── Global Error Handler ─────────────────────────────────
     app.use(errorHandler);
 
-    try {
-        const { startScheduler } = require('./scheduler');
-        startScheduler();
-        const PORT = process.env.PORT || 31000;
-        app.listen(PORT, '0.0.0.0', () => console.log(`✅ Server started on port ${PORT}`));
-    } catch (e) {
-        console.error('Failed to start server:', e);
+    if (process.env.NODE_ENV !== 'test') {
+        try {
+            const { startScheduler } = require('./scheduler');
+            startScheduler();
+            const PORT = process.env.PORT || 31000;
+            app.listen(PORT, '0.0.0.0', () => console.log(`✅ Server started on port ${PORT}`));
+        } catch (e) {
+            console.error('Failed to start server:', e);
+        }
     }
 }
 

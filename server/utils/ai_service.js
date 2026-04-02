@@ -1,6 +1,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { pool } = require('../db');
 const { getTaiwanDate, formatTaiwanTime } = require('./timeUtils');
+const SentimentAggregator = require('./sentiment_aggregator');
 const query = (text, params) => pool.query(text, params);
 require("dotenv").config();
 
@@ -11,60 +12,60 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "no_key");
  */
 async function gatherStockContext(symbol) {
     try {
-        const stockRes = await query(`SELECT name, industry FROM stocks WHERE symbol = $1`, [symbol]);
+        const [stockRes, priceRes, fundamentalRes, instRes, marginRes, revenueRes, newsRes] = await Promise.all([
+            query(`SELECT name, industry FROM stocks WHERE symbol = $1`, [symbol]),
+            query(
+                `SELECT p.*, i.rsi_14, i.macd_hist, i.ma_5, i.ma_10, i.ma_20, i.ma_60, i.patterns, i.upper_band, i.lower_band
+                 FROM daily_prices p
+                 LEFT JOIN indicators i ON p.symbol = i.symbol AND p.trade_date = i.trade_date
+                 WHERE p.symbol = $1
+                 ORDER BY p.trade_date DESC
+                 LIMIT 1`,
+                [symbol]
+            ),
+            query(
+                `SELECT * FROM fundamentals WHERE symbol = $1 ORDER BY trade_date DESC LIMIT 1`,
+                [symbol]
+            ),
+            query(
+                `SELECT 
+                    SUM(foreign_net) as foreign_sum, 
+                    SUM(trust_net) as trust_sum, 
+                    SUM(dealer_net) as dealer_sum 
+                 FROM (SELECT * FROM institutional_2025 WHERE symbol = $1 ORDER BY trade_date DESC LIMIT 5) t`,
+                [symbol]
+            ),
+            query(
+                `SELECT margin_purchase_today_balance, short_sale_today_balance 
+                 FROM fm_margin_trading WHERE stock_id = $1 ORDER BY date DESC LIMIT 1`,
+                [symbol]
+            ),
+            query(
+                `SELECT revenue, revenue_month, revenue_year, 
+                    (SELECT revenue FROM monthly_revenue WHERE symbol = $1 AND revenue_month = r.revenue_month AND revenue_year = r.revenue_year - 1) as prev_y_revenue
+                 FROM monthly_revenue r WHERE symbol = $1 ORDER BY revenue_year DESC, revenue_month DESC LIMIT 1`,
+                [symbol]
+            ),
+            query(
+                `SELECT title, summary, publish_at 
+                 FROM news 
+                 WHERE (title ILIKE $1 OR summary ILIKE $1)
+                 ORDER BY publish_at DESC 
+                 LIMIT 30`,
+                [`%${symbol}%`]
+            ),
+        ]);
+
         const stockInfo = stockRes.rows[0] || { name: '', industry: '' };
-
-        const priceRes = await query(
-            `SELECT p.*, i.rsi_14, i.macd_hist, i.ma_5, i.ma_10, i.ma_20, i.ma_60, i.patterns, i.upper_band, i.lower_band
-             FROM daily_prices p
-             LEFT JOIN indicators i ON p.symbol = i.symbol AND p.trade_date = i.trade_date
-             WHERE p.symbol = $1
-             ORDER BY p.trade_date DESC
-             LIMIT 1`,
-            [symbol]
-        );
         const priceData = priceRes.rows[0] || {};
-        
-        const fundamentalRes = await query(
-            `SELECT * FROM fundamentals WHERE symbol = $1 ORDER BY trade_date DESC LIMIT 1`,
-            [symbol]
-        );
         const fundamentals = fundamentalRes.rows[0] || {};
-
-        const instRes = await query(
-            `SELECT 
-                SUM(foreign_net) as foreign_sum, 
-                SUM(trust_net) as trust_sum, 
-                SUM(dealer_net) as dealer_sum 
-             FROM (SELECT * FROM institutional_2025 WHERE symbol = $1 ORDER BY trade_date DESC LIMIT 5) t`,
-            [symbol]
-        );
         const institutional = instRes.rows[0] || { foreign_sum: 0, trust_sum: 0, dealer_sum: 0 };
-
-        const marginRes = await query(
-            `SELECT margin_purchase_today_balance, short_sale_today_balance 
-             FROM fm_margin_trading WHERE stock_id = $1 ORDER BY date DESC LIMIT 1`,
-            [symbol]
-        );
         const margin = marginRes.rows[0] || { margin_purchase_today_balance: 0, short_sale_today_balance: 0 };
-
-        const revenueRes = await query(
-            `SELECT revenue, revenue_month, revenue_year, 
-                (SELECT revenue FROM monthly_revenue WHERE symbol = $1 AND revenue_month = r.revenue_month AND revenue_year = r.revenue_year - 1) as prev_y_revenue
-             FROM monthly_revenue r WHERE symbol = $1 ORDER BY revenue_year DESC, revenue_month DESC LIMIT 1`,
-            [symbol]
-        );
         const revenue = revenueRes.rows[0] || {};
-
-        const newsRes = await query(
-            `SELECT title, summary, publish_at 
-             FROM news 
-             WHERE (title ILIKE $1 OR summary ILIKE $1)
-             ORDER BY publish_at DESC 
-             LIMIT 15`,
-            [`%${symbol}%`]
-        );
         const news = newsRes.rows;
+
+        // 取得量化的新聞情緒匯總 (近 3 天)
+        const newsSentiment = await SentimentAggregator.getAggregatedSentiment(symbol, 3);
 
         return {
             symbol,
@@ -76,6 +77,7 @@ async function gatherStockContext(symbol) {
             margin,
             revenue,
             news,
+            newsSentiment,
             generatedAt: formatTaiwanTime(),
         };
     } catch (err) {
@@ -159,40 +161,39 @@ function generateSmartEngineReport(symbol, context, promptTemplate) {
     let newsScore = recentNews.length > 0 ? 15 : 10;
     const totalScore = techScore + fundScore + chipScore + newsScore;
 
-    const latestDataDate = context.priceData.trade_date ? new Date(context.priceData.trade_date).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '最新';
+    const latestDataDate = context.priceData.trade_date ? new Date(context.priceData.trade_date).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '未知';
 
-    let report = `# ${context.name || ''} (${symbol}) 技術與基本面分析報告
+    const sentimentText = context.newsSentiment && context.newsSentiment.count > 0 
+        ? `新聞情緒 (近 3 天): ${context.newsSentiment.sentimentLabel} (利多: ${context.newsSentiment.bullishCount} 則, 利空: ${context.newsSentiment.bearishCount} 則, 分數: ${context.newsSentiment.avgScore})
+關鍵摘要: ${context.newsSentiment.description}`
+        : "新聞情緒: 近期無顯著新聞情緒數據";
 
-#### 📢 個股摘要
-${summaryText}
+    const finalPrompt = `
+你是一位專業的股票投資分析師。請根據以下個股詳細數據和新聞情感，按照指定的【模板格式】生成一份深度投資分析報告。
 
-#### 📈 技術面分析
-${techText}
+股票: ${context.name} (${context.symbol})
+最新收盤: ${context.priceData.close_price} (漲跌: ${context.priceData.change_amount}, ${parseFloat(context.priceData.change_percent || 0).toFixed(2)}%)
+技術面: RSI14=${context.priceData.rsi_14}, Bollinger%b=${((parseFloat(context.priceData.close_price) - parseFloat(context.priceData.lower_band)) / (parseFloat(context.priceData.upper_band) - parseFloat(context.priceData.lower_band))).toFixed(2)}, MACD柱=${context.priceData.macd_hist}, MA5=${context.priceData.ma_5}, MA20=${context.priceData.ma_20}, MA60=${context.priceData.ma_60}
+基本面: PE=${context.fundamentals.pe_ratio}, PB=${context.fundamentals.pb_ratio}, 殖利率=${context.fundamentals.dividend_yield}%
+營收: 最新月營收 ${context.revenue.revenue} (YoY約 ${context.revenue.prev_y_revenue ? ((parseFloat(context.revenue.revenue)/parseFloat(context.revenue.prev_y_revenue)-1)*100).toFixed(1) : '未知'}%)
+籌碼面: 近5日法人合計${inst_dir}, 融資餘額=${context.margin.margin_purchase_today_balance}
 
-#### 🧪 基本面深度分析
-${fundText}
+【新聞情緒分析】
+${sentimentText}
 
-#### 🤝 籌碼面法人動向
-${chipText}
+近期新聞摘要 (含目標價變動與重大資產交易):
+${context.news.slice(0, 5).map(n => `- [${n.publish_at}] ${n.title}`).join('\n')}
 
-#### 📰 相關重要訊息
-${newsSection}
+【報表模板】:
+${promptTemplate}
 
-#### 💡 綜合結論與投資策略
-- **綜合評分: ${totalScore} / 100**
-- **短線觀點**: ${totalScore > 80 ? '技術面與籌碼面同步做多，具備突破高點之潛力。' : (totalScore > 50 ? '目前處於多空拉鋸，應觀察支撐價位之有效性。' : '股價弱勢震盪，應耐心等待底部確認。')}
-- **操作建議**: 支撐區間建議參考 **${Math.floor(ma20 * 0.985)}-${Math.ceil(ma20 * 1.01)} 元**。
-- **風險提醒**: 須特別留意總經變數及產業週期性波動之影響。
-
-> [!NOTE]
-> 本報告由升級版 Smart Engine 依據最新資料生成 (資料日期: ${latestDataDate})。
+請務必將「新聞情緒分析」中提到的關鍵點整合進報告的「核心趨勢」與「綜合建議」中。移除「報告生成日」標籤，直接從標題開始。
 `;
-
-    return report;
+    return finalPrompt;
 }
 
 /**
- * Generate report using local Ollama model
+ * Generate report using Ollama
  */
 async function generateOllamaReport(symbol, context, promptTemplate, modelOverride = null) {
     const ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
@@ -211,7 +212,7 @@ async function generateOllamaReport(symbol, context, promptTemplate, modelOverri
 籌碼面: 近5日法人合計${inst_dir}, 融資餘額=${context.margin.margin_purchase_today_balance}
 
 新聞:
-${context.news.map(n => `- [${n.publish_at}] ${n.title}`).join('\n')}
+${context.news.slice(0, 5).map(n => `- [${n.publish_at}] ${n.title}`).join('\n')}
 
 【報表模板】:
 ${promptTemplate}
@@ -232,7 +233,8 @@ ${promptTemplate}
                 stream: false,
                 options: {
                     temperature: 0.7,
-                    num_predict: 2048
+                    num_predict: 2048,
+                    num_ctx: 4096
                 }
             }),
             signal: AbortSignal.timeout(600000) // Increase to 10 minutes for large models
@@ -257,23 +259,57 @@ ${promptTemplate}
     }
 }
 
+// Prompt template 記憶體快取 (避免每次查 DB)
+let _templateCache = {};
+let _templateCacheTime = 0;
+const TEMPLATE_CACHE_TTL = 10 * 60 * 1000; // 10 分鐘
+
+async function getPromptTemplate(templateName, defaultTemplate) {
+    const now = Date.now();
+    if (_templateCache[templateName] && (now - _templateCacheTime) < TEMPLATE_CACHE_TTL) {
+        return _templateCache[templateName];
+    }
+    const templateRes = await query(
+        `SELECT content FROM ai_prompt_templates WHERE name = $1 AND is_active = true LIMIT 1`,
+        [templateName]
+    );
+    const template = templateRes.rows.length > 0 ? templateRes.rows[0].content : defaultTemplate;
+    _templateCache[templateName] = template;
+    _templateCacheTime = now;
+    return template;
+}
+
 /**
  * Generate AI report using the active template and gathered data
  */
-async function generateAIReport(symbol, templateName = 'stock_analysis_report', manualContext = null) {
-    try {
-        const context = manualContext || await gatherStockContext(symbol);
+async function generateAIReport(symbol, modelOverride = null, templateName = 'stock_analysis_report') {
+    const DEFAULT_TEMPLATE = `
+#### 📝 核心趨勢總結
+{0}
 
-        const templateRes = await query(
-            `SELECT content FROM ai_prompt_templates WHERE name = $1 AND is_active = true LIMIT 1`,
-            [templateName]
-        );
-        
-        if (templateRes.rows.length === 0) {
-            throw new Error(`Active template '${templateName}' not found`);
-        }
-        
-        let promptTemplate = templateRes.rows[0].content;
+#### 📊 技術指標分析
+{1}
+
+#### 🧪 基本面深度分析
+{2}
+
+#### 🤝 籌碼面法人動向
+{3}
+
+#### 📰 相關重要訊息
+{4}
+
+#### 💡 綜合結論與投資策略
+- **綜合評分: {5} / 100**
+- **短線觀點**: {6}
+- **操作建議**: {7}
+- **風險提醒**: {8}
+`;
+
+    try {
+        const context = await gatherStockContext(symbol);
+
+        let promptTemplate = await getPromptTemplate(templateName, DEFAULT_TEMPLATE);
 
         const hasGeminiKey = process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.length > 10 && process.env.GEMINI_API_KEY !== 'your_api_key_here';
         const hasOllama = process.env.OLLAMA_URL && process.env.OLLAMA_URL.length > 5;
@@ -286,8 +322,13 @@ async function generateAIReport(symbol, templateName = 'stock_analysis_report', 
             // Priority 1: Gemini
             generationMode = "gemini";
             const inst_dir = (parseFloat(context.institutional.foreign_sum || 0) + parseFloat(context.institutional.trust_sum || 0)) > 0 ? "偏多買進" : "偏空賣出";
+            const sentimentText = context.newsSentiment && context.newsSentiment.count > 0 
+                ? `新聞情緒 (近 3 天): ${context.newsSentiment.sentimentLabel} (利多: ${context.newsSentiment.bullishCount} 則, 利空: ${context.newsSentiment.bearishCount} 則, 分數: ${context.newsSentiment.avgScore})
+關鍵摘要: ${context.newsSentiment.description}`
+                : "新聞情緒: 近期無顯著新聞情緒數據";
+
             const finalPrompt = `
-你是一位專業的股票投資分析師。請根據以下個股詳細數據和新聞，按照指定的【模板格式】生成一份深度投資分析報告。
+你是一位專業的股票投資分析師。請根據以下個股詳細數據和新聞情感，按照指定的【模板格式】生成一份深度投資分析報告。
 
 股票: ${context.name} (${context.symbol})
 最新收盤: ${context.priceData.close_price} (漲跌: ${context.priceData.change_amount}, ${parseFloat(context.priceData.change_percent || 0).toFixed(2)}%)
@@ -296,13 +337,16 @@ async function generateAIReport(symbol, templateName = 'stock_analysis_report', 
 營收: 最新月營收 ${context.revenue.revenue} (YoY約 ${context.revenue.prev_y_revenue ? ((parseFloat(context.revenue.revenue)/parseFloat(context.revenue.prev_y_revenue)-1)*100).toFixed(1) : '未知'}%)
 籌碼面: 近5日法人合計${inst_dir}, 融資餘額=${context.margin.margin_purchase_today_balance}
 
-新聞:
-${context.news.map(n => `- [${n.publish_at}] ${n.title}`).join('\n')}
+【新聞情緒分析】
+${sentimentText}
+
+近期新聞摘要 (含目標價變動與重大資產交易):
+${context.news.slice(0, 5).map(n => `- [${n.publish_at}] ${n.title}`).join('\n')}
 
 【報表模板】:
 ${promptTemplate}
 
-請嚴格按照模板結構填寫內容。移除「報告生成日」標籤，直接從標題開始。
+請務必將「新聞情緒分析」中提到的關鍵點整合進報告中。移除「報告生成日」標籤，直接從標題開始。
 `;
             const model = genAI.getGenerativeModel({ model: "gemini-3.0-flash" });
             const result = await model.generateContent(finalPrompt);
@@ -311,40 +355,46 @@ ${promptTemplate}
         } else if (hasOllama) {
             // Priority 2: Local Ollama
             generationMode = "ollama";
-            console.log(`[AI Service] Using Local Ollama (${modelName || process.env.OLLAMA_MODEL}) for ${symbol}`);
-            finalContent = await generateOllamaReport(symbol, context, promptTemplate, modelName);
+            const targetModel = modelOverride || process.env.OLLAMA_MODEL || "qwen3.5:9b";
+            console.log(`[AI Service] Using Local Ollama (${targetModel}) for ${symbol}`);
+            finalContent = await generateOllamaReport(symbol, context, promptTemplate, targetModel);
         } else {
             // Priority 3: Smart Engine (Rule-based)
             generationMode = "smart_engine";
             finalContent = generateSmartEngineReport(symbol, context, promptTemplate);
         }
 
-        // Extract score
-        const scoreMatch = finalContent.match(/評分[^\d]*(\d+)/) || finalContent.match(/Score[^\d]*(\d+)/) || finalContent.match(/\*\*(\d+) \/ 100\*\*/);
-        if (scoreMatch) sentimentScore = parseInt(scoreMatch[1]);
+        // 納入新聞情緒加權評分 (對最終評分進行修正，情緒佔比 40%)
+        let scoreVal = 50;
+        const scoreMatch = finalContent.match(/評分[^\d]*(\d+)/) || 
+                          finalContent.match(/Score[^\d]*(\d+)/) || 
+                          finalContent.match(/\*\*(\d+)\s*\/\s*100\*\*/);
+        if (scoreMatch) scoreVal = parseInt(scoreMatch[1]);
 
-        // Save to current reports table
-        await query(
-            `INSERT INTO ai_reports (symbol, content, sentiment_score, updated_at)
-             VALUES ($1, $2, $3, NOW())
-             ON CONFLICT (symbol) 
-             DO UPDATE SET content = EXCLUDED.content, sentiment_score = EXCLUDED.sentiment_score, updated_at = NOW()`,
-            [symbol, finalContent, sentimentScore]
-        );
+        if (context.newsSentiment && context.newsSentiment.count > 0) {
+            const rawAiScore = scoreVal;
+            const newsScore = (context.newsSentiment.avgScore + 1) * 50; // -1~1 轉為 0~100
+            scoreVal = Math.round(rawAiScore * 0.6 + newsScore * 0.4);
+            console.log(`[AI Service] Score Weighted: ${rawAiScore} (AI) -> ${scoreVal} (With News Sentiment)`);
+        }
 
-        // Save to history table (using data's trade_date if available)
-        const reportDate = context.priceData.trade_date ? context.priceData.trade_date : new Date();
-        await query(
-            `INSERT INTO ai_reports_history (symbol, report_date, content, sentiment_score)
-             VALUES ($1, $2, $3, $4)
-             ON CONFLICT (symbol, report_date) 
-             DO UPDATE SET content = EXCLUDED.content, sentiment_score = EXCLUDED.sentiment_score`,
-            [symbol, reportDate, finalContent, sentimentScore]
-        );
+        // --- IMPORTANT: Refactored: Removed direct DB saving here. ---
+        // Let the caller (worker) handle saving to ensure transactional integrity.
+        
+        // Final sanity check: if content is too short, LLM likely failed or gave garbage
+        if (!finalContent || finalContent.trim().length < 100) {
+            throw new Error(`AI generated content too short (${finalContent ? finalContent.trim().length : 0} chars). Model may have glitched.`);
+        }
 
-        return { success: true, symbol, content: finalContent, sentimentScore, generationMode };
+        return {
+            success: true,
+            symbol,
+            content: finalContent,
+            sentimentScore: scoreVal,
+            generationMode
+        };
     } catch (err) {
-        console.error("AI/Engine Report Generation Error:", err);
+        console.error("AI/Engine Report Generation Error:", err.message);
         return { success: false, error: err.message };
     }
 }

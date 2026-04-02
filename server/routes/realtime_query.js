@@ -8,7 +8,7 @@ router.get('/realtime-ticks', async (req, res) => {
         const { symbol, date } = req.query;
 
         if (!symbol) {
-            return res.status(400).json({ success: false, message: 'Missing symbol parameter' });
+            return res.status(400).json({ success: false, error: '缺少 symbol 參數' });
         }
 
         // 如果沒有提供日期，優先使用當前日期 (台北時間)
@@ -172,7 +172,7 @@ router.get('/market-index', async (req, res) => {
         const result = await query(sql);
         
         if (result.rows.length === 0) {
-            return res.status(404).json({ success: false, message: 'No index data found' });
+            return res.status(404).json({ success: false, error: '找不到指數資料' });
         }
         
         res.json({
@@ -216,7 +216,7 @@ router.get('/:symbol', async (req, res) => {
         const result = await query(sql, [symbol]);
         
         if (result.rows.length === 0) {
-            return res.status(404).json({ success: false, message: 'No data found' });
+            return res.status(404).json({ success: false, error: '找不到資料' });
         }
         
         const row = result.rows[0];
@@ -242,7 +242,7 @@ router.post('/batch', async (req, res) => {
     try {
         const { symbols } = req.body || {};
         if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
-            return res.status(400).json({ success: false, message: 'Invalid or empty symbols array' });
+            return res.status(400).json({ success: false, error: '無效或空的 symbols 陣列' });
         }
 
         const sql = `

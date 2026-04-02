@@ -20,18 +20,18 @@ const NewsSentiment = {
         const text = (title + ' ' + summary);
         const symbols = new Set();
         
-        // 1. 優先匹配帶括號的代碼，如 (2330) 或 [2330] - 這是最可靠的
-        const bracketRegex = /[\(\[（【](\d{4})[\)\]）】]/g;
+        // 1. 優先匹配帶括號的代碼，如 (2330), (0050), (00878) - 這是最可靠的
+        const bracketRegex = /[\(\[（【](\d{4,6})[\)\]）】]/g;
         let match;
         while ((match = bracketRegex.exec(text)) !== null) {
             symbols.add(match[1]);
         }
         
-        // 2. 匹配獨立的 4 位數字，但需排除年份 (1900-2100)
-        // 除非它前面有「代號」或「股票」字眼
-        const standaloneRegex = /(?:^|\s|[^0-9])(\d{4})(?:$|\s|[^0-9])/g;
+        // 2. 匹配獨立的 4-6 位數字，排除單純年份
+        const standaloneRegex = /(?:^|\s|[^0-9])(\d{4,6})(?:$|\s|[^0-9])/g;
         while ((match = standaloneRegex.exec(text)) !== null) {
             const code = match[1];
+            if (code.length > 6) continue; // 排除超長數字
             const val = parseInt(code);
             const isYearRange = val >= 1900 && val <= 2100;
             
@@ -90,9 +90,47 @@ const NewsSentiment = {
     },
 
     /**
-     * 處理單則新聞並寫入資料庫
+     * 使用 AI (Ollama) 對深度語義進行利多/利空分析
      */
-    async processNews(newsId) {
+    async analyzeSentimentAI(title, summary, symbol, name) {
+        const ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
+        const modelName = process.env.OLLAMA_FAST_MODEL || "qwen3.5:9b";
+        
+        const prompt = `你是一位專業的台股新聞分析師。請分析以下新聞對個股 【${name} (${symbol})】 的影響情緒。
+新聞標題: ${title}
+新聞摘要: ${summary}
+
+請僅回傳一個 JSON 物件，格式如下：
+{
+  "sentiment": "Bullish" | "Bearish" | "Neutral",
+  "score": -1.0 到 1.0 之間的分數 (1.0為極大利多, -1.0為極大利空),
+  "reason": "繁體中文簡短理由"
+}
+`;
+
+        try {
+            const response = await fetch(`${ollamaUrl}/api/generate`, {
+                method: 'POST',
+                body: JSON.stringify({ model: modelName, prompt, stream: false, format: 'json' }),
+                signal: AbortSignal.timeout(30000)
+            });
+            const data = await response.json();
+            const result = JSON.parse(data.response);
+            return {
+                sentiment: result.sentiment || 'Neutral',
+                score: parseFloat(result.score || 0),
+                reason: result.reason || 'AI 分析完成'
+            };
+        } catch (err) {
+            console.error(`[NewsSentiment] AI Analysis failed for ${symbol}:`, err.message);
+            return this.analyzeSentiment(title, summary); // Fallback to rule
+        }
+    },
+
+    /**
+     * 處理單則新聞並寫入資料庫 (支援 AI 與 Rule 混合)
+     */
+    async processNews(newsId, useAI = false) {
         try {
             const newsRes = await query('SELECT title, summary FROM news WHERE news_id = $1', [newsId]);
             if (newsRes.rows.length === 0) return;
@@ -101,23 +139,34 @@ const NewsSentiment = {
             const foundSymbols = await this.identifyStocks(title, summary);
             if (foundSymbols.length === 0) return;
 
-            const analysis = this.analyzeSentiment(title, summary);
-
             for (const symbol of foundSymbols) {
-                // 檢查該個股是否存在於 stocks 表 (避免誤入純數字)
-                const stockCheck = await query('SELECT symbol FROM stocks WHERE symbol = $1', [symbol]);
+                // 檢查該個股是否存在於 stocks 表 (確保是台股/ETF)
+                const stockCheck = await query('SELECT symbol, name FROM stocks WHERE symbol = $1', [symbol]);
                 if (stockCheck.rows.length === 0) continue;
+                const stockName = stockCheck.rows[0].name;
+
+                // 根據模式選擇分析方法
+                let analysis;
+                let method = 'rule';
+                
+                if (useAI && process.env.OLLAMA_URL) {
+                    analysis = await this.analyzeSentimentAI(title, summary, symbol, stockName);
+                    method = 'ai';
+                } else {
+                    analysis = this.analyzeSentiment(title, summary);
+                }
 
                 await query(`
                     INSERT INTO news_stock_sentiment (news_id, symbol, sentiment, score, method, reason)
-                    VALUES ($1, $2, $3, $4, 'rule', $5)
+                    VALUES ($1, $2, $3, $4, $5, $6)
                     ON CONFLICT (news_id, symbol) DO UPDATE SET
                         sentiment = EXCLUDED.sentiment,
                         score = EXCLUDED.score,
+                        method = EXCLUDED.method,
                         reason = EXCLUDED.reason
-                `, [newsId, symbol, analysis.sentiment, analysis.score, analysis.reason]);
+                `, [newsId, symbol, analysis.sentiment, analysis.score, method, analysis.reason]);
             }
-            return { newsId, symbols: foundSymbols, analysis };
+            return { newsId, symbols: foundSymbols };
         } catch (err) {
             console.error(`[NewsSentiment] Error processing news ${newsId}:`, err.message);
         }

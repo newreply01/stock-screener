@@ -61,7 +61,19 @@ pool.on('connect', (client) => {
     client.query("SET TIME ZONE 'Asia/Taipei'");
 });
 
-const query = (text, params) => pool.query(text, params);
+// 慢查詢閾值 (毫秒)，可透過環境變數調整
+const SLOW_QUERY_MS = parseInt(process.env.SLOW_QUERY_MS || '500', 10);
+
+const query = async (text, params) => {
+    const start = Date.now();
+    const result = await pool.query(text, params);
+    const duration = Date.now() - start;
+    if (duration >= SLOW_QUERY_MS) {
+        const preview = text.replace(/\s+/g, ' ').substring(0, 120);
+        console.warn(`[SLOW QUERY] ${duration}ms | rows=${result.rowCount} | ${preview}`);
+    }
+    return result;
+};
 
 const end = () => pool.end();
 const initDatabase = async () => {};

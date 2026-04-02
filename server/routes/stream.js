@@ -8,12 +8,12 @@ const { query } = require('../db');
 router.get('/realtime', async (req, res) => {
     const symbolsParam = req.query.symbols;
     if (!symbolsParam) {
-        return res.status(400).json({ error: 'Missing symbols parameter' });
+        return res.status(400).json({ success: false, error: '缺少 symbols 參數' });
     }
 
     const symbols = symbolsParam.split(',').filter(Boolean);
     if (symbols.length === 0) {
-        return res.status(400).json({ error: 'Empty symbols parameter' });
+        return res.status(400).json({ success: false, error: 'symbols 參數不可為空' });
     }
 
     // Set headers for SSE

@@ -5,7 +5,7 @@ import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext'
 import { GlobalFilterProvider } from './context/GlobalFilterContext'
-import ErrorBoundary from './components/ErrorBoundary'
+import ErrorBoundary from './components/shared/ErrorBoundary'
 
 const rootElement = document.getElementById('root');
 

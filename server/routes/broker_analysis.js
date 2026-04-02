@@ -47,7 +47,7 @@ router.get('/top-traders/:symbol', async (req, res) => {
         res.json({ buying, selling, dates: latestDates });
     } catch (err) {
         console.error('Error fetching top traders:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ success: false, error: '伺服器錯誤' });
     }
 });
 
@@ -96,7 +96,7 @@ router.get('/major-trend/:symbol', async (req, res) => {
         res.json(trendRes.rows.reverse());
     } catch (err) {
         console.error('Error fetching major trend:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ success: false, error: '伺服器錯誤' });
     }
 });
 

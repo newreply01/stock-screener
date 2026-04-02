@@ -4,6 +4,11 @@ node_modules/
 *.log
 testOutput*.txt
 .vite/
+.venv/
+
+# Build error dumps
+client/error*.txt
+client/*.log
 
 # SQL dumps (too large for git)
 slim_db.sql
