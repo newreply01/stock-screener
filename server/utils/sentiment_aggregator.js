@@ -37,7 +37,22 @@ const SentimentAggregator = {
             }
 
             const totalCount = records.length;
-            const avgScore = records.reduce((acc, cur) => acc + parseFloat(cur.score), 0) / totalCount;
+
+            // 時效衰減加權：越新的新聞權重越高
+            const now = new Date();
+            let weightedSum = 0;
+            let totalWeight = 0;
+            for (const r of records) {
+                const hoursAgo = Math.max(0, (now - new Date(r.publish_at)) / (1000 * 60 * 60));
+                let weight;
+                if (hoursAgo <= 24) weight = 1.0;
+                else if (hoursAgo <= 72) weight = 0.5;
+                else weight = 0.2;
+                weightedSum += parseFloat(r.score) * weight;
+                totalWeight += weight;
+            }
+            const avgScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
+
             const bullishCount = records.filter(r => r.sentiment === 'Bullish').length;
             const bearishCount = records.filter(r => r.sentiment === 'Bearish').length;
 

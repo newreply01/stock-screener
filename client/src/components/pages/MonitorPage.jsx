@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Database, Server, Clock, RefreshCw, AlertCircle, Calendar, Search, FileText, BarChart2 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { Activity, Database, Server, Clock, RefreshCw, AlertCircle, Calendar, Search, FileText, BarChart2, ChevronRight } from 'lucide-react';
+import StructuredReportView from '../shared/StructuredReportView';
 
 export default function MonitorPage() {
     const [activeTab, setActiveTab] = useState('system'); // 'system' | 'ai-reports'
@@ -736,28 +736,37 @@ export default function MonitorPage() {
                         ) : reportData ? (
                             <>
                                 <div className="bg-slate-900 p-6 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <h2 className="text-2xl font-bold">{selectedStock.symbol} {selectedStock.name}</h2>
-                                            <span className="text-sm opacity-60 bg-white/10 px-2 py-0.5 rounded-full">{selectedStock.industry}</span>
-                                        </div>
-                                        <div className="text-sm opacity-60 flex items-center gap-2">
-                                            <Calendar className="w-4 h-4" />
-                                            分析基準日: {reportData.report_date}
+                                    <div className="flex items-center gap-4">
+                                        <button 
+                                            onClick={() => setSelectedStock(null)}
+                                            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors group"
+                                            title="返回總覽"
+                                        >
+                                            <ChevronRight className="w-5 h-5 rotate-180 text-white" />
+                                        </button>
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h2 className="text-2xl font-bold">{selectedStock.symbol} {selectedStock.name}</h2>
+                                                <span className="text-sm opacity-60 bg-white/10 px-2 py-0.5 rounded-full">{selectedStock.industry}</span>
+                                            </div>
+                                            <div className="text-sm opacity-60 flex items-center gap-2">
+                                                <Calendar className="w-4 h-4" />
+                                                分析基準日: {reportData.report_date}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-4 bg-white/10 p-3 rounded-2xl border border-white/10">
+                                    <div className="flex items-center gap-4 bg-white/10 p-3 px-5 rounded-2xl border border-white/10">
                                         <div className="text-right">
                                             <div className="text-[10px] opacity-60 uppercase tracking-wider font-bold">情緒綜合評分</div>
-                                            <div className="text-2xl font-black text-brand-primary">{(reportData.sentiment_score * 100).toFixed(0)}</div>
+                                            <div className="text-xs opacity-40 font-bold uppercase tracking-widest mt-0.5">Sentiment Score</div>
                                         </div>
-                                        <div className="w-12 h-12 rounded-full border-4 border-brand-primary flex items-center justify-center text-xs font-black">
+                                        <div className="w-12 h-12 rounded-full border-4 border-brand-primary flex items-center justify-center text-sm font-black text-white bg-brand-primary/10 shadow-lg shadow-brand-primary/20">
                                             {(reportData.sentiment_score * 100).toFixed(0)}
                                         </div>
                                     </div>
                                 </div>
-                                <div className="p-8 prose prose-slate max-w-none prose-headings:text-slate-900 prose-p:text-slate-600 prose-strong:text-slate-900 prose-li:text-slate-600 overflow-y-auto">
-                                    <ReactMarkdown>{reportData.content}</ReactMarkdown>
+                                <div className="p-6 md:p-8 overflow-y-auto">
+                                    <StructuredReportView reportText={reportData.content} />
                                 </div>
                                 <div className="p-6 bg-gray-50 border-t border-gray-100 text-center text-xs text-gray-400">
                                     本報告由台股智能篩選器 AI 自動生成，僅供研究參考，不構成任何投資建議。

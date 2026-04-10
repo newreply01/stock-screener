@@ -264,9 +264,7 @@ export async function deletePromptVersion(id) {
 export async function generateAIReport(symbol) {
     return apiRequest(`${API_BASE}/stock/${symbol}/generate-ai-report`, {
         method: 'POST'
-    });
-    if (!res.ok) throw new Error(`生成 AI 報告失敗`);
-    return res.json();
+    }, true);
 }
 
 // ==================== 持倉分析 API ====================

@@ -150,11 +150,13 @@ router.get('/stock/:symbol/quick-diagnosis', async (req, res) => {
         // 綜合權重: 技術 40%, 價格位置 30%, 情緒 30%
         const compositeScore = (techScore * 0.4) + (priceLevelScore * 0.3) + (sentimentScore * 0.3);
         
-        let ratingLabel = "觀望";
-        if (compositeScore > 0.45) ratingLabel = "強力買進";
-        else if (compositeScore > 0.15) ratingLabel = "買進";
-        else if (compositeScore < -0.45) ratingLabel = "強力賣出";
-        else if (compositeScore < -0.15) ratingLabel = "賣出";
+        let ratingLabel = "中立";
+        if (compositeScore > 0.55) ratingLabel = "強力推薦";
+        else if (compositeScore > 0.25) ratingLabel = "推薦";
+        else if (compositeScore > 0.05) ratingLabel = "偏多操作";
+        else if (compositeScore < -0.55) ratingLabel = "大幅減碼";
+        else if (compositeScore < -0.25) ratingLabel = "減碼";
+        else if (compositeScore < -0.05) ratingLabel = "偏空觀察";
 
         // 整合數據
         const result = {
@@ -510,7 +512,7 @@ router.get('/stock/:symbol/ai-report', async (req, res) => {
 
 
         const { symbol } = req.params;
-        const result = await query('SELECT content as report, sentiment_score FROM ai_reports WHERE symbol = $1', [symbol]);
+        const result = await query('SELECT content as report, sentiment_score, created_at FROM ai_reports WHERE symbol = $1', [symbol]);
         
         if (result.rows.length === 0) {
             return res.json({
@@ -1269,7 +1271,8 @@ router.get('/stock/:symbol/health-check', async (req, res) => {
                 { name: '安全性', score: d.safety_score },
                 { name: '價值衡量', score: d.value_score },
                 { name: '配息能力', score: d.dividend_score },
-                { name: '籌碼面', score: d.chip_score }
+                { name: '籌碼面', score: d.chip_score },
+                { name: '消息面', score: d.news_score }
             ];
 
             dims.forEach(dim => {
@@ -1292,6 +1295,11 @@ router.get('/stock/:symbol/health-check', async (req, res) => {
             if (d.chip_score > 70) {
                 summary += "近期籌碼面有法人加持，動能較強。";
             }
+            if (d.news_score && d.news_score >= 70) {
+                summary += "近期新聞消息面偏多，市場關注度高。";
+            } else if (d.news_score && d.news_score <= 30) {
+                summary += "近期新聞面偏空，需注意利空消息影響。";
+            }
             return summary;
         };
 
@@ -1302,12 +1310,13 @@ router.get('/stock/:symbol/health-check', async (req, res) => {
             gradeColor: data.grade_color,
             summary: generateSummary(data),
             dimensions: [
-                { name: '獲利能力', score: data.profit_score || 0, detail: '基於 ROE 與毛利率表現' },
-                { name: '成長能力', score: data.growth_score || 0, detail: '基於營收與 EPS 成長率' },
-                { name: '安全性', score: data.safety_score || 0, detail: '基於負債比與流動比率' },
-                { name: '價值衡量', score: data.value_score || 0, detail: '基於 PE/PB 估值位階' },
-                { name: '配息能力', score: data.dividend_score || 0, detail: '基於現金殖利率與配息穩定性' },
-                { name: '籌碼面', score: data.chip_score || 0, detail: '基於法人近期買賣超動向' }
+                { name: '獲利能力', score: data.profit_score || 0, weight: 20, detail: '基於 ROE 與毛利率表現（權重 20%）' },
+                { name: '成長能力', score: data.growth_score || 0, weight: 15, detail: '基於營收與 EPS 成長率（權重 15%）' },
+                { name: '安全性', score: data.safety_score || 0, weight: 7, detail: '基於負債比與流動比率（權重 7%）' },
+                { name: '價值衡量', score: data.value_score || 0, weight: 15, detail: '基於 PE/PB 估值位階（權重 15%）' },
+                { name: '配息能力', score: data.dividend_score || 0, weight: 10, detail: '基於現金殖利率與配息穩定性（權重 10%）' },
+                { name: '籌碼面', score: data.chip_score || 0, weight: 13, detail: '基於法人近期買賣超動向（權重 13%）' },
+                { name: '消息面', score: data.news_score || 50, weight: 20, detail: '基於近14日新聞情緒分析（時效加權）（權重 20%）' }
             ],
             metrics: {
                 pe: data.pe,
@@ -1496,7 +1505,11 @@ router.get('/health-check-ranking', async (req, res) => {
         const total = parseInt(countRes.rows[0].cnt);
         const offset = (parseInt(page) - 1) * parseInt(limit);
         params.push(parseInt(limit), offset);
-        const dataRes = await query(`SELECT * FROM stock_health_scores WHERE ${whereClause} ORDER BY ${sort} ${order} LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`, params);
+        // Whitelist allowed sort columns to prevent SQL injection
+        const allowedSorts = ['overall_score','profit_score','growth_score','safety_score','value_score','dividend_score','chip_score','news_score','pe','pb','dividend_yield','revenue_growth','eps_growth','close_price','change_percent','smart_score','name','symbol'];
+        const safeSort = allowedSorts.includes(sort) ? sort : 'overall_score';
+        const safeOrder = order === 'ASC' ? 'ASC' : 'DESC';
+        const dataRes = await query(`SELECT * FROM stock_health_scores WHERE ${whereClause} ORDER BY ${safeSort} ${safeOrder} NULLS LAST LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`, params);
         const indRes = await query(`SELECT DISTINCT industry FROM stock_health_scores WHERE calc_date = $1`, [latestDate]);
         
         // Get counts for each smart rating for the latest date
@@ -1692,38 +1705,57 @@ router.get('/health-check/backtest-stats', async (req, res) => {
             const currDate = dates[i+1];
             const nextDate = dates[i];
 
+            // Find actual trade dates closest to calc_dates from daily_prices
+            const actualDatesRes = await query(`
+                SELECT 
+                    (SELECT MAX(TO_CHAR(trade_date, 'YYYY-MM-DD')) FROM daily_prices WHERE TO_CHAR(trade_date, 'YYYY-MM-DD') <= $1 AND symbol = 'TAIEX') as prev_trade_date,
+                    (SELECT MAX(TO_CHAR(trade_date, 'YYYY-MM-DD')) FROM daily_prices WHERE TO_CHAR(trade_date, 'YYYY-MM-DD') <= $2 AND symbol = 'TAIEX') as curr_trade_date
+            `, [currDate, nextDate]);
+            const prevTradeDate = actualDatesRes.rows[0]?.prev_trade_date || currDate;
+            const currTradeDate = actualDatesRes.rows[0]?.curr_trade_date || nextDate;
+
+            // Skip if both dates resolve to the same trade date (no new price data)
+            if (prevTradeDate === currTradeDate) continue;
+
             // Fetch TAIEX performance for benchmark
             const taiexRes = await query(`
-                WITH p AS (SELECT close_price FROM daily_prices WHERE symbol = 'TAIEX' AND trade_date = $1),
-                     c AS (SELECT close_price FROM daily_prices WHERE symbol = 'TAIEX' AND trade_date = $2)
+                WITH p AS (SELECT close_price FROM daily_prices WHERE symbol = 'TAIEX' AND TO_CHAR(trade_date, 'YYYY-MM-DD') = $1),
+                     c AS (SELECT close_price FROM daily_prices WHERE symbol = 'TAIEX' AND TO_CHAR(trade_date, 'YYYY-MM-DD') = $2)
                 SELECT ((c.close_price - p.close_price) / p.close_price * 100) as taiex_return
                 FROM p, c
-            `, [currDate, nextDate]);
+            `, [prevTradeDate, currTradeDate]);
             const taiexReturn = taiexRes.rows[0]?.taiex_return || 0;
 
+            // Use daily_prices for actual price comparison (more reliable than snapshot)
             const perfRes = await query(`
-                WITH prev AS (
-                    SELECT symbol, close_price as price_prev, smart_rating, grade
+                WITH prev_scores AS (
+                    SELECT symbol, smart_rating, grade
                     FROM stock_health_scores
                     WHERE calc_date = $1
                 ),
-                curr AS (
-                    SELECT symbol, close_price as price_curr
-                    FROM stock_health_scores
-                    WHERE calc_date = $2
+                prev_prices AS (
+                    SELECT symbol, close_price
+                    FROM daily_prices
+                    WHERE TO_CHAR(trade_date, 'YYYY-MM-DD') = $2
+                ),
+                curr_prices AS (
+                    SELECT symbol, close_price
+                    FROM daily_prices
+                    WHERE TO_CHAR(trade_date, 'YYYY-MM-DD') = $3
                 )
                 SELECT 
-                    prev.smart_rating,
-                    prev.grade,
+                    ps.smart_rating,
+                    ps.grade,
                     COUNT(*) as count,
-                    ROUND(AVG((curr.price_curr - prev.price_prev) / prev.price_prev * 100), 2) as avg_return_pct,
-                    ROUND(COUNT(CASE WHEN curr.price_curr > prev.price_prev THEN 1 END) * 100.0 / COUNT(*), 2) as win_rate_pct,
-                    ROUND(COUNT(CASE WHEN (curr.price_curr - prev.price_prev) / prev.price_prev * 100 > $3 THEN 1 END) * 100.0 / COUNT(*), 2) as active_win_rate_pct
-                FROM prev
-                JOIN curr ON prev.symbol = curr.symbol
-                WHERE prev.price_prev > 0
-                GROUP BY GROUPING SETS ((prev.smart_rating), (prev.grade))
-            `, [currDate, nextDate, taiexReturn]);
+                    ROUND(AVG((cp.close_price - pp.close_price) / pp.close_price * 100), 2) as avg_return_pct,
+                    ROUND(COUNT(CASE WHEN cp.close_price > pp.close_price THEN 1 END) * 100.0 / COUNT(*), 2) as win_rate_pct,
+                    ROUND(COUNT(CASE WHEN (cp.close_price - pp.close_price) / pp.close_price * 100 > $4 THEN 1 END) * 100.0 / COUNT(*), 2) as active_win_rate_pct
+                FROM prev_scores ps
+                JOIN prev_prices pp ON ps.symbol = pp.symbol
+                JOIN curr_prices cp ON ps.symbol = cp.symbol
+                WHERE pp.close_price > 0
+                GROUP BY GROUPING SETS ((ps.smart_rating), (ps.grade))
+            `, [currDate, prevTradeDate, currTradeDate, taiexReturn]);
 
             if (perfRes.rows.length > 5) {
                 stats.push({

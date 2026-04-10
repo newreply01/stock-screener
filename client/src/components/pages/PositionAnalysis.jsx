@@ -5,7 +5,7 @@ import { analyzePositionAPI, analyzeBatchPositions, getAnalysisSettings, updateA
 import StockSearchAutocomplete from '../forms/StockSearchAutocomplete';
 
 const SIGNAL_CONFIG = {
-    STRONG_BUY:  { label: '強力買進', color: '#16a34a', bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', icon: TrendingUp },
+    STRONG_BUY:  { label: '強力推薦', color: '#16a34a', bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', icon: TrendingUp },
     BUY:         { label: '買進/加碼', color: '#22c55e', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', icon: TrendingUp },
     HOLD:        { label: '持有/觀望', color: '#eab308', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', icon: Minus },
     SELL:        { label: '減碼/注意', color: '#f97316', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', icon: TrendingDown },

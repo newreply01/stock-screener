@@ -4,6 +4,7 @@ import {
     Zap, Activity, Info, AlertCircle, ChevronRight, Layout
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import StructuredReportView from '../shared/StructuredReportView';
 
 const API_BASE = '/api';
 
@@ -247,9 +248,9 @@ export default function DiagnosisModal({ isOpen, onClose, stock }) {
                          </div>
                     </div>
 
-                    {/* Real AI Report Text Area */}
-                    <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 relative overflow-hidden group shadow-sm">
-                        <div className="flex items-center gap-3 mb-6 text-indigo-600">
+                    {/* Real AI Report */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3 text-indigo-600">
                             <div className="p-2 bg-indigo-50 rounded-xl">
                                 <Brain className="w-5 h-5" />
                             </div>
@@ -262,11 +263,7 @@ export default function DiagnosisModal({ isOpen, onClose, stock }) {
                                 <span className="text-xs font-black text-slate-400 uppercase tracking-widest">正在解析報告...</span>
                             </div>
                         ) : (
-                            <div className="relative z-10 prose prose-slate max-w-none">
-                                <div className="text-sm font-bold text-slate-600 leading-[2] whitespace-pre-wrap bg-slate-50/50 p-6 rounded-2xl border border-slate-100 italic">
-                                    {reportContent}
-                                </div>
-                            </div>
+                            <StructuredReportView reportText={reportContent} compact />
                         )}
                     </div>
 

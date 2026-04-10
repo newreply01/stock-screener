@@ -418,7 +418,12 @@ router.get('/report-detail', async (req, res) => {
             return res.json({ success: true, data: null, message: '該日期尚無分析報告' });
         }
 
-        res.json({ success: true, data: result.rows[0] });
+        const data = result.rows[0];
+        if (data.sentiment_score > 1) {
+            data.sentiment_score = data.sentiment_score / 100;
+        }
+
+        res.json({ success: true, data });
     } catch (err) {
         console.error('Failed to fetch report detail:', err);
         res.status(500).json({ success: false, error: 'Failed to retrieve report content' });

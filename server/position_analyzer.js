@@ -408,7 +408,7 @@ async function analyzePosition(symbol, customWeights = null) {
 
     // Generate recommendation
     let recommendation, signal;
-    if (composite >= 75) { recommendation = '強力買進'; signal = 'STRONG_BUY'; }
+    if (composite >= 75) { recommendation = '強力推薦'; signal = 'STRONG_BUY'; }
     else if (composite >= 60) { recommendation = '買進/加碼'; signal = 'BUY'; }
     else if (composite >= 45) { recommendation = '持有/觀望'; signal = 'HOLD'; }
     else if (composite >= 30) { recommendation = '減碼/注意'; signal = 'SELL'; }

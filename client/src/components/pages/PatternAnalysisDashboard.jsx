@@ -3,7 +3,7 @@ import StockChart from '../charts/StockChart';
 import ChipAnalysisChart from '../charts/ChipAnalysisChart';
 import AIAnalysisReport from '../modals/AIAnalysisReport';
 import StockSearchAutocomplete from '../forms/StockSearchAutocomplete';
-import { getInstitutionalData, getAIReport } from '../../utils/api';
+import { getInstitutionalData, getAIReport, generateAIReport } from '../../utils/api';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import html2canvas from 'html2canvas';
@@ -66,12 +66,21 @@ export default function PatternAnalysisDashboard({
     }, [selectedStock, activeCategory]);
 
 
-    const handleGenerateAI = () => {
+    const handleGenerateAI = (isRegenerate = false) => {
         if (!selectedStock?.symbol) return;
         setLoadingAI(true);
-        getAIReport(selectedStock.symbol)
-            .then(setAiReport)
-            .catch(err => console.error('AI fetch failed:', err))
+        
+        const apiCall = isRegenerate ? generateAIReport(selectedStock.symbol) : getAIReport(selectedStock.symbol);
+        
+        apiCall
+            .then(res => {
+                // 回傳格式可能包含在 res.data 中
+                setAiReport(res.data || res);
+            })
+            .catch(err => {
+                console.error('AI fetch failed:', err);
+                alert(`發生錯誤：${err.message || '連線至 AI 伺服器失敗'}`);
+            })
             .finally(() => setLoadingAI(false));
     };
 
@@ -233,7 +242,7 @@ export default function PatternAnalysisDashboard({
                     <div className="h-[600px] flex flex-col gap-4">
                         <div className="flex justify-end">
                             <button
-                                onClick={handleGenerateAI}
+                                onClick={() => handleGenerateAI(true)}
                                 disabled={loadingAI}
                                 className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-black hover:bg-slate-800 transition-all disabled:opacity-50 shadow-lg shadow-slate-200"
                             >

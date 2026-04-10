@@ -187,7 +187,7 @@ export default function StockCompareView({ initialSymbols = [] }) {
                 <>
                     {/* Radar Overlap Chart */}
                     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <h3 className="text-slate-800 font-bold mb-4 text-sm">六維雷達重疊比較</h3>
+                        <h3 className="text-slate-800 font-bold mb-4 text-sm">雷達重疊比較</h3>
                         <div className="h-[350px]">
                             <ResponsiveContainer width="100%" height="100%">
                                 <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">

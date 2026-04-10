@@ -40,7 +40,7 @@ async function processNextTask(batchSize = 1) {
     }
 }
 
-async function markTaskResult(symbol, reportDate, status, content = null, sentimentScore = 50, errMsg = null, mode = 'ollama', modelName = 'gpt-oss:20b') {
+async function markTaskResult(symbol, reportDate, status, content = null, sentimentScore = 50, errMsg = null, mode = 'ollama', modelName = 'gemma-4-31b-it') {
     try {
         // 1. 儲存 AI 報告 (堆疊化: 以 symbol + report_date 為唯一標識)
         if (status === 'completed' && content) {
@@ -95,12 +95,12 @@ async function processOneTask(task) {
 
         if (result.success) {
             const elapsed = ((Date.now() - start)/1000).toFixed(1);
-            console.log(`  ✅ ${symbol} 成功 (${elapsed}s, 核心: ${modelName})`);
-            await markTaskResult(symbol, reportDate, 'completed', result.content, result.sentimentScore, null, 'ollama', modelName);
+            console.log(`  ✅ ${symbol} 成功 (${elapsed}s, 核心: ${result.modelName})`);
+            await markTaskResult(symbol, reportDate, 'completed', result.content, result.sentimentScore, null, result.generationMode, result.modelName);
             return true;
         } else {
             console.error(`  ❌ ${symbol} 失敗: ${result.error}`);
-            await markTaskResult(symbol, reportDate, 'failed', null, 50, result.error, 'none', modelName);
+            await markTaskResult(symbol, reportDate, 'failed', null, 50, result.error, result.generationMode || 'none', result.modelName || modelName);
             return false;
         }
     } catch (err) {

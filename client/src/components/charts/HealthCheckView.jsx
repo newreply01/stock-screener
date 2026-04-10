@@ -4,16 +4,17 @@ import {
     ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell,
     AreaChart, Area
 } from 'recharts';
-import { Shield, TrendingUp, TrendingDown, Heart, Target, Coins, Users, Award, AlertTriangle, Activity, CheckCircle2, Circle } from 'lucide-react';
+import { Shield, TrendingUp, TrendingDown, Heart, Target, Coins, Users, Award, AlertTriangle, Activity, CheckCircle2, Circle, Newspaper } from 'lucide-react';
 import { API_BASE, getHealthHistory } from '../../utils/api';
 
 const DIMENSION_ICONS = {
-    '獲利能力': TrendingUp,
-    '成長能力': Target,
-    '安全性': Shield,
-    '價值衡量': Award,
-    '配息能力': Coins,
-    '籌碼面': Users
+    '獲利能力 (20%)': TrendingUp,
+    '成長能力 (15%)': Target,
+    '安全性 (7%)': Shield,
+    '價值衡量 (15%)': Award,
+    '配息能力 (10%)': Coins,
+    '籌碼面 (13%)': Users,
+    '消息面 (20%)': Newspaper
 };
 
 const GRADE_STYLES = {
@@ -93,14 +94,29 @@ export default function HealthCheckView({ symbol }) {
     const { overall, grade, gradeColor, dimensions, metrics } = data;
     const style = GRADE_STYLES[gradeColor] || GRADE_STYLES.neutral;
 
+    // 標註權重
     const radarData = dimensions.map(d => ({
-        dimension: d.name,
+        dimension: d.name.includes('%') ? d.name :
+            d.name === '獲利能力' ? '獲利能力 (20%)' :
+            d.name === '成長能力' ? '成長能力 (15%)' :
+            d.name === '價值衡量' ? '價值衡量 (15%)' :
+            d.name === '籌碼面' ? '籌碼面 (13%)' :
+            d.name === '安全性' ? '安全性 (7%)' :
+            d.name === '配息能力' ? '配息能力 (10%)' :
+            d.name === '消息面' ? '消息面 (20%)' : d.name,
         score: d.score,
         fullMark: 100
     }));
 
     const barData = dimensions.map(d => ({
-        name: d.name,
+        name: d.name.includes('%') ? d.name :
+            d.name === '獲利能力' ? '獲利能力 (20%)' :
+            d.name === '成長能力' ? '成長能力 (15%)' :
+            d.name === '價值衡量' ? '價值衡量 (15%)' :
+            d.name === '籌碼面' ? '籌碼面 (13%)' :
+            d.name === '安全性' ? '安全性 (7%)' :
+            d.name === '配息能力' ? '配息能力 (10%)' :
+            d.name === '消息面' ? '消息面 (20%)' : d.name,
         score: d.score,
         fill: getScoreColor(d.score)
     }));
@@ -178,7 +194,7 @@ export default function HealthCheckView({ symbol }) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                     <h3 className="text-slate-800 font-bold mb-4 flex items-center gap-2 text-sm">
-                        <Shield className="w-4 h-4 text-teal-600" /> 六維雷達圖
+                        <Shield className="w-4 h-4 text-teal-600" /> 七維雷達圖
                     </h3>
                     <div className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">

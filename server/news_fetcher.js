@@ -58,8 +58,11 @@ async function saveNews(newsItems, categoryId) {
 
             if (res.rowCount > 0) {
                 newCount++;
-                // 存入後自動執行情緒解析與個股關聯
-                await NewsSentiment.processNews(newsId);
+                // 台股新聞類別且標題含股票代號 → 使用 AI 情緒分析（更精確）
+                // 其他類別 → 使用規則引擎（更快速）
+                const hasSymbolInTitle = /[\(\[（【]\d{4,6}[\)\]）】]/.test(title);
+                const useAI = (categoryId === 'tw_stock' && hasSymbolInTitle && process.env.OLLAMA_URL);
+                await NewsSentiment.processNews(newsId, !!useAI);
             }
         }
         return newCount;

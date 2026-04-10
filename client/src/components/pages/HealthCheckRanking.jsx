@@ -40,12 +40,13 @@ function getScoreColor(score) {
 
 const SORT_OPTIONS = [
     { value: 'overall_score', label: '綜合分數' },
-    { value: 'profit_score', label: '獲利能力' },
-    { value: 'growth_score', label: '成長能力' },
-    { value: 'safety_score', label: '安全性' },
-    { value: 'value_score', label: '價值衡量' },
-    { value: 'dividend_score', label: '配息能力' },
-    { value: 'chip_score', label: '籌碼面' },
+    { value: 'profit_score', label: '獲利能力 (20%)' },
+    { value: 'growth_score', label: '成長能力 (15%)' },
+    { value: 'safety_score', label: '安全性 (7%)' },
+    { value: 'value_score', label: '價值衡量 (15%)' },
+    { value: 'dividend_score', label: '配息能力 (10%)' },
+    { value: 'chip_score', label: '籌碼面 (13%)' },
+    { value: 'news_score', label: '消息面 (20%)' },
     { value: 'pe', label: '本益比' },
     { value: 'dividend_yield', label: '殖利率' },
     { value: 'revenue_growth', label: '營收年增率' }
@@ -61,19 +62,23 @@ const GRADE_OPTIONS = [
 
 const SMART_RATING_OPTIONS = [
     { value: '', label: '全部建議' },
-    { value: '強力買進', label: '💎 強力買進' },
-    { value: '買進', label: '🚀 買進' },
-    { value: '觀望', label: '⚖️ 觀望' },
-    { value: '賣出', label: '📉 賣出' },
-    { value: '強力賣出', label: '🛑 強力賣出' }
+    { value: '強力推薦', label: '💎 強力推薦' },
+    { value: '推薦', label: '🚀 推薦' },
+    { value: '偏多操作', label: '📈 偏多操作' },
+    { value: '中立', label: '⚖️ 中立' },
+    { value: '偏空觀察', label: '🔍 偏空觀察' },
+    { value: '減碼', label: '📉 減碼' },
+    { value: '大幅減碼', label: '🛑 大幅減碼' }
 ];
 
 const SMART_RATING_STYLES = {
-    "強力買進": "bg-emerald-500",
-    "買進": "bg-green-500",
-    "觀望": "bg-slate-500",
-    "賣出": "bg-orange-500",
-    "強力賣出": "bg-red-500"
+    "強力推薦": "bg-emerald-600",
+    "推薦": "bg-green-500",
+    "偏多操作": "bg-teal-400",
+    "中立": "bg-slate-400",
+    "偏空觀察": "bg-amber-400",
+    "減碼": "bg-orange-500",
+    "大幅減碼": "bg-red-500"
 };
 
 export default function HealthCheckRanking({ onSelectStock }) {
@@ -81,7 +86,7 @@ export default function HealthCheckRanking({ onSelectStock }) {
     const [loading, setLoading] = useState(true);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
-    const [limit] = useState(50);
+    const [limit, setLimit] = useState(50);
     const [sort, setSort] = useState('overall_score');
     const [order, setOrder] = useState('DESC');
     const [search, setSearch] = useState('');
@@ -224,14 +229,39 @@ export default function HealthCheckRanking({ onSelectStock }) {
                     </div>
                 </div>
 
-                {/* Grade Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {/* Filter Section */}
+                <div className="space-y-1">
+                    {/* Total Count Badge */}
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="flex items-center gap-2 bg-violet-50 border border-violet-200 px-4 py-2 rounded-xl">
+                            <Filter className="w-4 h-4 text-violet-600" />
+                            <span className="text-xs font-bold text-violet-500 uppercase tracking-wider">篩選結果</span>
+                            <span className="text-lg font-black text-violet-600 tabular-nums ml-1">{total}</span>
+                            <span className="text-xs font-bold text-violet-400">檔</span>
+                        </div>
+                        {(grade || smartRating) && (
+                            <button 
+                                onClick={() => { setGrade(''); setSmartRating(''); setPage(1); }}
+                                className="text-[10px] font-bold text-slate-400 hover:text-rose-500 transition-colors underline underline-offset-2"
+                            >
+                                清除篩選
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Grade Filter Group */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                        <div className="flex items-center gap-2 mb-3">
+                            <Award className="w-4 h-4 text-slate-500" />
+                            <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">等級表現 Overall Grade</h3>
+                            <span className="text-[10px] text-slate-400 font-medium ml-1">— 基本面七維度綜合評分</span>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {[
-                        { label: '目前篩選', value: `${total} 檔`, icon: Filter, color: 'text-violet-600', bg: 'bg-violet-50', active: false, logic: '當前所有過濾條件下的個股總數' },
-                        { label: '優秀', value: gradeCounts['優秀'] || 0, icon: Award, color: 'text-emerald-600', bg: 'bg-emerald-50', active: grade === '優秀', logic: '綜合分數 ≥ 75 分', onClick: () => { setGrade(grade === '優秀' ? '' : '優秀'); setPage(1); } },
-                        { label: '良好', value: gradeCounts['良好'] || 0, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50', active: grade === '良好', logic: '綜合分數介於 60 ~ 74 分', onClick: () => { setGrade(grade === '良好' ? '' : '良好'); setPage(1); } },
-                        { label: '普通', value: gradeCounts['普通'] || 0, icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50', active: grade === '普通', logic: '綜合分數介於 45 ~ 59 分', onClick: () => { setGrade(grade === '普通' ? '' : '普通'); setPage(1); } },
-                        { label: '待改善', value: gradeCounts['待改善'] || 0, icon: AlertCircle, color: 'text-rose-600', bg: 'bg-rose-50', active: grade === '待改善', logic: '綜合分數低於 45 分', onClick: () => { setGrade(grade === '待改善' ? '' : '待改善'); setPage(1); } }
+                        { label: '優秀', value: gradeCounts['優秀'] || 0, icon: Award, color: 'text-emerald-600', bg: 'bg-emerald-50', active: grade === '優秀', logic: '綜合分數 ≥ 65 分（前 ~10%）', onClick: () => { setGrade(grade === '優秀' ? '' : '優秀'); setPage(1); } },
+                        { label: '良好', value: gradeCounts['良好'] || 0, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50', active: grade === '良好', logic: '綜合分數 50 ~ 64 分', onClick: () => { setGrade(grade === '良好' ? '' : '良好'); setPage(1); } },
+                        { label: '普通', value: gradeCounts['普通'] || 0, icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50', active: grade === '普通', logic: '綜合分數 35 ~ 49 分', onClick: () => { setGrade(grade === '普通' ? '' : '普通'); setPage(1); } },
+                        { label: '待改善', value: gradeCounts['待改善'] || 0, icon: AlertCircle, color: 'text-rose-600', bg: 'bg-rose-50', active: grade === '待改善', logic: '綜合分數低於 35 分（後 ~6%）', onClick: () => { setGrade(grade === '待改善' ? '' : '待改善'); setPage(1); } }
                     ].map((stat, i) => (
                         <div 
                             key={i} 
@@ -256,15 +286,24 @@ export default function HealthCheckRanking({ onSelectStock }) {
                         </div>
                     ))}
                 </div>
+                    </div>
 
-                {/* Smart Rating Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {/* Smart Rating Filter Group */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                        <div className="flex items-center gap-2 mb-3">
+                            <Zap className="w-4 h-4 text-slate-500" />
+                            <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">智慧評級 Smart Rating</h3>
+                            <span className="text-[10px] text-slate-400 font-medium ml-1">— 技術面 + 價格位階 + 市場情緒</span>
+                        </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
                     {[
-                        { label: '強力買進', value: smartRatingCounts['強力買進'] || 0, icon: Zap, color: 'text-rose-600', bg: 'bg-rose-50', active: smartRating === '強力買進', logic: '智慧評分 > 0.45。代表技術面、位置、情緒三者均處於極佳狀態。', onClick: () => { setSmartRating(smartRating === '強力買進' ? '' : '強力買進'); setPage(1); } },
-                        { label: '買進', value: smartRatingCounts['買進'] || 0, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', active: smartRating === '買進', logic: '智慧評分介於 0.15 ~ 0.45。整體面向上看好。', onClick: () => { setSmartRating(smartRating === '買進' ? '' : '買進'); setPage(1); } },
-                        { label: '觀望', value: smartRatingCounts['觀望'] || 0, icon: Activity, color: 'text-blue-600', bg: 'bg-blue-50', active: smartRating === '觀望', logic: '智慧評分介於 -0.15 ~ 0.15。市場方向不明朗或指標互相抵消。', onClick: () => { setSmartRating(smartRating === '觀望' ? '' : '觀望'); setPage(1); } },
-                        { label: '賣出', value: smartRatingCounts['賣出'] || 0, icon: TrendingDown, color: 'text-orange-600', bg: 'bg-orange-50', active: smartRating === '賣出', logic: '智慧評分介於 -0.45 ~ -0.15。整體面向趨於保守或看空。', onClick: () => { setSmartRating(smartRating === '賣出' ? '' : '賣出'); setPage(1); } },
-                        { label: '強力賣出', value: smartRatingCounts['強力賣出'] || 0, icon: AlertCircle, color: 'text-slate-600', bg: 'bg-slate-50', active: smartRating === '強力賣出', logic: '智慧評分 < -0.45。代表技術面過熱、位置偏高且情緒不佳。', onClick: () => { setSmartRating(smartRating === '強力賣出' ? '' : '強力賣出'); setPage(1); } }
+                        { label: '強力推薦', value: smartRatingCounts['強力推薦'] || 0, icon: Zap, color: 'text-emerald-700', bg: 'bg-emerald-50', active: smartRating === '強力推薦', logic: '7 項訊號中淨多頭 ≥ 5，技術面與基本面全面看好，強烈建議布局。', onClick: () => { setSmartRating(smartRating === '強力推薦' ? '' : '強力推薦'); setPage(1); } },
+                        { label: '推薦', value: smartRatingCounts['推薦'] || 0, icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50', active: smartRating === '推薦', logic: '7 項訊號中淨多頭 3～4，多面向均偏多，整體面向上看好。', onClick: () => { setSmartRating(smartRating === '推薦' ? '' : '推薦'); setPage(1); } },
+                        { label: '偏多操作', value: smartRatingCounts['偏多操作'] || 0, icon: BarChart3, color: 'text-teal-600', bg: 'bg-teal-50', active: smartRating === '偏多操作', logic: '7 項訊號中淨多頭 1～2，方向偏多但力道不足，可輕倉布局。', onClick: () => { setSmartRating(smartRating === '偏多操作' ? '' : '偏多操作'); setPage(1); } },
+                        { label: '中立', value: smartRatingCounts['中立'] || 0, icon: Activity, color: 'text-slate-600', bg: 'bg-slate-50', active: smartRating === '中立', logic: '7 項訊號多空平衡（淨訊號 = 0），方向不明朗，建議觀望。', onClick: () => { setSmartRating(smartRating === '中立' ? '' : '中立'); setPage(1); } },
+                        { label: '偏空觀察', value: smartRatingCounts['偏空觀察'] || 0, icon: Search, color: 'text-amber-600', bg: 'bg-amber-50', active: smartRating === '偏空觀察', logic: '7 項訊號中淨空頭 1～2，方向偏弱，建議縮減風險敞口。', onClick: () => { setSmartRating(smartRating === '偏空觀察' ? '' : '偏空觀察'); setPage(1); } },
+                        { label: '減碼', value: smartRatingCounts['減碼'] || 0, icon: TrendingDown, color: 'text-orange-600', bg: 'bg-orange-50', active: smartRating === '減碼', logic: '7 項訊號中淨空頭 3～4，整體面偏弱，建議減少持倉以控制風險。', onClick: () => { setSmartRating(smartRating === '減碼' ? '' : '減碼'); setPage(1); } },
+                        { label: '大幅減碼', value: smartRatingCounts['大幅減碼'] || 0, icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', active: smartRating === '大幅減碼', logic: '7 項訊號中淨空頭 ≥ 5，技術面與基本面全面偏弱，建議出場觀察。', onClick: () => { setSmartRating(smartRating === '大幅減碼' ? '' : '大幅減碼'); setPage(1); } }
                     ].map((stat, i) => (
                         <div 
                             key={i} 
@@ -279,18 +318,83 @@ export default function HealthCheckRanking({ onSelectStock }) {
                                 </div>
                                 <div className="relative group/info">
                                     <Info className="w-3.5 h-3.5 text-slate-300 hover:text-slate-500 transition-colors" />
-                                    <div className="absolute bottom-full right-0 mb-2 w-56 p-2 bg-slate-800 text-white text-[10px] rounded-lg opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible lg:group-hover:opacity-100 lg:group-hover:visible transition-all z-50 shadow-xl pointer-events-none">
+                                    <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded-lg opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible lg:group-hover:opacity-100 lg:group-hover:visible transition-all z-50 shadow-xl pointer-events-none">
                                         <div className="font-bold mb-1 border-b border-white/20 pb-1">{stat.label} 條件說明</div>
-                                        <div className="space-y-1">
-                                            <p>{stat.logic}</p>
-                                            <p className="border-t border-white/10 pt-1 text-slate-400 italic">智慧評分 = 技術指標(40%) + 價格位階(30%) + 市場情緒(30%)</p>
-                                        </div>
+                                        <p>{stat.logic}</p>
                                     </div>
                                 </div>
                             </div>
                             <div className={`text-2xl font-black ${stat.color} tabular-nums`}>{stat.value}</div>
                         </div>
                     ))}
+                </div>
+                    </div>
+                </div>
+
+                {/* Search + Sort + Industry Bar */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-wrap items-center gap-3">
+                    {/* Search */}
+                    <form onSubmit={handleSearch} className="flex items-center gap-2 flex-1 min-w-[200px]">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input
+                                type="text"
+                                value={searchInput}
+                                onChange={(e) => setSearchInput(e.target.value)}
+                                placeholder="搜尋股票代號或名稱..."
+                                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 focus:border-teal-400"
+                            />
+                        </div>
+                        <button type="submit" className="px-4 py-2 bg-teal-500 text-white text-sm font-bold rounded-xl hover:bg-teal-600 transition-colors">搜尋</button>
+                        {search && (
+                            <button type="button" onClick={() => { setSearchInput(''); setSearch(''); setPage(1); }} className="text-xs text-slate-400 hover:text-rose-500 underline">清除</button>
+                        )}
+                    </form>
+
+                    {/* Sort Dropdown */}
+                    <div className="flex items-center gap-2">
+                        <ArrowUpDown className="w-4 h-4 text-slate-400" />
+                        <select
+                            value={sort}
+                            onChange={(e) => { setSort(e.target.value); setPage(1); }}
+                            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-300"
+                        >
+                            {SORT_OPTIONS.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </select>
+                        <button
+                            onClick={() => setOrder(o => o === 'DESC' ? 'ASC' : 'DESC')}
+                            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-100 transition-colors"
+                        >
+                            {order === 'DESC' ? '↓ 高→低' : '↑ 低→高'}
+                        </button>
+                    </div>
+
+                    {/* Industry Filter */}
+                    {industries.length > 0 && (
+                        <select
+                            value={globalIndustry || 'all'}
+                            onChange={(e) => { setGlobalIndustry(e.target.value === 'all' ? '' : e.target.value); setPage(1); }}
+                            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-300 max-w-[180px]"
+                        >
+                            <option value="all">全部產業</option>
+                            {industries.map(ind => (
+                                <option key={ind} value={ind}>{ind}</option>
+                            ))}
+                        </select>
+                    )}
+
+                    {/* Limit selector */}
+                    <select
+                        value={limit}
+                        onChange={(e) => { setLimit(parseInt(e.target.value)); setPage(1); }}
+                        className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-300"
+                    >
+                        <option value={50}>50 筆</option>
+                        <option value={100}>100 筆</option>
+                        <option value={200}>200 筆</option>
+                    </select>
                 </div>
 
                 {/* Table */}
@@ -301,17 +405,40 @@ export default function HealthCheckRanking({ onSelectStock }) {
                                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold text-xs uppercase">
                                     <th className="px-4 py-3 text-left w-12 sticky left-0 bg-slate-50 z-10">#</th>
                                     <th className="px-4 py-3 text-left sticky left-12 bg-slate-50 z-10">股票</th>
-                                    <th className="px-3 py-3 text-center cursor-pointer" onClick={() => toggleSort('overall_score')}>綜合</th>
-                                    <th className="px-2 py-3 text-center">操作建議</th>
+                                    <th className="px-3 py-3 text-center cursor-pointer hover:text-teal-600 transition-colors" onClick={() => toggleSort('overall_score')}>
+                                        綜合{sort === 'overall_score' && <span className="ml-0.5">{order === 'DESC' ? '↓' : '↑'}</span>}
+                                    </th>
+                                    <th className="px-2 py-3 text-center cursor-pointer hover:text-teal-600 transition-colors" onClick={() => toggleSort('smart_score')}>
+                                        操作建議{sort === 'smart_score' && <span className="ml-0.5">{order === 'DESC' ? '↓' : '↑'}</span>}
+                                    </th>
                                     <th className="px-2 py-3 text-center">等級</th>
-                                    <th className="px-2 py-3 text-center">獲利</th>
-                                    <th className="px-2 py-3 text-center">成長</th>
-                                    <th className="px-2 py-3 text-center">安全</th>
-                                    <th className="px-2 py-3 text-center">價值</th>
-                                    <th className="px-2 py-3 text-center">配息</th>
-                                    <th className="px-2 py-3 text-center">籌碼</th>
-                                    <th className="px-3 py-3 text-right">股價</th>
-                                    <th className="px-3 py-3 text-right">漲跌%</th>
+                                    <th className="px-2 py-3 text-center cursor-pointer hover:text-teal-600 transition-colors" onClick={() => toggleSort('profit_score')}>
+                                        獲利{sort === 'profit_score' && <span className="ml-0.5">{order === 'DESC' ? '↓' : '↑'}</span>}
+                                    </th>
+                                    <th className="px-2 py-3 text-center cursor-pointer hover:text-teal-600 transition-colors" onClick={() => toggleSort('growth_score')}>
+                                        成長{sort === 'growth_score' && <span className="ml-0.5">{order === 'DESC' ? '↓' : '↑'}</span>}
+                                    </th>
+                                    <th className="px-2 py-3 text-center cursor-pointer hover:text-teal-600 transition-colors" onClick={() => toggleSort('safety_score')}>
+                                        安全{sort === 'safety_score' && <span className="ml-0.5">{order === 'DESC' ? '↓' : '↑'}</span>}
+                                    </th>
+                                    <th className="px-2 py-3 text-center cursor-pointer hover:text-teal-600 transition-colors" onClick={() => toggleSort('value_score')}>
+                                        價值{sort === 'value_score' && <span className="ml-0.5">{order === 'DESC' ? '↓' : '↑'}</span>}
+                                    </th>
+                                    <th className="px-2 py-3 text-center cursor-pointer hover:text-teal-600 transition-colors" onClick={() => toggleSort('dividend_score')}>
+                                        配息{sort === 'dividend_score' && <span className="ml-0.5">{order === 'DESC' ? '↓' : '↑'}</span>}
+                                    </th>
+                                    <th className="px-2 py-3 text-center cursor-pointer hover:text-teal-600 transition-colors" onClick={() => toggleSort('chip_score')}>
+                                        籌碼{sort === 'chip_score' && <span className="ml-0.5">{order === 'DESC' ? '↓' : '↑'}</span>}
+                                    </th>
+                                    <th className="px-2 py-3 text-center cursor-pointer hover:text-teal-600 transition-colors" onClick={() => toggleSort('news_score')}>
+                                        消息{sort === 'news_score' && <span className="ml-0.5">{order === 'DESC' ? '↓' : '↑'}</span>}
+                                    </th>
+                                    <th className="px-3 py-3 text-right cursor-pointer hover:text-teal-600 transition-colors" onClick={() => toggleSort('close_price')}>
+                                        股價{sort === 'close_price' && <span className="ml-0.5">{order === 'DESC' ? '↓' : '↑'}</span>}
+                                    </th>
+                                    <th className="px-3 py-3 text-right cursor-pointer hover:text-teal-600 transition-colors" onClick={() => toggleSort('change_percent')}>
+                                        漲跌%{sort === 'change_percent' && <span className="ml-0.5">{order === 'DESC' ? '↓' : '↑'}</span>}
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -345,7 +472,7 @@ export default function HealthCheckRanking({ onSelectStock }) {
                                                     {stock.grade}
                                                 </span>
                                             </td>
-                                            {[stock.profit_score, stock.growth_score, stock.safety_score, stock.value_score, stock.dividend_score, stock.chip_score].map((s, i) => (
+                                            {[stock.profit_score, stock.growth_score, stock.safety_score, stock.value_score, stock.dividend_score, stock.chip_score, stock.news_score].map((s, i) => (
                                                 <td key={i} className="px-2 py-3 text-center font-bold" style={{ color: getScoreColor(s) }}>{s}</td>
                                             ))}
                                             <td className="px-3 py-3 text-right font-bold text-slate-700">{stock.close_price}</td>
@@ -359,6 +486,70 @@ export default function HealthCheckRanking({ onSelectStock }) {
                         </table>
                     </div>
                 </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-between bg-white border border-slate-200 rounded-2xl px-6 py-4 shadow-sm">
+                        <div className="text-sm text-slate-500 font-medium">
+                            顯示第 <span className="font-bold text-slate-700">{(page - 1) * limit + 1}</span> - <span className="font-bold text-slate-700">{Math.min(page * limit, total)}</span> 筆，共 <span className="font-bold text-slate-700">{total}</span> 筆
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setPage(1)}
+                                disabled={page <= 1}
+                                className="px-3 py-2 text-sm font-bold rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                                首頁
+                            </button>
+                            <button
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page <= 1}
+                                className="p-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            
+                            {/* Page numbers */}
+                            {(() => {
+                                const pages = [];
+                                let start = Math.max(1, page - 2);
+                                let end = Math.min(totalPages, page + 2);
+                                if (end - start < 4) {
+                                    if (start === 1) end = Math.min(totalPages, start + 4);
+                                    else start = Math.max(1, end - 4);
+                                }
+                                for (let i = start; i <= end; i++) pages.push(i);
+                                return pages.map(p => (
+                                    <button
+                                        key={p}
+                                        onClick={() => setPage(p)}
+                                        className={`w-10 h-10 text-sm font-bold rounded-xl transition-colors ${p === page
+                                            ? 'bg-teal-500 text-white shadow-lg shadow-teal-200/50'
+                                            : 'border border-slate-200 text-slate-500 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        {p}
+                                    </button>
+                                ));
+                            })()}
+
+                            <button
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                disabled={page >= totalPages}
+                                className="p-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={() => setPage(totalPages)}
+                                disabled={page >= totalPages}
+                                className="px-3 py-2 text-sm font-bold rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                                末頁
+                            </button>
+                        </div>
+                    </div>
+                )}
                     </>
                 ) : (
                     <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden min-h-[700px]">

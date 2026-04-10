@@ -61,6 +61,18 @@ async function ensureStock(symbol, name = symbol) {
     );
 }
 
+// 檢查是否為交易日 (由 FinMind 同步的 trading_dates 表)
+async function isTradingDate(dateObj) {
+    const dateHyphen = toDateHyphen(dateObj);
+    try {
+        const res = await query('SELECT 1 FROM trading_dates WHERE date = $1', [dateHyphen]);
+        return res.rows.length > 0;
+    } catch (e) {
+        console.error(`[isTradingDate] 檢查失敗: ${e.message}`);
+        return true; // 發生錯誤時預設為 true，避免因為 DB 錯誤導致完全不抓
+    }
+}
+
 const fs = require('fs');
 const path = require('path');
 const { getTaiwanDate, formatTaiwanTime } = require('./utils/timeUtils');
@@ -740,6 +752,14 @@ async function fetchRange(startDate, endDate) {
     while (current <= end) {
         const dayOfWeek = current.getDay();
         if (dayOfWeek === 0 || dayOfWeek === 6) {
+            current.setDate(current.getDate() + 1);
+            continue;
+        }
+
+        // --- 新增：檢查國定假日 ---
+        const isTrading = await isTradingDate(current);
+        if (!isTrading) {
+            console.log(`📅 [Skip] ${toDateHyphen(current)} 是假日或非交易日，跳過。`);
             current.setDate(current.getDate() + 1);
             continue;
         }

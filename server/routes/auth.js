@@ -75,7 +75,7 @@ router.post('/login', async (req, res) => {
 
     try {
         const result = await query(
-            'SELECT id, uuid, email, name, nickname, avatar_url, password_hash, provider, role FROM users WHERE email = $1 AND provider = $2',
+            'SELECT id, uuid, email, name, nickname, avatar_url, password_hash, provider, role, is_verified FROM users WHERE email = $1 AND provider = $2',
             [email, 'local']
         );
 

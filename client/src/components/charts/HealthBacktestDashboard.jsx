@@ -4,11 +4,13 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { API_BASE } from '../../utils/api';
 
 const SMART_RATING_COLORS = {
-    "強力買進": "text-rose-600",
-    "買進": "text-emerald-600",
-    "觀望": "text-blue-600",
-    "賣出": "text-orange-600",
-    "強力賣出": "text-slate-600"
+    "強力推薦": "text-emerald-600",
+    "推薦": "text-green-600",
+    "偏多操作": "text-teal-600",
+    "中立": "text-blue-600",
+    "偏空觀察": "text-amber-600",
+    "減碼": "text-orange-600",
+    "大幅減碼": "text-red-600"
 };
 
 const GRADE_COLORS = {
@@ -22,7 +24,7 @@ export default function HealthBacktestDashboard() {
     const [stats, setStats] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedDateIdx, setSelectedDateIdx] = useState(0);
-    const [chartTarget, setChartTarget] = useState("強力買進"); // 強力買進, 優秀, 良好, 成長指標
+    const [chartTarget, setChartTarget] = useState("強力推薦"); // 強力推薦, 推薦, 優秀, 良好
     const [showStockList, setShowStockList] = useState(false);
     const [categoryStocks, setCategoryStocks] = useState([]);
     const [listLoading, setListLoading] = useState(false);
@@ -77,14 +79,14 @@ export default function HealthBacktestDashboard() {
         return [...stats].reverse().map(s => {
             const metrics = s?.metrics || [];
             let targetMetric;
-            if (chartTarget === "成長指標") {
-                targetMetric = metrics.find(m => m.dimension === 'growth_score');
+            if (chartTarget === "推薦") {
+                targetMetric = metrics.find(m => m.smart_rating === '推薦');
             } else if (chartTarget === "優秀") {
                 targetMetric = metrics.find(m => m.grade === '優秀');
             } else if (chartTarget === "良好") {
                 targetMetric = metrics.find(m => m.grade === '良好');
             } else {
-                targetMetric = metrics.find(m => m.smart_rating === "強力買進");
+                targetMetric = metrics.find(m => m.smart_rating === "強力推薦");
             }
 
             const targetRet = targetMetric ? (parseFloat(targetMetric.avg_return_pct) || 0) : 0;
@@ -141,7 +143,7 @@ export default function HealthBacktestDashboard() {
                     <div>
                         <h3 className="text-lg font-black text-slate-800">歷史累計報酬趨勢</h3>
                         <div className="flex gap-2 mt-2">
-                            {["強力買進", "優秀", "良好", "成長指標"].map(t => (
+                            {["強力推薦", "推薦", "優秀", "良好"].map(t => (
                                 <button
                                     key={t}
                                     onClick={() => setChartTarget(t)}
@@ -269,7 +271,7 @@ export default function HealthBacktestDashboard() {
                         <li><strong>擊敗大盤勝率</strong>：該等級中，漲幅優於當日大盤（TAIEX）漲跌幅的個股比例。</li>
                         <li><strong>超額收益</strong>：該等級的平均報酬率減去當日大盤漲跌幅。</li>
                         <li><strong>N 樣本數</strong>：代表當日被歸類為該等級的股票總數。N &lt; 5 時結果僅供參考。</li>
-                        <li><strong>累計報酬趨勢</strong>：假設每日均等權重持有「強力買進」標的之累計滾動收益。</li>
+                        <li><strong>累計報酬趨勢</strong>：假設每日均等權重持有「強力推薦」標的之累計滾動收益。</li>
                     </ul>
                 </div>
             </div>
@@ -332,11 +334,13 @@ export default function HealthBacktestDashboard() {
                                             };
 
                                             const SMART_RATING_BG = {
-                                                "強力買進": "bg-emerald-500",
-                                                "買進": "bg-green-500",
-                                                "觀望": "bg-slate-500",
-                                                "賣出": "bg-orange-500",
-                                                "強力賣出": "bg-red-500"
+                                                "強力推薦": "bg-emerald-600",
+                                                "推薦": "bg-green-500",
+                                                "偏多操作": "bg-teal-400",
+                                                "中立": "bg-slate-400",
+                                                "偏空觀察": "bg-amber-400",
+                                                "減碼": "bg-orange-500",
+                                                "大幅減碼": "bg-red-500"
                                             };
 
                                             const GRADE_BG = {

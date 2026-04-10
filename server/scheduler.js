@@ -209,6 +209,23 @@ function startScheduler() {
     });
     initTaskTracking('tick_archiving', tickArchiveTask);
 
+    // 每交易日 07:50 盤前新聞掃描 + 重大新聞觸發 AI 報告更新
+    const preMarketNewsTask = cron.schedule('50 7 * * 1-5', async () => {
+        console.log('📰🔴 盤前新聞掃描 (07:50)：抓取最新新聞並檢查重大變動...');
+        await runTaskSafely('pre_market_news_scan', async () => {
+            // 1. 先抓取最新新聞
+            await syncAllNews();
+            
+            // 2. 找出近 12 小時新聞情緒劇烈變化的個股，觸發報告重新生成
+            const { refreshReportsForHighImpactNews } = require('./scripts/pre_market_refresh');
+            await refreshReportsForHighImpactNews();
+        }, '盤前新聞掃描與報告更新');
+    }, {
+        scheduled: true,
+        timezone: 'Asia/Taipei'
+    });
+    initTaskTracking('pre_market_news_scan', preMarketNewsTask);
+
     // 執行 Supabase 即時同步 (每 10 分鐘)
     cron.schedule('*/10 * * * *', async () => {
         try {

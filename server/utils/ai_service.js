@@ -5,17 +5,87 @@ const SentimentAggregator = require('./sentiment_aggregator');
 const query = (text, params) => pool.query(text, params);
 require("dotenv").config();
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "no_key");
+// --- 多金鑰輪詢管理 ---
+const apiKeys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || "")
+    .split(",")
+    .map(k => k.trim())
+    .filter(k => k.length > 20 && k !== 'your_api_key_here');
+
+const genAIPool = apiKeys.map(key => new GoogleGenerativeAI(key));
+let currentKeyIndex = 0;
+
+function getGenAIInstance() {
+    if (genAIPool.length === 0) return null;
+    const instance = genAIPool[currentKeyIndex];
+    const keyHint = apiKeys[currentKeyIndex].substring(0, 8) + '...';
+    currentKeyIndex = (currentKeyIndex + 1) % genAIPool.length;
+    return { instance, keyHint };
+}
+
+const hasGeminiKey = apiKeys.length > 0;
+// ----------------------
+
+
+/**
+ * Format news items grouped by recency for LLM prompt
+ */
+function formatNewsWithRecency(news, now) {
+    if (!news || news.length === 0) return '近期新聞: 無相關新聞';
+
+    const h24 = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const h72 = new Date(now.getTime() - 72 * 60 * 60 * 1000);
+
+    const recent24h = news.filter(n => new Date(n.publish_at) >= h24);
+    const recent72h = news.filter(n => { const d = new Date(n.publish_at); return d < h24 && d >= h72; });
+    const older = news.filter(n => new Date(n.publish_at) < h72);
+
+    let output = '';
+    if (recent24h.length > 0) {
+        output += `🔴 最近24小時重要新聞 (對明日開盤影響最大):\n`;
+        output += recent24h.slice(0, 5).map(n => `- [${new Date(n.publish_at).toLocaleString('zh-TW')}] ${n.title}`).join('\n');
+        output += '\n\n';
+    }
+    if (recent72h.length > 0) {
+        output += `🟡 近1-3天新聞:\n`;
+        output += recent72h.slice(0, 3).map(n => `- [${new Date(n.publish_at).toLocaleString('zh-TW')}] ${n.title}`).join('\n');
+        output += '\n\n';
+    }
+    if (older.length > 0 && recent24h.length + recent72h.length < 3) {
+        output += `⚪ 較早期新聞 (參考用):\n`;
+        output += older.slice(0, 2).map(n => `- [${new Date(n.publish_at).toLocaleString('zh-TW')}] ${n.title}`).join('\n');
+        output += '\n';
+    }
+    return output || '近期新聞: 無相關新聞';
+}
 
 /**
  * Gather deep context for AI or Smart Engine
  */
+/**
+ * Safe value formatter - handles null/undefined/NaN gracefully
+ */
+function sv(val, suffix = '', fallback = '無資料') {
+    if (val === null || val === undefined || val === '' || (typeof val === 'number' && isNaN(val))) return fallback;
+    const str = typeof val === 'number' ? val.toFixed(2) : String(val);
+    return str + suffix;
+}
+
 async function gatherStockContext(symbol) {
     try {
-        const [stockRes, priceRes, fundamentalRes, instRes, marginRes, revenueRes, newsRes] = await Promise.all([
+        // Determine which institutional table to use based on current year
+        const currentYear = new Date().getFullYear();
+        const instTable = `institutional_${currentYear}`;
+
+        const [stockRes, priceRes, priceHistRes, fundamentalRes, instRes, instDailyRes, marginRes, revenueRes, newsRes, epsRes, finMetricsRes] = await Promise.all([
             query(`SELECT name, industry FROM stocks WHERE symbol = $1`, [symbol]),
+            // Latest price with ALL indicator fields
             query(
-                `SELECT p.*, i.rsi_14, i.macd_hist, i.ma_5, i.ma_10, i.ma_20, i.ma_60, i.patterns, i.upper_band, i.lower_band
+                `SELECT p.trade_date, p.open_price, p.high_price, p.low_price, p.close_price,
+                        p.change_amount, p.change_percent, p.volume, p.trade_value, p.transactions,
+                        i.rsi_14, i.macd_value, i.macd_signal, i.macd_hist, 
+                        i.ma_5, i.ma_10, i.ma_20, i.ma_60, 
+                        i.k_value, i.d_value, i.upper_band, i.lower_band,
+                        i.volume_ratio, i.ibs, i.patterns
                  FROM daily_prices p
                  LEFT JOIN indicators i ON p.symbol = i.symbol AND p.trade_date = i.trade_date
                  WHERE p.symbol = $1
@@ -23,16 +93,32 @@ async function gatherStockContext(symbol) {
                  LIMIT 1`,
                 [symbol]
             ),
+            // Historical price trend (last 10 trading days) for trend context
+            query(
+                `SELECT trade_date, close_price, volume, change_percent
+                 FROM daily_prices
+                 WHERE symbol = $1
+                 ORDER BY trade_date DESC
+                 LIMIT 10`,
+                [symbol]
+            ),
             query(
                 `SELECT * FROM fundamentals WHERE symbol = $1 ORDER BY trade_date DESC LIMIT 1`,
                 [symbol]
             ),
+            // 5-day institutional aggregate
             query(
                 `SELECT 
                     SUM(foreign_net) as foreign_sum, 
                     SUM(trust_net) as trust_sum, 
                     SUM(dealer_net) as dealer_sum 
-                 FROM (SELECT * FROM institutional_2025 WHERE symbol = $1 ORDER BY trade_date DESC LIMIT 5) t`,
+                 FROM (SELECT * FROM ${instTable} WHERE symbol = $1 ORDER BY trade_date DESC LIMIT 5) t`,
+                [symbol]
+            ),
+            // Daily institutional breakdown (last 5 days)
+            query(
+                `SELECT trade_date, foreign_net, trust_net, dealer_net
+                 FROM ${instTable} WHERE symbol = $1 ORDER BY trade_date DESC LIMIT 5`,
                 [symbol]
             ),
             query(
@@ -50,19 +136,39 @@ async function gatherStockContext(symbol) {
                 `SELECT title, summary, publish_at 
                  FROM news 
                  WHERE (title ILIKE $1 OR summary ILIKE $1)
+                   AND publish_at >= NOW() - INTERVAL '7 days'
                  ORDER BY publish_at DESC 
                  LIMIT 30`,
                 [`%${symbol}%`]
+            ),
+            // EPS trend (last 4 quarters)
+            query(
+                `SELECT date, value FROM financial_statements 
+                 WHERE symbol = $1 AND type = 'EPS' 
+                 ORDER BY date DESC LIMIT 4`,
+                [symbol]
+            ),
+            // Key financial metrics (latest quarter)
+            query(
+                `SELECT item, value FROM fm_financial_statements 
+                 WHERE stock_id = $1 AND item IN ('ROE','ROA','DebtRatio','GrossProfitMargin','NetIncomeMargin','基本每股盈餘（元）')
+                 AND date = (SELECT MAX(date) FROM fm_financial_statements WHERE stock_id = $1 AND item = 'ROE')`,
+                [symbol]
             ),
         ]);
 
         const stockInfo = stockRes.rows[0] || { name: '', industry: '' };
         const priceData = priceRes.rows[0] || {};
+        const priceHistory = priceHistRes.rows || [];
         const fundamentals = fundamentalRes.rows[0] || {};
         const institutional = instRes.rows[0] || { foreign_sum: 0, trust_sum: 0, dealer_sum: 0 };
+        const instDaily = instDailyRes.rows || [];
         const margin = marginRes.rows[0] || { margin_purchase_today_balance: 0, short_sale_today_balance: 0 };
         const revenue = revenueRes.rows[0] || {};
         const news = newsRes.rows;
+        const epsHistory = epsRes.rows || [];
+        const finMetrics = {};
+        (finMetricsRes.rows || []).forEach(r => { finMetrics[r.item] = parseFloat(r.value); });
 
         // 取得量化的新聞情緒匯總 (近 3 天)
         const newsSentiment = await SentimentAggregator.getAggregatedSentiment(symbol, 3);
@@ -72,18 +178,125 @@ async function gatherStockContext(symbol) {
             name: stockInfo.name,
             industry: stockInfo.industry,
             priceData,
+            priceHistory,
             fundamentals,
             institutional,
+            instDaily,
             margin,
             revenue,
             news,
             newsSentiment,
+            epsHistory,
+            finMetrics,
             generatedAt: formatTaiwanTime(),
         };
     } catch (err) {
         console.error("Error gathering stock context:", err);
         throw err;
     }
+}
+
+/**
+ * Build enriched data section for AI prompt - comprehensive stock data with null handling
+ */
+function buildEnrichedDataSection(context) {
+    const p = context.priceData;
+    const f = context.fundamentals;
+    const inst = context.institutional;
+    const m = context.margin;
+    const rev = context.revenue;
+    const fm = context.finMetrics || {};
+
+    const inst_total = parseFloat(inst.foreign_sum || 0) + parseFloat(inst.trust_sum || 0);
+    const inst_dir = inst_total > 0 ? "偏多買進" : "偏空賣出";
+
+    // Volume formatting
+    const vol = parseFloat(p.volume || 0);
+    const volStr = vol > 0 ? `${(vol / 1000).toLocaleString(undefined, {maximumFractionDigits: 0})} 張` : '無資料';
+
+    // YoY calculation
+    const yoyStr = rev.prev_y_revenue 
+        ? ((parseFloat(rev.revenue) / parseFloat(rev.prev_y_revenue) - 1) * 100).toFixed(1) + '%'
+        : '無資料';
+
+    // Price history trend (最近10日)
+    let trendSection = '';
+    if (context.priceHistory && context.priceHistory.length > 1) {
+        const rows = context.priceHistory.slice(0, 10).reverse(); // oldest first
+        trendSection = `\n【近期價格走勢】(由舊到新)\n`;
+        trendSection += rows.map(r => {
+            const d = new Date(r.trade_date).toLocaleDateString('zh-TW');
+            const chg = parseFloat(r.change_percent || 0);
+            const v = parseFloat(r.volume || 0);
+            return `${d}: 收${r.close_price} (${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%) 量${(v/1000).toLocaleString(undefined,{maximumFractionDigits:0})}張`;
+        }).join('\n');
+    }
+
+    // EPS trend
+    let epsSection = '';
+    if (context.epsHistory && context.epsHistory.length > 0) {
+        epsSection = `\nEPS歷史(近${context.epsHistory.length}季): ` + 
+            context.epsHistory.slice().reverse().map(e => {
+                const q = new Date(e.date);
+                return `${q.getFullYear()}Q${Math.ceil((q.getMonth()+1)/3)}=${e.value}元`;
+            }).join(' → ');
+    }
+
+    // Financial metrics
+    let finSection = '';
+    const finItems = [];
+    if (fm.ROE !== undefined && !isNaN(fm.ROE)) finItems.push(`ROE=${fm.ROE.toFixed(2)}%`);
+    if (fm.ROA !== undefined && !isNaN(fm.ROA)) finItems.push(`ROA=${fm.ROA.toFixed(2)}%`);
+    if (fm.GrossProfitMargin !== undefined && !isNaN(fm.GrossProfitMargin)) finItems.push(`毛利率=${fm.GrossProfitMargin.toFixed(2)}%`);
+    if (fm.NetIncomeMargin !== undefined && !isNaN(fm.NetIncomeMargin)) finItems.push(`淨利率=${fm.NetIncomeMargin.toFixed(2)}%`);
+    if (fm.DebtRatio !== undefined && !isNaN(fm.DebtRatio)) finItems.push(`負債比=${fm.DebtRatio.toFixed(2)}%`);
+    if (finItems.length > 0) finSection = `\n財務指標(最新季): ${finItems.join(', ')}`;
+
+    // Institutional daily breakdown
+    let instDailySection = '';
+    if (context.instDaily && context.instDaily.length > 0) {
+        instDailySection = `\n法人逐日買賣超(近${context.instDaily.length}日):\n`;
+        instDailySection += context.instDaily.slice().reverse().map(d => {
+            const date = new Date(d.trade_date).toLocaleDateString('zh-TW');
+            const fNet = Math.round(parseFloat(d.foreign_net || 0) / 1000);
+            const tNet = Math.round(parseFloat(d.trust_net || 0) / 1000);
+            const dNet = Math.round(parseFloat(d.dealer_net || 0) / 1000);
+            return `${date}: 外資${fNet >= 0 ? '+' : ''}${fNet}張 投信${tNet >= 0 ? '+' : ''}${tNet}張 自營${dNet >= 0 ? '+' : ''}${dNet}張`;
+        }).join('\n');
+    }
+
+    // Bollinger %b with null safety
+    const upperBand = parseFloat(p.upper_band);
+    const lowerBand = parseFloat(p.lower_band);
+    const closeP = parseFloat(p.close_price);
+    const bPercent = (upperBand - lowerBand) > 0 ? ((closeP - lowerBand) / (upperBand - lowerBand)).toFixed(2) : '無資料';
+
+    const dataDate = p.trade_date ? new Date(p.trade_date).toLocaleDateString('zh-TW') : '未知';
+
+    return `股票: ${context.name} (${context.symbol}) | 產業: ${context.industry || '未知'}
+資料日期: ${dataDate}
+
+【價格資訊】
+最新收盤: ${sv(closeP)} 元 (漲跌: ${sv(parseFloat(p.change_amount))} 元, ${sv(parseFloat(p.change_percent),'%')})
+開盤: ${sv(parseFloat(p.open_price))} | 最高: ${sv(parseFloat(p.high_price))} | 最低: ${sv(parseFloat(p.low_price))}
+成交量: ${volStr} | 成交值: ${sv(parseFloat(p.trade_value || 0) > 0 ? (parseFloat(p.trade_value)/100000000).toFixed(2) : NaN, '億')}
+${trendSection}
+
+【技術指標】
+均線: MA5=${sv(parseFloat(p.ma_5))} | MA10=${sv(parseFloat(p.ma_10))} | MA20=${sv(parseFloat(p.ma_20))} | MA60=${sv(parseFloat(p.ma_60))}
+RSI14: ${sv(parseFloat(p.rsi_14))} | KD: K=${sv(parseFloat(p.k_value))}, D=${sv(parseFloat(p.d_value))}
+MACD: 值=${sv(parseFloat(p.macd_value))} | 訊號=${sv(parseFloat(p.macd_signal))} | 柱狀=${sv(parseFloat(p.macd_hist))}
+布林通道: 上軌=${sv(upperBand)} | 下軌=${sv(lowerBand)} | %B=${bPercent}
+量比(今日/5日均量): ${sv(parseFloat(p.volume_ratio),'倍')}
+K線型態: ${p.patterns && p.patterns.length > 0 ? p.patterns.join('、') : '無明確型態'}
+
+【基本面】
+PE=${sv(parseFloat(f.pe_ratio),'倍')} | PB=${sv(parseFloat(f.pb_ratio),'倍')} | 殖利率=${sv(parseFloat(f.dividend_yield),'%')}${epsSection}${finSection}
+營收: ${rev.revenue_month ? rev.revenue_year + '年' + rev.revenue_month + '月' : '最新'}營收 ${parseFloat(rev.revenue) > 0 ? (parseFloat(rev.revenue) / 100000000).toFixed(2) + '億' : sv(parseFloat(rev.revenue))} (YoY: ${yoyStr})
+
+【籌碼面】
+法人5日合計: 外資=${Math.round(parseFloat(inst.foreign_sum || 0) / 1000)}張 | 投信=${Math.round(parseFloat(inst.trust_sum || 0) / 1000)}張 | 自營=${Math.round(parseFloat(inst.dealer_sum || 0) / 1000)}張 → ${inst_dir}${instDailySection}
+融資餘額: ${sv(parseFloat(m.margin_purchase_today_balance),'張')} | 融券餘額: ${sv(parseFloat(m.short_sale_today_balance),'張')}`;
 }
 
 /**
@@ -149,40 +362,53 @@ function generateSmartEngineReport(symbol, context, promptTemplate) {
     chipText += ` 目前內資投信${t_sum > 0 ? '扮演護盤關鍵角色。' : '動向相對不明朗。'}`;
 
     // News
-    const now = getTaiwanDate();
-    const twoDaysAgo = new Date(now.getTime() - (2 * 24 * 60 * 60 * 1000));
+    const nowDate = getTaiwanDate();
+    const twoDaysAgo = new Date(nowDate.getTime() - (2 * 24 * 60 * 60 * 1000));
     const recentNews = context.news.filter(n => new Date(n.publish_at) >= twoDaysAgo);
     let newsSection = recentNews.length > 0 ? recentNews.slice(0, 3).map(n => `- ${n.title}`).join('\n') : "近期消息面較為平靜，主要受大盤整體情緒影響。";
 
-    // 3. Scoring (Enhanced Robustness)
-    let techScore = ma_bullish ? 25 : (is_rebound ? 18 : 10);
-    let fundScore = parseFloat(yoy) > 15 ? 25 : 15;
-    let chipScore = inst_total > 0 ? 25 : 15;
-    let newsScore = recentNews.length > 0 ? 15 : 10;
-    const totalScore = techScore + fundScore + chipScore + newsScore;
+    // 3. Scoring (Enhanced - 25/25/25/25 weights)
+    let techScore = ma_bullish ? 22 : (is_rebound ? 15 : 8);
+    let fundScore = parseFloat(yoy) > 15 ? 22 : 12;
+    let chipScore = inst_total > 0 ? 22 : 12;
+    // 新聞面：根據情緒強度和數量動態計算 (0~25)
+    let newsScoreVal = 12; // 基準
+    if (context.newsSentiment && context.newsSentiment.count > 0) {
+        const sentAvg = context.newsSentiment.avgScore; // -1~1
+        newsScoreVal = Math.round(12.5 + sentAvg * 12.5); // 0~25
+    } else if (recentNews.length > 0) {
+        newsScoreVal = 15;
+    }
+    const totalScore = techScore + fundScore + chipScore + newsScoreVal;
 
     const latestDataDate = context.priceData.trade_date ? new Date(context.priceData.trade_date).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '未知';
 
     const sentimentText = context.newsSentiment && context.newsSentiment.count > 0 
-        ? `新聞情緒 (近 3 天): ${context.newsSentiment.sentimentLabel} (利多: ${context.newsSentiment.bullishCount} 則, 利空: ${context.newsSentiment.bearishCount} 則, 分數: ${context.newsSentiment.avgScore})
+        ? `新聞情緒 (近 3 天, 時效加權): ${context.newsSentiment.sentimentLabel} (利多: ${context.newsSentiment.bullishCount} 則, 利空: ${context.newsSentiment.bearishCount} 則, 加權分數: ${context.newsSentiment.avgScore})
 關鍵摘要: ${context.newsSentiment.description}`
         : "新聞情緒: 近期無顯著新聞情緒數據";
 
-    const finalPrompt = `
-你是一位專業的股票投資分析師。請根據以下個股詳細數據和新聞情感，按照指定的【模板格式】生成一份深度投資分析報告。
+    // 將新聞按時效分組，強調最新消息
+    const now = getTaiwanDate();
+    const newsFormatted = formatNewsWithRecency(context.news, now);
 
-股票: ${context.name} (${context.symbol})
-最新收盤: ${context.priceData.close_price} (漲跌: ${context.priceData.change_amount}, ${parseFloat(context.priceData.change_percent || 0).toFixed(2)}%)
-技術面: RSI14=${context.priceData.rsi_14}, Bollinger%b=${((parseFloat(context.priceData.close_price) - parseFloat(context.priceData.lower_band)) / (parseFloat(context.priceData.upper_band) - parseFloat(context.priceData.lower_band))).toFixed(2)}, MACD柱=${context.priceData.macd_hist}, MA5=${context.priceData.ma_5}, MA20=${context.priceData.ma_20}, MA60=${context.priceData.ma_60}
-基本面: PE=${context.fundamentals.pe_ratio}, PB=${context.fundamentals.pb_ratio}, 殖利率=${context.fundamentals.dividend_yield}%
-營收: 最新月營收 ${context.revenue.revenue} (YoY約 ${context.revenue.prev_y_revenue ? ((parseFloat(context.revenue.revenue)/parseFloat(context.revenue.prev_y_revenue)-1)*100).toFixed(1) : '未知'}%)
-籌碼面: 近5日法人合計${inst_dir}, 融資餘額=${context.margin.margin_purchase_today_balance}
+    const enrichedData = buildEnrichedDataSection(context);
+
+    const finalPrompt = `
+你是一位專業的台灣股票投資分析師。請根據以下完整的個股數據與新聞情感分析，按照【報表模板】格式，生成一份深度投資分析報告。
+
+⚠️ 重要指示：
+1. 所有數據已完整提供，請直接引用數據分析，不要說「資料未提供」或「資料缺失」
+2. 近24小時內的新聞對明日股價影響最大，請在評分和分析中給予顯著權重
+3. 請根據近期價格走勢判斷趨勢方向，不要只看單日數據
+4. 操盤建議需給出具體價格區間（進場/目標/停損）
+
+${enrichedData}
 
 【新聞情緒分析】
 ${sentimentText}
 
-近期新聞摘要 (含目標價變動與重大資產交易):
-${context.news.slice(0, 5).map(n => `- [${n.publish_at}] ${n.title}`).join('\n')}
+${newsFormatted}
 
 【報表模板】:
 ${promptTemplate}
@@ -199,25 +425,36 @@ async function generateOllamaReport(symbol, context, promptTemplate, modelOverri
     const ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
     const modelName = modelOverride || process.env.OLLAMA_MODEL || "qwen3.5:9b";
 
-    const inst_dir = (parseFloat(context.institutional.foreign_sum || 0) + parseFloat(context.institutional.trust_sum || 0)) > 0 ? "偏多買進" : "偏空賣出";
-    
+    const sentimentText = context.newsSentiment && context.newsSentiment.count > 0 
+        ? `新聞情緒 (近 3 天, 時效加權): ${context.newsSentiment.sentimentLabel} (利多: ${context.newsSentiment.bullishCount} 則, 利空: ${context.newsSentiment.bearishCount} 則, 加權分數: ${context.newsSentiment.avgScore})`
+        : "新聞情緒: 近期無顯著新聞情緒數據";
+
+    const now = getTaiwanDate();
+    const newsFormatted = formatNewsWithRecency(context.news, now);
+    const enrichedData = buildEnrichedDataSection(context);
+
     const finalPrompt = `
-你是一位專業的股票投資分析師。請根據以下個股詳細數據和新聞，按照指定的【模板格式】生成一份深度投資分析報告。
+你是一位專業的台灣股票投資分析師。請根據以下完整的個股數據與新聞情感分析，按照【報表模板】格式，生成一份深度投資分析報告。
 
-股票: ${context.name} (${context.symbol})
-最新收盤: ${context.priceData.close_price} (漲跌: ${context.priceData.change_amount}, ${parseFloat(context.priceData.change_percent || 0).toFixed(2)}%)
-技術面: RSI14=${context.priceData.rsi_14}, Bollinger%b=${((parseFloat(context.priceData.close_price) - parseFloat(context.priceData.lower_band)) / (parseFloat(context.priceData.upper_band) - parseFloat(context.priceData.lower_band))).toFixed(2)}, MACD柱=${context.priceData.macd_hist}, MA5=${context.priceData.ma_5}, MA20=${context.priceData.ma_20}, MA60=${context.priceData.ma_60}
-基本面: PE=${context.fundamentals.pe_ratio}, PB=${context.fundamentals.pb_ratio}, 殖利率=${context.fundamentals.dividend_yield}%
-營收: 最新月營收 ${context.revenue.revenue} (YoY約 ${context.revenue.prev_y_revenue ? ((parseFloat(context.revenue.revenue)/parseFloat(context.revenue.prev_y_revenue)-1)*100).toFixed(1) : '未知'}%)
-籌碼面: 近5日法人合計${inst_dir}, 融資餘額=${context.margin.margin_purchase_today_balance}
+⚠️ 重要指示：
+1. **禁止輸出任何開場白、思考過程、分析筆記或對指令的重複。**
+2. **直接從報表的第一個章節開始輸出，不要有任何前導文字。**
+3. 所有數據已完整提供，請直接引用數據分析，不要說「資料未提供」或「資料缺失」。
+4. 近24小時內的新聞對明日股價影響最大，請在評分和分析中給予顯著權重。
+5. 請根據近期價格走勢判斷趨勢方向，不要只看單日數據。
+6. 操盤建議需給出具體價格區間（進場/目標/停損）。
 
-新聞:
-${context.news.slice(0, 5).map(n => `- [${n.publish_at}] ${n.title}`).join('\n')}
+${enrichedData}
+
+【新聞情緒分析】
+${sentimentText}
+
+${newsFormatted}
 
 【報表模板】:
 ${promptTemplate}
 
-請嚴格按照模板結構填寫內容。移除「報告生成日」標籤，直接從標題開始。
+請嚴格按照模板結構填寫內容。直接從標題開始。
 `;
 
     try {
@@ -233,8 +470,8 @@ ${promptTemplate}
                 stream: false,
                 options: {
                     temperature: 0.7,
-                    num_predict: 2048,
-                    num_ctx: 4096
+                    num_predict: 3072,
+                    num_ctx: 8192
                 }
             }),
             signal: AbortSignal.timeout(600000) // Increase to 10 minutes for large models
@@ -311,44 +548,50 @@ async function generateAIReport(symbol, modelOverride = null, templateName = 'st
 
         let promptTemplate = await getPromptTemplate(templateName, DEFAULT_TEMPLATE);
 
-        const hasGeminiKey = process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.length > 10 && process.env.GEMINI_API_KEY !== 'your_api_key_here';
+        const geminiInfo = getGenAIInstance();
         const hasOllama = process.env.OLLAMA_URL && process.env.OLLAMA_URL.length > 5;
         
         let finalContent = "";
         let sentimentScore = 50;
         let generationMode = "none";
+        let usedModelName = "none";
 
-        if (hasGeminiKey) {
+        if (geminiInfo) {
             // Priority 1: Gemini
             generationMode = "gemini";
-            const inst_dir = (parseFloat(context.institutional.foreign_sum || 0) + parseFloat(context.institutional.trust_sum || 0)) > 0 ? "偏多買進" : "偏空賣出";
+            const { instance: genAI, keyHint } = geminiInfo;
+            console.log(`[AI Service] Using Gemini Key: ${keyHint}`);
             const sentimentText = context.newsSentiment && context.newsSentiment.count > 0 
-                ? `新聞情緒 (近 3 天): ${context.newsSentiment.sentimentLabel} (利多: ${context.newsSentiment.bullishCount} 則, 利空: ${context.newsSentiment.bearishCount} 則, 分數: ${context.newsSentiment.avgScore})
-關鍵摘要: ${context.newsSentiment.description}`
+                ? `新聞情緒 (近 3 天, 時效加權): ${context.newsSentiment.sentimentLabel} (利多: ${context.newsSentiment.bullishCount} 則, 利空: ${context.newsSentiment.bearishCount} 則, 加權分數: ${context.newsSentiment.avgScore})`
                 : "新聞情緒: 近期無顯著新聞情緒數據";
 
-            const finalPrompt = `
-你是一位專業的股票投資分析師。請根據以下個股詳細數據和新聞情感，按照指定的【模板格式】生成一份深度投資分析報告。
+            const now = getTaiwanDate();
+            const newsFormatted = formatNewsWithRecency(context.news, now);
+            const enrichedData = buildEnrichedDataSection(context);
 
-股票: ${context.name} (${context.symbol})
-最新收盤: ${context.priceData.close_price} (漲跌: ${context.priceData.change_amount}, ${parseFloat(context.priceData.change_percent || 0).toFixed(2)}%)
-技術面: RSI14=${context.priceData.rsi_14}, Bollinger%b=${((parseFloat(context.priceData.close_price) - parseFloat(context.priceData.lower_band)) / (parseFloat(context.priceData.upper_band) - parseFloat(context.priceData.lower_band))).toFixed(2)}, MACD柱=${context.priceData.macd_hist}, MA5=${context.priceData.ma_5}, MA20=${context.priceData.ma_20}, MA60=${context.priceData.ma_60}
-基本面: PE=${context.fundamentals.pe_ratio}, PB=${context.fundamentals.pb_ratio}, 殖利率=${context.fundamentals.dividend_yield}%
-營收: 最新月營收 ${context.revenue.revenue} (YoY約 ${context.revenue.prev_y_revenue ? ((parseFloat(context.revenue.revenue)/parseFloat(context.revenue.prev_y_revenue)-1)*100).toFixed(1) : '未知'}%)
-籌碼面: 近5日法人合計${inst_dir}, 融資餘額=${context.margin.margin_purchase_today_balance}
+            const finalPrompt = `
+你是一位專業的台灣股票投資分析師。請根據以下完整的個股數據與新聞情感分析，按照【報表模板】格式，生成一份深度投資分析報告。
+
+⚠️ 重要指示：
+1. **絕對禁止輸出任何開場白、思考過程、內心獨白或對指令的分析過程。**
+2. **直接從報表的第一個章節標題開始，例如 "#### 📝 核心趨勢總結"。**
+3. 所有數據已完整提供，請直接引用數據分析，不要說「資料未提供」或「資料缺失」。
+4. 近24小時內的新聞對明日股價影響最大，請在評分和分析中給予顯著權重。
+5. 操盤建議需給出具體價格區間（進場/目標/停損）。
+
+${enrichedData}
 
 【新聞情緒分析】
 ${sentimentText}
 
-近期新聞摘要 (含目標價變動與重大資產交易):
-${context.news.slice(0, 5).map(n => `- [${n.publish_at}] ${n.title}`).join('\n')}
+${newsFormatted}
 
 【報表模板】:
 ${promptTemplate}
 
-請務必將「新聞情緒分析」中提到的關鍵點整合進報告中。移除「報告生成日」標籤，直接從標題開始。
+請務必將「新聞情緒分析」中提到的關鍵點整合進報告中。直接從報表標題開始。
 `;
-            const model = genAI.getGenerativeModel({ model: "gemini-3.0-flash" });
+            const model = genAI.getGenerativeModel({ model: "gemma-4-31b-it" });
             const result = await model.generateContent(finalPrompt);
             finalContent = result.response.text();
             
@@ -364,6 +607,21 @@ ${promptTemplate}
             finalContent = generateSmartEngineReport(symbol, context, promptTemplate);
         }
 
+        // --- 後處理：移除 AI 可能輸出的思考過程、開場白等垃圾資訊 ---
+        // 尋找第一個 "#" (Markdown 標題)，這通常是報表模板的開始
+        const firstHeaderIndex = finalContent.indexOf('#');
+        if (firstHeaderIndex > 0) {
+            // 檢查前綴是否包含 "thought" 標籤或長篇思考文字
+            const preamble = finalContent.substring(0, firstHeaderIndex);
+            if (preamble.includes('thought') || preamble.includes('Thinking') || preamble.length > 30) {
+                console.log(`[AI Service] Stripping Preamble from ${symbol} report (${preamble.length} chars)`);
+                finalContent = finalContent.substring(firstHeaderIndex);
+            }
+        }
+        // 移除 <thought> 標籤 (如果有的話)
+        finalContent = finalContent.replace(/<thought>[\s\S]*?<\/thought>/gi, '').trim();
+        // -------------------------------------------------------
+
         // 納入新聞情緒加權評分 (對最終評分進行修正，情緒佔比 40%)
         let scoreVal = 50;
         const scoreMatch = finalContent.match(/評分[^\d]*(\d+)/) || 
@@ -374,8 +632,11 @@ ${promptTemplate}
         if (context.newsSentiment && context.newsSentiment.count > 0) {
             const rawAiScore = scoreVal;
             const newsScore = (context.newsSentiment.avgScore + 1) * 50; // -1~1 轉為 0~100
-            scoreVal = Math.round(rawAiScore * 0.6 + newsScore * 0.4);
-            console.log(`[AI Service] Score Weighted: ${rawAiScore} (AI) -> ${scoreVal} (With News Sentiment)`);
+            // 動態權重：新聞越多/情緒越極端 → 權重越高 (10%~30%)
+            const sentimentIntensity = Math.abs(context.newsSentiment.avgScore); // 0~1
+            const newsWeight = Math.min(0.30, 0.10 + sentimentIntensity * 0.15 + Math.min(context.newsSentiment.count, 10) * 0.005);
+            scoreVal = Math.round(rawAiScore * (1 - newsWeight) + newsScore * newsWeight);
+            console.log(`[AI Service] Score Weighted: ${rawAiScore} (AI) * ${(1 - newsWeight).toFixed(2)} + ${newsScore.toFixed(0)} (News) * ${newsWeight.toFixed(2)} = ${scoreVal}`);
         }
 
         // --- IMPORTANT: Refactored: Removed direct DB saving here. ---
@@ -391,12 +652,13 @@ ${promptTemplate}
             symbol,
             content: finalContent,
             sentimentScore: scoreVal,
-            generationMode
+            generationMode,
+            modelName: generationMode === 'gemini' ? 'gemma-4-31b-it' : (modelOverride || process.env.OLLAMA_MODEL || "qwen3.5:9b")
         };
     } catch (err) {
         console.error("AI/Engine Report Generation Error:", err.message);
-        return { success: false, error: err.message };
+        return { success: false, error: err.message, generationMode: "error", modelName: "none" };
     }
 }
 
-module.exports = { generateAIReport, generateSmartEngineReport, gatherStockContext, generateOllamaReport };
+module.exports = { generateAIReport, generateSmartEngineReport, gatherStockContext, generateOllamaReport, buildEnrichedDataSection };
