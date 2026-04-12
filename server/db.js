@@ -14,6 +14,7 @@ const isVercel = process.env.VERCEL === '1' || process.env.NODE_ENV === 'product
 
 // 辨識是否為本地或內網 IP
 const isPrivateIP = (ip) => {
+    if (!ip) return false;
     if (ip === 'localhost' || ip === '127.0.0.1' || ip === '::1') return true;
     const parts = ip.split('.');
     if (parts.length !== 4) return false;
@@ -25,11 +26,10 @@ const isPrivateIP = (ip) => {
     return false;
 };
 
-const isLocalNetwork = isPrivateIP(host);
-const isHostLocal = host === 'localhost' || host === '127.0.0.1';
+// 如果有 dbUrl，我們透過 dbUrl 判斷是否為本地端
+const isDbUrlLocal = dbUrl ? (dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1')) : false;
 
-// 優先級：明確的環境變數 > 本地連接停用 SSL > Vercel 雲端判定 > 自動辨識 (非內網 DB 預設開啟 SSL)
-let useSSL = (isVercel || !isLocalNetwork) && !isHostLocal;
+let useSSL = isVercel || (dbUrl ? !isDbUrlLocal : !isPrivateIP(host));
 if (process.env.DB_SSL === 'true') useSSL = true;
 if (process.env.DB_SSL === 'false') useSSL = false;
 
