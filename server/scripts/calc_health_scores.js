@@ -9,6 +9,46 @@
 
 const { query } = require('../db');
 
+/**
+ * Compute percentile-based scores (0-100) for a list of stock metrics.
+ * Handles ties by assigning average rank. Missing data → neutral 50.
+ * @param {Array<{symbol, value, hasData}>} entries
+ * @param {boolean} higherIsBetter - true: higher value = higher score
+ */
+function calcPercentileScores(entries, higherIsBetter = true) {
+    const withData = entries.filter(e => e.hasData && !isNaN(e.value) && isFinite(e.value));
+    const result = {};
+
+    if (withData.length === 0) {
+        entries.forEach(e => { result[e.symbol] = 50; });
+        return result;
+    }
+
+    // Sort: ascending for higherIsBetter (low value = low rank), descending otherwise
+    withData.sort((a, b) => higherIsBetter ? a.value - b.value : b.value - a.value);
+    const n = withData.length;
+
+    // Handle ties: assign average percentile to tied values
+    let i = 0;
+    while (i < n) {
+        let j = i;
+        while (j < n && withData[j].value === withData[i].value) j++;
+        const avgRank = (i + j - 1) / 2;
+        const pct = Math.round((avgRank / Math.max(n - 1, 1)) * 100);
+        for (let k = i; k < j; k++) {
+            result[withData[k].symbol] = pct;
+        }
+        i = j;
+    }
+
+    // Missing data → neutral 50
+    entries.forEach(e => {
+        if (result[e.symbol] === undefined) result[e.symbol] = 50;
+    });
+
+    return result;
+}
+
 async function createTable() {
     await query(`
         CREATE TABLE IF NOT EXISTS stock_health_scores (
@@ -37,6 +77,7 @@ async function createTable() {
             eps_growth DECIMAL(10,2),
             avg_cash_dividend DECIMAL(8,2),
             inst_net_buy DECIMAL(12,2),
+            news_score INTEGER DEFAULT 0,
             smart_score DECIMAL(5,2),
             smart_rating VARCHAR(20),
             calc_date DATE NOT NULL,
@@ -63,13 +104,22 @@ async function calcAllScores() {
     const allStocks = stocksRes.rows;
     console.log(`📊 Processing ${allStocks.length} stocks...`);
 
-    // Get latest trade date - Format as string in DB to avoid TZ issues
-    const dateRes = await query("SELECT TO_CHAR(MAX(trade_date), 'YYYY-MM-DD') as latest FROM daily_prices");
+    // Get latest trade date - only use dates where ≥500 individual stocks have data
+    const dateRes = await query(`
+        SELECT TO_CHAR(trade_date, 'YYYY-MM-DD') as latest
+        FROM daily_prices
+        WHERE symbol ~ '^[0-9]{4}$'
+        GROUP BY trade_date
+        HAVING COUNT(DISTINCT symbol) >= 500
+        ORDER BY trade_date DESC
+        LIMIT 1
+    `);
     let calcDate = dateRes.rows[0]?.latest;
     
     if (!calcDate) {
         calcDate = new Date().toISOString().split('T')[0];
     }
+    console.log(`📅 Using calcDate: ${calcDate}`);
 
     // Batch fetch: fundamentals for all stocks
     const fundRes = await query(`
@@ -80,12 +130,13 @@ async function calcAllScores() {
     const fundMap = {};
     fundRes.rows.forEach(r => { fundMap[r.symbol] = r; });
 
-    // Batch fetch: latest prices
+    // Batch fetch: prices for the calcDate (not just global latest)
     const priceRes = await query(`
         SELECT DISTINCT ON (symbol) symbol, close_price, change_percent
         FROM daily_prices
+        WHERE trade_date <= $1::date
         ORDER BY symbol, trade_date DESC
-    `);
+    `, [calcDate]);
     const priceMap = {};
     priceRes.rows.forEach(r => { priceMap[r.symbol] = r; });
 
@@ -177,6 +228,28 @@ async function calcAllScores() {
         if (r.rn == 1) revStatMap[r.stock_id] = parseFloat(r.value) || 0;
     });
 
+    // Batch fetch: Debt/Equity ratio (latest Liabilities / Equity)
+    const debtRes = await query(`
+        SELECT f1.stock_id, 
+               ROUND((f1.value::numeric / NULLIF(f2.value::numeric, 0) * 100), 1) as de_ratio
+        FROM (SELECT DISTINCT ON (stock_id) stock_id, value FROM fm_financial_statements WHERE type='Liabilities' ORDER BY stock_id, date DESC) f1
+        JOIN (SELECT DISTINCT ON (stock_id) stock_id, value FROM fm_financial_statements WHERE type='Equity' AND value::numeric > 0 ORDER BY stock_id, date DESC) f2 ON f1.stock_id = f2.stock_id
+    `);
+    const debtMap = {};
+    debtRes.rows.forEach(r => { debtMap[r.stock_id] = parseFloat(r.de_ratio) || 0; });
+    console.log(`📊 D/E ratio data for ${Object.keys(debtMap).length} stocks`);
+
+    // Batch fetch: Outstanding shares (OrdinaryShare) for chip normalization
+    const sharesRes = await query(`
+        SELECT DISTINCT ON (stock_id) stock_id, value
+        FROM fm_financial_statements
+        WHERE type = 'OrdinaryShare' AND value::numeric > 0
+        ORDER BY stock_id, date DESC
+    `);
+    const sharesMap = {};
+    sharesRes.rows.forEach(r => { sharesMap[r.stock_id] = parseFloat(r.value) || 0; });
+    console.log(`📊 Outstanding shares data for ${Object.keys(sharesMap).length} stocks`);
+
     // Batch fetch: Latest technical indicators
     const indicatorRes = await query(`
         SELECT DISTINCT ON (symbol) symbol, rsi_14, macd_value, macd_signal, macd_hist, ma_5, ma_20, ma_60,
@@ -210,18 +283,45 @@ async function calcAllScores() {
     const aiMap = {};
     aiRes.rows.forEach(r => { aiMap[r.symbol] = parseFloat(r.sentiment_score); });
 
-    // Now calculate scores for each stock
-    let processed = 0;
-    let skipped = 0;
-    const batchValues = [];
+    // Batch fetch: News Sentiment (time-weighted, last 14 days)
+    const newsSentRes = await query(`
+        SELECT s.symbol,
+               COUNT(*) as news_count,
+               SUM(
+                   CASE
+                       WHEN n.publish_at >= NOW() - INTERVAL '3 days' THEN s.score::numeric * 1.0
+                       WHEN n.publish_at >= NOW() - INTERVAL '7 days' THEN s.score::numeric * 0.6
+                       ELSE s.score::numeric * 0.3
+                   END
+               ) as weighted_score_sum,
+               SUM(
+                   CASE
+                       WHEN n.publish_at >= NOW() - INTERVAL '3 days' THEN 1.0
+                       WHEN n.publish_at >= NOW() - INTERVAL '7 days' THEN 0.6
+                       ELSE 0.3
+                   END
+               ) as weight_sum
+        FROM news_stock_sentiment s
+        JOIN news n ON s.news_id::integer = n.news_id
+        WHERE n.publish_at >= NOW() - INTERVAL '14 days'
+        GROUP BY s.symbol
+    `);
+    const newsSentMap = {};
+    newsSentRes.rows.forEach(r => {
+        const weightSum = parseFloat(r.weight_sum) || 1;
+        const avgScore = parseFloat(r.weighted_score_sum) / weightSum; // -1 ~ 1
+        newsSentMap[r.symbol] = { avgScore, count: parseInt(r.news_count) };
+    });
+    console.log(`📰 News sentiment data for ${Object.keys(newsSentMap).length} stocks`);
 
+    // ===== Pass 1: Compute raw metrics for all stocks =====
+    const rawData = [];
+    let skipped = 0;
     const processedSymbols = new Set();
+
     for (const stock of allStocks) {
         const sym = stock.symbol;
-        if (processedSymbols.has(sym)) {
-            console.warn(`⚠️ Skipping duplicate symbol: ${sym}`);
-            continue;
-        }
+        if (processedSymbols.has(sym)) continue;
         processedSymbols.add(sym);
 
         const fund = fundMap[sym] || {};
@@ -234,136 +334,220 @@ async function calcAllScores() {
 
         if (!closePrice) { skipped++; continue; }
 
-        // 1. Profitability
         const gp = grossMap[sym] || 0;
         const rv = revStatMap[sym] || 0;
         const grossMargin = (rv > 0 && gp > 0) ? (gp / rv * 100) : 0;
         const roe = (pe > 0 && pb > 0) ? (pb / pe * 100) : 0;
-        let profitScore = 0;
-        if (roe > 20) profitScore += 50; else if (roe > 10) profitScore += 35; else if (roe > 5) profitScore += 20; else profitScore += 5;
-        if (grossMargin > 40) profitScore += 50; else if (grossMargin > 25) profitScore += 35; else if (grossMargin > 15) profitScore += 20; else profitScore += 5;
 
-        // 2. Growth
         const revRows = revMap[sym] || [];
         let revenueGrowth = 0;
+        let hasRevenueData = false;
         if (revRows.length >= 13) {
             const curr = parseFloat(revRows[0].revenue);
             const prev = parseFloat(revRows[12].revenue);
-            if (prev > 0) revenueGrowth = ((curr - prev) / prev) * 100;
+            if (prev > 0) { revenueGrowth = ((curr - prev) / prev) * 100; hasRevenueData = true; }
         }
+
+        const divRows = divMap[sym] || [];
+        const avgCashDiv = divRows.length > 0
+            ? divRows.reduce((s, d) => s + parseFloat(d.cash_dividend || 0), 0) / divRows.length
+            : 0;
+
+        const instRows = instMap[sym] || [];
+        const totalBuy = instRows.reduce((s, r) => s + parseFloat(r.total_net || 0), 0);
+
+        // Outstanding shares for chip normalization (convert from unit to thousands of shares)
+        const outstandingShares = sharesMap[sym] || 0;
+
+        // D/E ratio for safety
+        const deRatio = debtMap[sym] || 0;
+
+        // EPS stability: count of positive EPS quarters (out of recent 8)
         const epsRows = epsMap[sym] || [];
         let epsGrowth = 0;
+        let hasEpsData = false;
         if (epsRows.length >= 5) {
             const curr = parseFloat(epsRows[0].value);
             const prev = parseFloat(epsRows[4].value);
-            if (prev > 0) epsGrowth = ((curr - prev) / prev) * 100;
+            if (prev > 0) { epsGrowth = ((curr - prev) / prev) * 100; hasEpsData = true; }
         }
-        let growthScore = 0;
-        if (revenueGrowth > 20) growthScore += 50; else if (revenueGrowth > 10) growthScore += 35; else if (revenueGrowth > 0) growthScore += 20; else growthScore += 5;
-        if (epsGrowth > 20) growthScore += 50; else if (epsGrowth > 10) growthScore += 35; else if (epsGrowth > 0) growthScore += 20; else growthScore += 5;
+        const recentEps = epsRows.slice(0, 8);
+        const epsPositiveRate = recentEps.length >= 4
+            ? recentEps.filter(e => parseFloat(e.value) > 0).length / recentEps.length
+            : 0.5; // neutral if insufficient data
 
-        // 3. Safety
-        let safetyScore = 50;
-        if (pb > 0 && pb < 1) safetyScore = 90; else if (pb < 1.5) safetyScore = 70; else if (pb < 3) safetyScore = 50; else safetyScore = 30;
+        rawData.push({
+            sym, name: stock.name, industry: stock.industry, market: stock.market,
+            pe, pb, dy, closePrice, changePct,
+            roe, grossMargin,
+            revenueGrowth, hasRevenueData,
+            epsGrowth, hasEpsData,
+            avgCashDiv, totalBuy, outstandingShares,
+            deRatio, epsPositiveRate,
+            hasPe: pe > 0,
+            hasPb: pb > 0,
+            hasRoe: roe > 0,
+            hasGrossMargin: grossMargin > 0,
+            hasCashDiv: divRows.length > 0,
+            hasInst: instRows.length > 0,
+            hasDeRatio: deRatio > 0,
+            hasEpsStability: recentEps.length >= 4,
+            hasShares: outstandingShares > 0,
+        });
+    }
 
-        // 4. Value
-        let valueScore = 50;
-        if (pe > 0 && pe < 10) valueScore = 90; else if (pe < 15) valueScore = 75; else if (pe < 20) valueScore = 55; else if (pe < 30) valueScore = 35; else valueScore = 15;
+    console.log(`📊 Raw metrics for ${rawData.length} stocks (skipped ${skipped} without price)`);
 
-        // 5. Dividend
-        const divRows = divMap[sym] || [];
-        const avgCashDiv = divRows.length > 0 ? divRows.reduce((s, d) => s + parseFloat(d.cash_dividend || 0), 0) / divRows.length : 0;
-        let dividendScore = 0;
-        if (dy > 6) dividendScore += 50; else if (dy > 4) dividendScore += 35; else if (dy > 2) dividendScore += 20; else dividendScore += 5;
-        if (avgCashDiv > 3) dividendScore += 50; else if (avgCashDiv > 1.5) dividendScore += 35; else if (avgCashDiv > 0.5) dividendScore += 20; else dividendScore += 5;
+    // ===== Pass 2: Percentile-based scoring per dimension =====
+    // Profit: ROE↑ + Gross Margin↑
+    const roeScores = calcPercentileScores(rawData.map(r => ({ symbol: r.sym, value: r.roe, hasData: r.hasRoe })), true);
+    const gmScores = calcPercentileScores(rawData.map(r => ({ symbol: r.sym, value: r.grossMargin, hasData: r.hasGrossMargin })), true);
 
-        // 6. Chip
-        const instRows = instMap[sym] || [];
-        const totalBuy = instRows.reduce((s, r) => s + parseFloat(r.total_net || 0), 0);
-        let chipScore = 50;
-        if (totalBuy > 10000) chipScore = 90; else if (totalBuy > 5000) chipScore = 75; else if (totalBuy > 0) chipScore = 55; else if (totalBuy > -5000) chipScore = 35; else chipScore = 15;
+    // Growth: Revenue Growth↑ + EPS Growth↑
+    const revGrowthScores = calcPercentileScores(rawData.map(r => ({ symbol: r.sym, value: r.revenueGrowth, hasData: r.hasRevenueData })), true);
+    const epsGrowthScores = calcPercentileScores(rawData.map(r => ({ symbol: r.sym, value: r.epsGrowth, hasData: r.hasEpsData })), true);
 
-        const overall = Math.round((profitScore + growthScore + safetyScore + valueScore + dividendScore + chipScore) / 6);
+    // Safety: Low D/E ratio↓ (50%) + EPS stability↑ (50%) — decoupled from value
+    const deScores = calcPercentileScores(rawData.map(r => ({ symbol: r.sym, value: r.deRatio, hasData: r.hasDeRatio })), false);
+    const epsStabilityScores = calcPercentileScores(rawData.map(r => ({ symbol: r.sym, value: r.epsPositiveRate, hasData: r.hasEpsStability })), true);
+
+    // Value: PE↓ (lower PE = cheaper, only positive PE stocks participate)
+    const peScores = calcPercentileScores(rawData.map(r => ({ symbol: r.sym, value: r.pe, hasData: r.hasPe })), false);
+
+    // Dividend: DY↑ + Avg Cash Dividend↑
+    const dyScores = calcPercentileScores(rawData.map(r => ({ symbol: r.sym, value: r.dy, hasData: true })), true);
+    const cashDivScores = calcPercentileScores(rawData.map(r => ({ symbol: r.sym, value: r.avgCashDiv, hasData: r.hasCashDiv })), true);
+
+    // Chip: Institutional net buy as % of outstanding shares ↑ (normalized)
+    const chipNormalized = rawData.map(r => {
+        if (r.hasInst && r.hasShares && r.outstandingShares > 0) {
+            return { symbol: r.sym, value: r.totalBuy / r.outstandingShares * 100, hasData: true };
+        }
+        return { symbol: r.sym, value: r.totalBuy, hasData: r.hasInst };
+    });
+    const chipRawScores = calcPercentileScores(chipNormalized, true);
+
+    // ===== Pass 3: Assign final scores, grades, smart ratings =====
+    let processed = 0;
+    const batchValues = [];
+
+    for (const raw of rawData) {
+        const sym = raw.sym;
+
+        const profitScore = Math.round((roeScores[sym] + gmScores[sym]) / 2);
+        const growthScore = Math.round((revGrowthScores[sym] + epsGrowthScores[sym]) / 2);
+        const safetyScore = Math.round((deScores[sym] + epsStabilityScores[sym]) / 2);
+        const valueScore = peScores[sym];
+        const dividendScore = Math.round((dyScores[sym] + cashDivScores[sym]) / 2);
+        const chipScore = chipRawScores[sym];
+
+        // News Score: Convert -1~1 weighted sentiment → 0~100
+        // Stocks without news data get neutral 50
+        const newsSent = newsSentMap[sym];
+        let newsScore = 50; // neutral default
+        if (newsSent) {
+            // avgScore is -1~1, convert to 0~100
+            // Apply confidence scaling: more news = more confident, less regression to mean
+            const confidence = Math.min(1, newsSent.count / 5); // 5+ articles = full confidence
+            const rawNewsScore = (newsSent.avgScore + 1) * 50; // 0~100
+            newsScore = Math.round(rawNewsScore * confidence + 50 * (1 - confidence));
+        }
+
+        // Weighted overall: Profit 20% + Growth 15% + Value 15% + Chip 13% + Safety 7% + Dividend 10% + News 20%
+        const overall = Math.round(
+            profitScore * 0.20 + growthScore * 0.15 + valueScore * 0.15 +
+            chipScore * 0.13 + safetyScore * 0.07 + dividendScore * 0.10 +
+            newsScore * 0.20
+        );
+
         let grade = '普通', gradeColor = 'yellow';
-        if (overall >= 75) { grade = '優秀'; gradeColor = 'green'; }
-        else if (overall >= 60) { grade = '良好'; gradeColor = 'blue'; }
-        else if (overall >= 45) { grade = '普通'; gradeColor = 'yellow'; }
+        if (overall >= 65) { grade = '優秀'; gradeColor = 'green'; }
+        else if (overall >= 50) { grade = '良好'; gradeColor = 'blue'; }
+        else if (overall >= 35) { grade = '普通'; gradeColor = 'yellow'; }
         else { grade = '待改善'; gradeColor = 'red'; }
 
-        // --- Smart Rating Calculation ---
+        // --- Smart Rating: 7-level signal-counting system ---
+        // Each of 7 dimensions casts one bullish (+1) or bearish (-1) vote.
+        // net = bullVotes - bearVotes  →  maps to 7 grades with explicit reasoning.
         const indicators = indicatorMap[sym] || {};
-        const sr = srMap[sym] || {};
-        
-        // 1. Technical Indicators Signal (-1 to 1)
-        let techScore = 0;
-        
-        // KD Signal
+        const ma5 = parseFloat(indicators.ma_5);
+        const ma20 = parseFloat(indicators.ma_20);
+        const ma60 = parseFloat(indicators.ma_60);
+        const rsi = parseFloat(indicators.rsi_14);
         const k = parseFloat(indicators.k_value);
         const d = parseFloat(indicators.d_value);
-        if (!isNaN(k) && !isNaN(d)) {
-            if (k > 80) techScore -= 0.2;
-            else if (k < 20) techScore += 0.2;
-            if (k > d) techScore += 0.2; else techScore -= 0.2;
-        }
-
-        // Bollinger Bands Signal
-        const upper = parseFloat(indicators.upper_band);
-        const lower = parseFloat(indicators.lower_band);
-        if (!isNaN(upper) && !isNaN(lower)) {
-            if (closePrice > upper) techScore -= 0.2;
-            else if (closePrice < lower) techScore += 0.2;
-        }
-
-        // RSI / MACD / MA20
-        const rsi = parseFloat(indicators.rsi_14);
-        if (rsi > 70) techScore -= 0.1; else if (rsi < 30) techScore += 0.1;
         const macdHist = parseFloat(indicators.macd_hist);
-        if (macdHist > 0) techScore += 0.1; else if (macdHist < 0) techScore -= 0.1;
-        const ma20 = parseFloat(indicators.ma_20);
-        if (closePrice > ma20) techScore += 0.1; else techScore -= 0.1;
 
-        techScore = Math.max(-1, Math.min(1, techScore));
+        let bullVotes = 0, bearVotes = 0;
 
-        // 2. Price Position Signal (-1 to 1)
-        let priceLevelScore = 0;
-        const h20 = parseFloat(sr.high_20 || 0);
-        const l20 = parseFloat(sr.low_20 || 0);
-        if (h20 > l20) {
-            const range = h20 - l20;
-            const pos = (closePrice - l20) / range; // 0 to 1
-            priceLevelScore = (0.5 - pos) * 2; // Near low = 1, Near high = -1
+        // Signal 1: MA排列趨勢 — 均線多頭/空頭排列
+        if (!isNaN(ma5) && !isNaN(ma20)) {
+            if (raw.closePrice > ma5 && ma5 > ma20) bullVotes++;
+            else if (raw.closePrice < ma5 && ma5 < ma20) bearVotes++;
         }
+        // Signal 2: RSI超賣/超買 — 低檔反彈 / 高檔過熱
+        if (!isNaN(rsi)) {
+            if (rsi < 35) bullVotes++;        // 超賣，反彈機率高
+            else if (rsi > 65) bearVotes++;   // 超買，回落風險高
+        }
+        // Signal 3: KD交叉 — 黃金交叉看多 / 死亡交叉看空
+        if (!isNaN(k) && !isNaN(d)) {
+            if (k > d) bullVotes++;
+            else bearVotes++;
+        }
+        // Signal 4: MACD柱狀體 — 正值動能增強 / 負值動能減弱
+        if (!isNaN(macdHist)) {
+            if (macdHist > 0) bullVotes++;
+            else bearVotes++;
+        }
+        // Signal 5: 基本面健康度 — 整體健診分數
+        if (overall >= 60) bullVotes++;
+        else if (overall < 40) bearVotes++;
+        // Signal 6: 籌碼動向 — 法人積極買超 / 法人持續賣超
+        if (chipScore >= 65) bullVotes++;
+        else if (chipScore < 35) bearVotes++;
+        // Signal 7: 消息面情緒 — 近期新聞正向 / 負向
+        if (newsScore >= 65) bullVotes++;
+        else if (newsScore < 35) bearVotes++;
 
-        // 3. Sentiment Signal (Base on Health Score or AI Sentiment)
-        // If AI Sentiment is available (0-100), normalize to -1 to 1. 
-        // Otherwise fallback to fundamental-based sentiment.
-        const aiScore = aiMap[sym];
-        const sentimentScore = (!isNaN(aiScore)) 
-            ? (aiScore - 50) / 50 
-            : (overall - 50) / 50;
+        const netSignal = bullVotes - bearVotes;
 
-        // Composite Smart Score: Tech 40%, Price 30%, Sentiment 30%
-        const compositeScore = (techScore * 0.4) + (priceLevelScore * 0.3) + (sentimentScore * 0.3);
-        
-        let smartRating = "觀望";
-        if (compositeScore > 0.45) smartRating = "強力買進";
-        else if (compositeScore > 0.15) smartRating = "買進";
-        else if (compositeScore < -0.45) smartRating = "強力賣出";
-        else if (compositeScore < -0.15) smartRating = "賣出";
+        // compositeScore: normalize netSignal to -1~1 for backwards compatibility & sorting
+        const compositeScore = netSignal / 7;
+
+        // 7-level criteria-based rating
+        let smartRating;
+        if (netSignal >= 5) smartRating = '強力推薦';       // 5~7 signals bullish — all-round strength
+        else if (netSignal >= 3) smartRating = '推薦';      // 3~4 signals bullish — predominantly positive
+        else if (netSignal >= 1) smartRating = '偏多操作';  // 1~2 signals bullish — slight edge
+        else if (netSignal === 0) smartRating = '中立';     // balanced — no clear direction
+        else if (netSignal >= -2) smartRating = '偏空觀察'; // -1~-2 bearish edge
+        else if (netSignal >= -4) smartRating = '減碼';     // -3~-4 predominantly negative
+        else smartRating = '大幅減碼';                       // -5 ~ -7 comprehensive weakness
 
         batchValues.push([
-            sym, stock.name, stock.industry, stock.market,
-            closePrice, changePct,
+            sym, raw.name, raw.industry, raw.market,
+            raw.closePrice, raw.changePct,
             overall, grade, gradeColor,
             profitScore, growthScore, safetyScore, valueScore, dividendScore, chipScore,
-            pe, pb, dy, roe.toFixed(2), grossMargin.toFixed(2),
-            revenueGrowth.toFixed(2), epsGrowth.toFixed(2),
-            avgCashDiv.toFixed(2), (totalBuy / 1000).toFixed(2),
+            newsScore,
+            raw.pe, raw.pb, raw.dy, raw.roe.toFixed(2), raw.grossMargin.toFixed(2),
+            raw.revenueGrowth.toFixed(2), raw.epsGrowth.toFixed(2),
+            raw.avgCashDiv.toFixed(2), (raw.totalBuy / 1000).toFixed(2),
             compositeScore.toFixed(2), smartRating,
             calcDate
         ]);
         processed++;
     }
+
+    // Print distribution
+    const ratingCounts = {};
+    batchValues.forEach(v => { const r = v[26]; ratingCounts[r] = (ratingCounts[r] || 0) + 1; });
+    console.log('📊 Smart Rating distribution (signal-based):');
+    ['強力推薦','推薦','偏多操作','中立','偏空觀察','減碼','大幅減碼'].forEach(label => {
+        const cnt = ratingCounts[label] || 0;
+        console.log(`   ${label}: ${cnt} (${(cnt / batchValues.length * 100).toFixed(1)}%)`);
+    });
 
     // Batch insert (upsert)
     console.log(`📝 Inserting ${batchValues.length} scores (skipped ${skipped})...`);
@@ -376,8 +560,8 @@ async function calcAllScores() {
     for (let i = 0; i < batchValues.length; i += BATCH_SIZE) {
         const batch = batchValues.slice(i, i + BATCH_SIZE);
         const placeholders = batch.map((_, idx) => {
-            const base = idx * 27;
-            return `(${Array.from({ length: 27 }, (_, j) => `$${base + j + 1}`).join(',')})`;
+            const base = idx * 28;
+            return `(${Array.from({ length: 28 }, (_, j) => `$${base + j + 1}`).join(',')})`;
         }).join(',');
 
         const flatValues = batch.flat();
@@ -388,6 +572,7 @@ async function calcAllScores() {
                 (symbol, name, industry, market, close_price, change_percent,
                  overall_score, grade, grade_color,
                  profit_score, growth_score, safety_score, value_score, dividend_score, chip_score,
+                 news_score,
                  pe, pb, dividend_yield, roe, gross_margin,
                  revenue_growth, eps_growth, avg_cash_dividend, inst_net_buy, 
                  smart_score, smart_rating, calc_date)
@@ -407,6 +592,7 @@ async function calcAllScores() {
                     value_score = EXCLUDED.value_score,
                     dividend_score = EXCLUDED.dividend_score,
                     chip_score = EXCLUDED.chip_score,
+                    news_score = EXCLUDED.news_score,
                     pe = EXCLUDED.pe,
                     pb = EXCLUDED.pb,
                     dividend_yield = EXCLUDED.dividend_yield,

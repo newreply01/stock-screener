@@ -240,14 +240,29 @@ SMTP_FROM_NAME=Stock Screener (系統名稱)
 3. **AI 語義分析**: 使用 Ollama (qwen3.5:9b) 進行利多/利空定性，產出 -1.0 至 +1.0 之情緒值。
 4. **近期熱度匯總 (3天)**: AI 報表生成時，會彙整過去 **3 天** 內該個股的所有情緒紀錄。
 
-## 14. AI 分析報告深度與堆疊化 (Daily Stacking v4.0)
+## 15. 數據庫維護與雲端遷移 (Slim DB)
 
-為提供專業級投研觀點，AI 報告生成系統已進行全面邏輯升級。
+為了符合雲端環境（如 Supabase）的空間限制，本專案提供了精煉版資料庫導出方案，可將本地數 GB 的資料縮減至約 250MB 內。
 
-### 核心特性
-1. **每日歷史堆疊**: 報告數據不再覆蓋，改為依據日期 (report_date) 進行存儲。用戶可回溯查看同一標的在不同日期的診斷紀錄。
-2. **深度技術解析**: 強制 AI 對 **均線排列、RSI 乖離、MACD 柱狀體、布林帶寬** 及 **K線型態 (Patterns)** 進行交叉逻辑推演。
-3. **權重精準校準**: 
-    - **新聞情緒權重佔比 40%**：新聞面的利多/利空對最終評分具備顯著影響力。
-    - **量化評分偏移**：自動根據 3 天匯總情緒值進行總分增益或減損。
-4. **自動重試機制**: 若任務失敗（如 Ollama 超時），系統會記錄錯誤原因並至少自動重試 2 次。
+### Slim DB 生成與上傳流程
+
+1. **產生精煉 SQL**:
+   執行以下腳本，它會自動排除龐大的歷史跳報與 2026 年以前的歷史價格，僅保留核心架構與近期數據。
+   ```bash
+   node server/scripts/gen_refined_slim_v2.js
+   ```
+   *產出檔案路徑: `/home/xg/stock-screener/refined_slim_v2.sql`*
+
+2. **部署至 Supabase**:
+   確認 `.env` 中的 `SUPABASE_URL` 已設定正確。使用以下指令執行遷移：
+   ```bash
+   # 請將 [PASSWORD] 與 [PROJECT-ID] 替換為您的實際資料
+   psql "postgresql://postgres.[PROJECT-ID]:[PASSWORD]@aws-1-us-east-1.pooler.supabase.com:5432/postgres" -f refined_slim_v2.sql
+   ```
+
+### 備註：常見連線問題
+- **Tenant not found**: 如果出現此錯誤，代表 Supabase 專案可能處於「暫停 (Paused)」狀態。請先至 Supabase Dashboard 點擊「Resume Project」。
+- **連接超時**: 請檢查本地防火牆，並確保已允許出口連線至 port 5432/6543。
+
+---
+*最後更新日期: 2026-04-10*

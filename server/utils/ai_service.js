@@ -5,7 +5,7 @@ const SentimentAggregator = require('./sentiment_aggregator');
 const query = (text, params) => pool.query(text, params);
 require("dotenv").config();
 
-// --- 多金鑰輪詢管理 ---
+// --- 多金鑰輪詢管理（含 403 自動過濾）---
 const apiKeys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || "")
     .split(",")
     .map(k => k.trim())
@@ -13,13 +13,33 @@ const apiKeys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || ""
 
 const genAIPool = apiKeys.map(key => new GoogleGenerativeAI(key));
 let currentKeyIndex = 0;
+const blockedKeyIndices = new Set(); // 記錄 403 的金鑰索引
 
 function getGenAIInstance() {
     if (genAIPool.length === 0) return null;
+    // 嘗試找到未被封鎖的金鑰（最多嘗試所有金鑰數量次）
+    for (let attempt = 0; attempt < genAIPool.length; attempt++) {
+        const idx = currentKeyIndex;
+        currentKeyIndex = (currentKeyIndex + 1) % genAIPool.length;
+        if (!blockedKeyIndices.has(idx)) {
+            const instance = genAIPool[idx];
+            const keyHint = apiKeys[idx].substring(0, 8) + '...';
+            return { instance, keyHint, keyIndex: idx };
+        }
+    }
+    // 所有金鑰均被封鎖，嘗試重置（可能是暫時性問題）
+    console.warn('[AI Service] All keys blocked, resetting blocklist and retrying...');
+    blockedKeyIndices.clear();
     const instance = genAIPool[currentKeyIndex];
     const keyHint = apiKeys[currentKeyIndex].substring(0, 8) + '...';
-    currentKeyIndex = (currentKeyIndex + 1) % genAIPool.length;
-    return { instance, keyHint };
+    return { instance, keyHint, keyIndex: currentKeyIndex };
+}
+
+function markKeyBlocked(keyIndex) {
+    if (keyIndex !== undefined) {
+        blockedKeyIndices.add(keyIndex);
+        console.warn(`[AI Service] Key index ${keyIndex} blocked (403). Active keys: ${genAIPool.length - blockedKeyIndices.size}/${genAIPool.length}`);
+    }
 }
 
 const hasGeminiKey = apiKeys.length > 0;
@@ -591,9 +611,29 @@ ${promptTemplate}
 
 請務必將「新聞情緒分析」中提到的關鍵點整合進報告中。直接從報表標題開始。
 `;
-            const model = genAI.getGenerativeModel({ model: "gemma-4-31b-it" });
-            const result = await model.generateContent(finalPrompt);
-            finalContent = result.response.text();
+            // 支援 403 自動換金鑰重試
+            let gemmaSuccess = false;
+            const maxRetries = genAIPool.length;
+            for (let retry = 0; retry < maxRetries; retry++) {
+                const { instance: retryGenAI, keyHint: retryHint, keyIndex } = getGenAIInstance();
+                try {
+                    const model = retryGenAI.getGenerativeModel({ model: "gemma-4-31b-it" });
+                    const result = await model.generateContent(finalPrompt);
+                    finalContent = result.response.text();
+                    gemmaSuccess = true;
+                    break;
+                } catch (keyErr) {
+                    if (keyErr.message && (keyErr.message.includes('403') || keyErr.message.includes('denied access'))) {
+                        markKeyBlocked(keyIndex);
+                        console.log(`[AI Service] Key ${retryHint} blocked, trying next...`);
+                        continue;
+                    }
+                    throw keyErr; // 其他錯誤直接拋出
+                }
+            }
+            if (!gemmaSuccess) {
+                throw new Error('所有 Gemma API 金鑰均無法存取，請確認各 Google Cloud 專案的模型存取設定。');
+            }
             
         } else if (hasOllama) {
             // Priority 2: Local Ollama
