@@ -56,6 +56,10 @@ Object.assign(poolConfig, {
 
 const pool = new Pool(poolConfig);
 
+if (useSSL) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
+
 // 強制資料庫連線會話時區為台北時間
 pool.on('connect', (client) => {
     client.query("SET TIME ZONE 'Asia/Taipei'");
