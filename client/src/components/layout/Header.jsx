@@ -77,6 +77,12 @@ export default function Header({ currentView = 'dashboard' }) {
 
                     <nav className="hidden lg:flex items-center gap-8 text-[14px] font-semibold">
                         <button
+                            onClick={() => dispatchView('trading')}
+                            className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'trading' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-slate-500 dark:text-gray-300 hover:text-brand-primary dark:hover:text-white border-transparent hover:border-brand-primary/30 dark:hover:border-white/20'}`}
+                        >
+                            交易中心
+                        </button>
+                        <button
                             onClick={() => dispatchView('market')}
                             className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'market' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-slate-500 dark:text-gray-300 hover:text-brand-primary dark:hover:text-white border-transparent hover:border-brand-primary/30 dark:hover:border-white/20'}`}
                         >
@@ -87,12 +93,6 @@ export default function Header({ currentView = 'dashboard' }) {
                             className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'screener' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-slate-500 dark:text-gray-300 hover:text-brand-primary dark:hover:text-white border-transparent hover:border-brand-primary/30 dark:hover:border-white/20'}`}
                         >
                             智能選股
-                        </button>
-                        <button
-                            onClick={() => dispatchView('trading')}
-                            className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'trading' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-slate-500 dark:text-gray-300 hover:text-brand-primary dark:hover:text-white border-transparent hover:border-brand-primary/30 dark:hover:border-white/20'}`}
-                        >
-                            交易中心
                         </button>
                         <button
                             onClick={() => dispatchView('stock-detail')}
@@ -210,9 +210,9 @@ export default function Header({ currentView = 'dashboard' }) {
                 <div className="lg:hidden bg-white dark:bg-brand-dark border-t border-slate-200 dark:border-white/5 py-4 px-4 space-y-3 animate-in fade-in slide-in-from-top duration-200">
 
                     <div className="grid grid-cols-2 gap-2">
+                        <button onClick={() => { dispatchView('trading'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'trading' ? 'bg-brand-primary text-white shadow-lg' : 'text-slate-600 dark:text-gray-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10'}`}>交易中心</button>
                         <button onClick={() => { dispatchView('market'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'market' ? 'bg-brand-primary text-white shadow-lg' : 'text-slate-600 dark:text-gray-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10'}`}>市場總覽</button>
                         <button onClick={() => { dispatchView('screener'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'screener' ? 'bg-brand-primary text-white shadow-lg' : 'text-slate-600 dark:text-gray-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10'}`}>智能選股</button>
-                        <button onClick={() => { dispatchView('trading'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'trading' ? 'bg-brand-primary text-white shadow-lg' : 'text-slate-600 dark:text-gray-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10'}`}>交易中心</button>
                         <button onClick={() => { dispatchView('stock-detail'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'stock-detail' ? 'bg-brand-primary text-white shadow-lg' : 'text-slate-600 dark:text-gray-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10'}`}>個股分析</button>
                         <button onClick={() => { dispatchView('news'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${showMonitor ? '' : 'col-span-2'} ${currentView === 'news' ? 'bg-brand-primary text-white shadow-lg' : 'text-slate-600 dark:text-gray-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10'}`}>新聞公告</button>
                         {showMonitor && (
