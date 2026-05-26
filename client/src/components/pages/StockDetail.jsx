@@ -443,73 +443,6 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
                         return null;
                     })()}
 
-                    {/* Summary Cards & Controls - Always Visible in Detail Body top */}
-                    <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 space-y-4">
-                        {/* Control Bar */}
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                            <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm overflow-x-auto no-scrollbar">
-                                {['日K', '週K', '月K'].map(p => (
-                                    <button
-                                        key={p}
-                                        onClick={() => setActivePeriod(p)}
-                                        className={`px-4 py-1.5 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${activePeriod === p
-                                            ? 'bg-slate-800 text-white'
-                                            : 'text-slate-500 hover:bg-slate-100'
-                                            }`}
-                                    >
-                                        {p}
-                                    </button>
-                                ))}
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                {/* Export buttons removed as per cleanup request */}
-                            </div>
-                        </div>
-
-                        {/* Summary Stats */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {[
-                                { id: 'bullish', label: '看漲型態偵測', count: activePatterns.filter(p => p.type === 'bullish').length, icon: TrendingUp, color: 'text-red-500', activeBg: 'bg-red-50 border-red-200 ring-1 ring-red-500', countBg: activePatterns.filter(p => p.type === 'bullish').length > 0 ? 'bg-red-500 text-white' : 'bg-white text-slate-400 border border-slate-100' },
-                                { id: 'bearish', label: '看跌型態偵測', count: activePatterns.filter(p => p.type === 'bearish').length, icon: TrendingDown, color: 'text-green-600', activeBg: 'bg-green-50 border-green-200 ring-1 ring-green-600', countBg: activePatterns.filter(p => p.type === 'bearish').length > 0 ? 'bg-green-600 text-white' : 'bg-white text-slate-400 border border-slate-100' },
-                                { id: 'status', label: '技術指標狀態', count: 'Active', icon: Activity, color: 'text-blue-500', activeBg: 'bg-blue-50 border-blue-200', countBg: 'bg-blue-100 text-blue-700' },
-                            ].map(card => (
-                                <div
-                                    key={card.id}
-                                    onClick={() => setActiveFilter(prev => prev === card.id ? 'all' : card.id)}
-                                    className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${activeFilter === card.id ? card.activeBg : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'}`}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className={`p-2.5 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100`}>
-                                            <card.icon className={`w-5 h-5 ${card.color}`} />
-                                        </div>
-                                        <div>
-                                            <span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Stock status</span>
-                                            <span className="font-bold text-slate-700 text-sm">{card.label}</span>
-                                        </div>
-                                    </div>
-                                    <div className={`px-3 py-1 rounded-md text-xs font-black transition-all ${card.countBg} shadow-sm`}>
-                                        {card.id === 'status' ? (
-                                            <div className="flex items-center gap-2 text-[10px]">
-                                                <span className={indicatorStatus.rsi > 70 ? 'text-red-500' : indicatorStatus.rsi < 30 ? 'text-green-500' : ''}>RSI:{indicatorStatus.rsi?.toFixed(0) || '--'}</span>
-                                                <span className={indicatorStatus.close > indicatorStatus.ma20 ? 'text-red-500' : 'text-green-500'}>MA:{indicatorStatus.close > indicatorStatus.ma20 ? '多' : '空'}</span>
-                                            </div>
-                                        ) : card.count > 0 ? (
-                                            <div className="flex flex-col items-end leading-none">
-                                                <span>{card.count}</span>
-                                                <span className="text-[7px] font-bold mt-0.5 opacity-80">
-                                                    最近: {activePatterns.filter(p => p.type === card.id).sort((a,b) => new Date(b.date) - new Date(a.date))[0]?.date.split('-').slice(1).join('/') || '--'}
-                                                </span>
-                                            </div>
-                                        ) : (
-                                            <span>0</span>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
                     {/* Main Scrollable Area */}
                     <div className="flex-1 overflow-y-auto p-6 bg-white relative">
                         {activeTab === 'overview' ? (
@@ -610,7 +543,6 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
                                 subTab={activeSubTab}
                                 institutionalData={institutionalData}
                                 loadingChips={loadingChips}
-                                period={activePeriod}
                             />
                         ) : activeTab === 'financials' ? (
                             <FinancialStatementsView
@@ -627,6 +559,69 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
                             </div>
                         ) : activeTab === 'technical' ? (
                             <div className="h-full w-full min-h-[600px] flex flex-col gap-6 animate-in fade-in duration-300">
+                                {/* K線週期切換與統計卡片控制欄 */}
+                                <div className="bg-slate-50 dark:bg-slate-900/40 p-5 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-4">
+                                    {/* Control Bar */}
+                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                                        <div className="flex items-center gap-2 bg-white dark:bg-slate-950 p-1 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-x-auto no-scrollbar">
+                                            {['日K', '週K', '月K'].map(p => (
+                                                <button
+                                                    key={p}
+                                                    onClick={() => setActivePeriod(p)}
+                                                    className={`px-4 py-1.5 rounded-md text-xs md:text-sm font-black transition-colors whitespace-nowrap cursor-pointer ${activePeriod === p
+                                                        ? 'bg-slate-800 dark:bg-slate-800 text-white font-bold shadow-sm'
+                                                        : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+                                                        }`}
+                                                >
+                                                    {p}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Summary Stats */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {[
+                                            { id: 'bullish', label: '看漲型態偵測', count: activePatterns.filter(p => p.type === 'bullish').length, icon: TrendingUp, color: 'text-red-500', activeBg: 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/30 ring-1 ring-red-500', countBg: activePatterns.filter(p => p.type === 'bullish').length > 0 ? 'bg-red-500 text-white' : 'bg-white dark:bg-slate-900 text-slate-400 border border-slate-150 dark:border-slate-800' },
+                                            { id: 'bearish', label: '看跌型態偵測', count: activePatterns.filter(p => p.type === 'bearish').length, icon: TrendingDown, color: 'text-green-600', activeBg: 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/30 ring-1 ring-green-600', countBg: activePatterns.filter(p => p.type === 'bearish').length > 0 ? 'bg-green-600 text-white' : 'bg-white dark:bg-slate-900 text-slate-400 border border-slate-150 dark:border-slate-800' },
+                                            { id: 'status', label: '技術指標狀態', count: 'Active', icon: Activity, color: 'text-blue-500', activeBg: 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/30', countBg: 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300' },
+                                        ].map(card => (
+                                            <div
+                                                key={card.id}
+                                                onClick={() => setActiveFilter(prev => prev === card.id ? 'all' : card.id)}
+                                                className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${activeFilter === card.id ? card.activeBg : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm'}`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900 flex items-center justify-center border border-slate-100 dark:border-slate-800`}>
+                                                        <card.icon className={`w-5 h-5 ${card.color}`} />
+                                                    </div>
+                                                    <div>
+                                                        <span className="block text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1">Stock status</span>
+                                                        <span className="font-bold text-slate-700 dark:text-slate-350 text-sm">{card.label}</span>
+                                                    </div>
+                                                </div>
+                                                <div className={`px-3 py-1 rounded-md text-xs font-black transition-all ${card.countBg} shadow-sm`}>
+                                                    {card.id === 'status' ? (
+                                                        <div className="flex items-center gap-2 text-[10px]">
+                                                            <span className={indicatorStatus.rsi > 70 ? 'text-red-500' : indicatorStatus.rsi < 30 ? 'text-green-500' : ''}>RSI:{indicatorStatus.rsi?.toFixed(0) || '--'}</span>
+                                                            <span className={indicatorStatus.close > indicatorStatus.ma20 ? 'text-red-500' : 'text-green-500'}>MA:{indicatorStatus.close > indicatorStatus.ma20 ? '多' : '空'}</span>
+                                                        </div>
+                                                    ) : card.count > 0 ? (
+                                                        <div className="flex flex-col items-end leading-none">
+                                                            <span>{card.count}</span>
+                                                            <span className="text-[7px] font-bold mt-0.5 opacity-80">
+                                                                最近: {activePatterns.filter(p => p.type === card.id).sort((a,b) => new Date(b.date) - new Date(a.date))[0]?.date.split('-').slice(1).join('/') || '--'}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <span>0</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 {/* Render Integrated StockChart */}
                                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
                                     <StockChart

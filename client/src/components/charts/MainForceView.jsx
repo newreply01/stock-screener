@@ -36,7 +36,8 @@ const getBrokerBadge = (name) => {
     return null;
 };
 
-export default function MainForceView({ symbol, subTab, institutionalData, loadingChips, period = '日K' }) {
+export default function MainForceView({ symbol, subTab, institutionalData, loadingChips }) {
+    const [period, setPeriod] = useState('日K');
     const [brokerData, setBrokerData] = useState({ buyers: [], sellers: [], date: null });
     const [marginData, setMarginData] = useState([]);
     const [traceData, setTraceData] = useState([]);
@@ -123,7 +124,7 @@ export default function MainForceView({ symbol, subTab, institutionalData, loadi
 
         return (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <div className="bg-orange-100 p-2 rounded-lg">
                             <Activity className="w-5 h-5 text-orange-600" />
@@ -133,9 +134,27 @@ export default function MainForceView({ symbol, subTab, institutionalData, loadi
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">數據更新日期: {brokerData.date || '---'}</p>
                         </div>
                     </div>
-                    <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 hidden md:block">
-                        <span className="text-[10px] font-black text-slate-400 uppercase block mb-0.5">主力控盤度</span>
-                        <span className="text-lg font-black text-orange-600">{controlRatio}%</span>
+                    {/* Period Switcher & Control Ratio */}
+                    <div className="flex items-center gap-3 self-end sm:self-center">
+                        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-850 p-1 rounded-lg border border-slate-200 dark:border-slate-800 w-fit">
+                            {['日K', '週K', '月K'].map(p => (
+                                <button
+                                    key={p}
+                                    onClick={() => setPeriod(p)}
+                                    className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                                        period === p
+                                            ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-white shadow-sm'
+                                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                                    }`}
+                                >
+                                    {p}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900/60 px-4 py-1.5 rounded-xl border border-slate-150 dark:border-slate-800 hidden md:block">
+                            <span className="text-[9px] font-black text-slate-400 block mb-0.5 leading-none">主力控盤度</span>
+                            <span className="text-base font-black text-orange-600 leading-none">{controlRatio}%</span>
+                        </div>
                     </div>
                 </div>
 
@@ -264,9 +283,26 @@ export default function MainForceView({ symbol, subTab, institutionalData, loadi
         return (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm min-h-[450px]">
-                    <h4 className="text-sm font-bold text-slate-700 mb-6 flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4 text-brand-primary" /> 主力買賣超趨勢 (近60日)
-                    </h4>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                        <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4 text-brand-primary" /> 主力買賣超趨勢 (近60日)
+                        </h4>
+                        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-855 p-1 rounded-lg border border-slate-200 dark:border-slate-700 w-fit">
+                            {['日K', '週K', '月K'].map(p => (
+                                <button
+                                    key={p}
+                                    onClick={() => setPeriod(p)}
+                                    className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                                        period === p
+                                            ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-white shadow-sm'
+                                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                                    }`}
+                                >
+                                    {p}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                     <div className="h-[350px]">
                         {loadingSub ? (
                             <div className="h-full flex items-center justify-center text-slate-400 animate-pulse">主力趨勢載入中...</div>
