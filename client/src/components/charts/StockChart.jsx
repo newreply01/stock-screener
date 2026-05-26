@@ -16,6 +16,51 @@ import { getHistory } from '../../utils/api';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
+const INDICATOR_TOOLTIPS = {
+    ma20: {
+        title: 'MA20 (20日均線)',
+        def: '過去 20 個交易日的收盤價平均值，是個股短期多空的「生命線」。',
+        usage: '股價在均線上偏多，均線下偏空。MA20 翻揚提供支撐，下彎則形成反壓。',
+        align: 'left-0 origin-top-left',
+        accentColor: 'bg-blue-500'
+    },
+    bb: {
+        title: 'BB 布林通道',
+        def: '以 20 日均線（MA20）為中軌，上下各加減 2 個標準差所構成的價格通道。',
+        usage: '觸及上軌代表股價超買或強勢突破，觸及下軌為超賣或醞釀反彈；通道收縮代表即將變盤。',
+        align: 'left-0 origin-top-left',
+        accentColor: 'bg-indigo-500'
+    },
+    kd: {
+        title: 'KD 隨機指標',
+        def: '藉由收盤價在近期價格區間的位置，反映股價強弱及超買/超賣狀態。',
+        usage: 'D值 >80 為超買區，<20 為超賣區。K線向上突破D線為黃金交叉，跌破D線為死亡交叉。',
+        align: 'left-1/2 -translate-x-1/2 origin-top',
+        accentColor: 'bg-blue-400'
+    },
+    macd: {
+        title: 'MACD 指標',
+        def: '利用快慢移動平均線（EMA）的聚合與分離程度，研判中長期趨勢強弱的指標。',
+        usage: 'DIF 線突破 MACD 線為黃金交叉偏多，跌破為死亡交叉偏空。柱狀體零軸上拉長多頭強勢。',
+        align: 'left-1/2 -translate-x-1/2 origin-top',
+        accentColor: 'bg-orange-500'
+    },
+    rsi: {
+        title: 'RSI 強弱指標',
+        def: '衡量特定期間內上漲與下跌力道的相對強弱，是極佳的短線超買超賣動能指標。',
+        usage: 'RSI >80 屬於極度超買（警戒反轉），<20 屬於極度超賣（醞釀反彈）。50 以上多方佔優。',
+        align: 'left-1/2 -translate-x-1/2 origin-top',
+        accentColor: 'bg-purple-500'
+    },
+    dmi: {
+        title: 'DMI 趨勢指標',
+        def: '由正方向線（+DI）、負方向線（-DI）與平均方向通道（ADX）組成。',
+        usage: '+DI > -DI 且 ADX 向上翻揚代表多頭趨勢成立且走強，ADX 值 <20 代表市場無明顯趨勢。',
+        align: 'right-0 origin-top-right',
+        accentColor: 'bg-emerald-500'
+    }
+};
+
 export default function StockChart({ stock, period = '日K', onPatternsDetected, onIndicatorStatus }) {
     const mainChartRef = useRef();
     const kdRsiChartRef = useRef();
@@ -489,6 +534,63 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
     // kdRsiChart block visibility: if both KD and RSI are false, collapse the container
     const displayKdRsi = (showKD || showRSI) ? 'block' : 'none';
 
+    const indicators = [
+        {
+            id: 'ma20',
+            label: 'MA20',
+            active: showMA20,
+            toggle: () => setShowMA20(v => !v),
+            colorClass: showMA20 
+                ? 'text-blue-600 bg-blue-100 border-blue-200 dark:bg-blue-950/30 dark:border-blue-900/50 dark:text-blue-400' 
+                : 'text-slate-400 bg-slate-100 border-slate-200 dark:bg-slate-800 dark:border-slate-700 line-through'
+        },
+        {
+            id: 'bb',
+            label: 'BB 布林通道',
+            active: showBB,
+            toggle: () => setShowBB(v => !v),
+            colorClass: showBB 
+                ? 'text-indigo-600 bg-indigo-100 border-indigo-200 dark:bg-indigo-950/30 dark:border-indigo-900/50 dark:text-indigo-400' 
+                : 'text-slate-400 bg-slate-100 border-slate-200 dark:bg-slate-800 dark:border-slate-700 line-through'
+        },
+        {
+            id: 'kd',
+            label: 'KD 隨機',
+            active: showKD,
+            toggle: () => setShowKD(v => !v),
+            colorClass: showKD 
+                ? 'text-blue-500 bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-900/50 dark:text-blue-400' 
+                : 'text-slate-400 bg-slate-100 border-slate-200 dark:bg-slate-800 dark:border-slate-700 line-through'
+        },
+        {
+            id: 'macd',
+            label: 'MACD',
+            active: showMACD,
+            toggle: () => setShowMACD(v => !v),
+            colorClass: showMACD 
+                ? 'text-orange-600 bg-orange-100 border-orange-200 dark:bg-orange-950/30 dark:border-orange-900/50 dark:text-orange-400' 
+                : 'text-slate-400 bg-slate-100 border-slate-200 dark:bg-slate-800 dark:border-slate-700 line-through'
+        },
+        {
+            id: 'rsi',
+            label: 'RSI 強弱',
+            active: showRSI,
+            toggle: () => setShowRSI(v => !v),
+            colorClass: showRSI 
+                ? 'text-purple-600 bg-purple-100 border-purple-200 dark:bg-purple-950/30 dark:border-purple-900/50 dark:text-purple-400' 
+                : 'text-slate-400 bg-slate-100 border-slate-200 dark:bg-slate-800 dark:border-slate-700 line-through'
+        },
+        {
+            id: 'dmi',
+            label: 'DMI 趨勢',
+            active: showDMI,
+            toggle: () => setShowDMI(v => !v),
+            colorClass: showDMI 
+                ? 'text-emerald-600 bg-emerald-100 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50 dark:text-emerald-400' 
+                : 'text-slate-400 bg-slate-100 border-slate-200 dark:bg-slate-800 dark:border-slate-700 line-through'
+        }
+    ];
+
     return (
         <div className="w-full flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm transition-colors duration-300">
             {/* Chart Header */}
@@ -499,14 +601,50 @@ export default function StockChart({ stock, period = '日K', onPatternsDetected,
                         <h3 className="font-black text-slate-800 dark:text-white text-xl tracking-tight leading-none">
                             {stock.name} <span className="text-slate-400 dark:text-slate-500 font-bold ml-1 text-base">({stock.symbol})</span>
                         </h3>
-                        {/* Custom Indicators Switches */}
+                        {/* Custom Indicators Switches with Hover Card Tooltips */}
                         <div className="flex flex-wrap items-center gap-2 mt-2">
-                            <button onClick={() => setShowMA20(v => !v)} className={`text-xs md:text-sm font-black px-3.5 py-1.5 rounded-full uppercase tracking-tighter cursor-pointer transition-all border ${showMA20 ? 'text-blue-600 bg-blue-100 border-blue-200 dark:bg-blue-950/30 dark:border-blue-900/50 dark:text-blue-400' : 'text-slate-400 bg-slate-100 border-slate-200 dark:bg-slate-800 dark:border-slate-700 line-through'}`}>MA20</button>
-                            <button onClick={() => setShowBB(v => !v)} className={`text-xs md:text-sm font-black px-3.5 py-1.5 rounded-full uppercase tracking-tighter cursor-pointer transition-all border ${showBB ? 'text-indigo-600 bg-indigo-100 border-indigo-200 dark:bg-indigo-950/30 dark:border-indigo-900/50 dark:text-indigo-400' : 'text-slate-400 bg-slate-100 border-slate-200 dark:bg-slate-800 dark:border-slate-700 line-through'}`}>BB 布林通道</button>
-                            <button onClick={() => setShowKD(v => !v)} className={`text-xs md:text-sm font-black px-3.5 py-1.5 rounded-full uppercase tracking-tighter cursor-pointer transition-all border ${showKD ? 'text-blue-500 bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-900/50 dark:text-blue-400' : 'text-slate-400 bg-slate-100 border-slate-200 dark:bg-slate-800 dark:border-slate-700 line-through'}`}>KD 隨機</button>
-                            <button onClick={() => setShowMACD(v => !v)} className={`text-xs md:text-sm font-black px-3.5 py-1.5 rounded-full uppercase tracking-tighter cursor-pointer transition-all border ${showMACD ? 'text-orange-600 bg-orange-100 border-orange-200 dark:bg-orange-950/30 dark:border-orange-900/50 dark:text-orange-400' : 'text-slate-400 bg-slate-100 border-slate-200 dark:bg-slate-800 dark:border-slate-700 line-through'}`}>MACD</button>
-                            <button onClick={() => setShowRSI(v => !v)} className={`text-xs md:text-sm font-black px-3.5 py-1.5 rounded-full uppercase tracking-tighter cursor-pointer transition-all border ${showRSI ? 'text-purple-600 bg-purple-100 border-purple-200 dark:bg-purple-950/30 dark:border-purple-900/50 dark:text-purple-400' : 'text-slate-400 bg-slate-100 border-slate-200 dark:bg-slate-800 dark:border-slate-700 line-through'}`}>RSI 強弱</button>
-                            <button onClick={() => setShowDMI(v => !v)} className={`text-xs md:text-sm font-black px-3.5 py-1.5 rounded-full uppercase tracking-tighter cursor-pointer transition-all border ${showDMI ? 'text-emerald-600 bg-emerald-100 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50 dark:text-emerald-400' : 'text-slate-400 bg-slate-100 border-slate-200 dark:bg-slate-800 dark:border-slate-700 line-through'}`}>DMI 趨勢</button>
+                            {indicators.map(ind => {
+                                const tooltip = INDICATOR_TOOLTIPS[ind.id];
+                                return (
+                                    <div key={ind.id} className="relative group">
+                                        <button 
+                                            onClick={ind.toggle} 
+                                            className={`text-xs md:text-sm font-black px-3.5 py-1.5 rounded-full uppercase tracking-tighter cursor-pointer transition-all border ${ind.colorClass}`}
+                                        >
+                                            {ind.label}
+                                        </button>
+                                        
+                                        {/* Tooltip Hover Card */}
+                                        {tooltip && (
+                                            <div className={`absolute z-50 top-full mt-2 w-72 p-4 
+                                                bg-white/95 dark:bg-slate-950/95 backdrop-blur-md 
+                                                border border-slate-200/80 dark:border-slate-800/80 
+                                                rounded-2xl shadow-xl opacity-0 scale-95 pointer-events-none 
+                                                group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto
+                                                transition-all duration-200 ease-out text-left ${tooltip.align}`}>
+                                                
+                                                {/* Header */}
+                                                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
+                                                    <span className={`w-1.5 h-3.5 rounded-full ${tooltip.accentColor}`} />
+                                                    <h4 className="font-black text-sm text-slate-800 dark:text-slate-100">{tooltip.title}</h4>
+                                                </div>
+                                                
+                                                {/* Body */}
+                                                <div className="space-y-2.5 text-xs">
+                                                    <div>
+                                                        <span className="block font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[8px] mb-0.5">指標定義</span>
+                                                        <p className="text-slate-650 dark:text-slate-300 leading-relaxed font-semibold">{tooltip.def}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="block font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[8px] mb-0.5">操作解讀</span>
+                                                        <p className="text-slate-650 dark:text-slate-300 leading-relaxed font-semibold">{tooltip.usage}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
