@@ -18,6 +18,8 @@ import {
     Search,
     TrendingDown
 } from 'lucide-react'
+import { useTheme } from '../../context/ThemeContext'
+import StructuredReportView from '../shared/StructuredReportView'
 import {
     BarChart,
     Bar,
@@ -57,6 +59,7 @@ import StockNewsEventsView from '../shared/StockNewsEventsView'
 
 const SIDEBAR_MENU = [
     { id: 'overview', label: '全景分析' },
+    { id: 'ai_report', label: 'AI 分析報告' },
     { id: 'technical', label: '技術指標' },
     {
         id: 'chips',
@@ -126,6 +129,35 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
     const [activePeriod, setActivePeriod] = useState('日K')
     const [activeFilter, setActiveFilter] = useState('all')
     const [activeIndicator, setActiveIndicator] = useState('kline')
+    
+    // AI 報告雙主題與載入狀態定義
+    const { theme } = useTheme()
+    const isDark = theme === 'dark'
+    const [reportDate, setReportDate] = useState(() => new Date().toISOString().split('T')[0])
+    const [reportData, setReportData] = useState(null)
+    const [reportLoading, setReportLoading] = useState(false)
+
+    const fetchAIReport = async (symbol, date) => {
+        if (!symbol || !date) return
+        setReportLoading(true)
+        try {
+            const res = await fetch(`/api/monitor/report-detail?symbol=${symbol}&date=${date}`)
+            const json = await res.json()
+            if (json.success) setReportData(json.data)
+            else setReportData(null)
+        } catch (err) {
+            console.error('Error fetching AI report:', err)
+            setReportData(null)
+        } finally {
+            setReportLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        if (activeTab === 'ai_report' && stock?.symbol && reportDate) {
+            fetchAIReport(stock.symbol, reportDate)
+        }
+    }, [activeTab, stock?.symbol, reportDate])
 
     useEffect(() => {
         const fetchFinancials = async () => {
@@ -412,6 +444,96 @@ export default function StockDetail({ stock, onClose, isInline = false }) {
                     <div className="flex-1 overflow-y-auto p-6 bg-white relative">
                         {activeTab === 'overview' ? (
                             <StockDashboard stock={stock} />
+                        ) : activeTab === 'ai_report' ? (
+                            <div className="h-full flex flex-col gap-6 animate-in fade-in duration-300">
+                                {/* AI Report Date and Score Header */}
+                                <div className={`p-6 rounded-2xl border shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-colors duration-300 ${
+                                    isDark 
+                                        ? 'bg-slate-900 border-slate-800 text-white' 
+                                        : 'bg-slate-50 border-slate-200 text-slate-800'
+                                }`}>
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${
+                                            isDark ? 'bg-indigo-950/40 border-indigo-900/50 text-indigo-400' : 'bg-indigo-50 border-indigo-100 text-indigo-500'
+                                        }`}>
+                                            <FileText className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-bold flex items-center gap-2">
+                                                {stock.name} AI 投資分析報告
+                                            </h2>
+                                            <div className="flex items-center gap-3 mt-2">
+                                                <span className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>報告日期:</span>
+                                                <input 
+                                                    type="date" 
+                                                    className={`px-3 py-1 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/20 font-medium ${
+                                                        isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-805'
+                                                    }`}
+                                                    value={reportDate}
+                                                    onChange={(e) => setReportDate(e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {reportData && (
+                                        <div className={`flex items-center gap-4 p-3 px-5 rounded-2xl border transition-all ${
+                                            isDark 
+                                                ? 'bg-white/10 border-white/10' 
+                                                : 'bg-white border-slate-200 shadow-sm'
+                                        }`}>
+                                            <div className="text-right">
+                                                <div className={`text-[10px] uppercase tracking-wider font-bold transition-colors ${
+                                                    isDark ? 'opacity-60 text-white' : 'text-slate-500'
+                                                }`}>情緒綜合評分</div>
+                                                <div className={`text-xs uppercase tracking-widest mt-0.5 transition-colors ${
+                                                    isDark ? 'opacity-40 text-white' : 'text-slate-400'
+                                                }`}>Sentiment Score</div>
+                                            </div>
+                                            <div className={`w-12 h-12 rounded-full border-4 border-brand-primary flex items-center justify-center text-sm font-black shadow-lg shadow-brand-primary/20 ${
+                                                isDark ? 'text-white bg-brand-primary/10' : 'text-brand-primary bg-brand-primary/5'
+                                            }`}>
+                                                {(reportData.sentiment_score * 100).toFixed(0)}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Content Display */}
+                                {reportLoading ? (
+                                    <div className="flex-1 flex flex-col items-center justify-center py-20 min-h-[400px]">
+                                        <div className={`w-10 h-10 border-4 rounded-full animate-spin ${
+                                            isDark ? 'border-slate-800 border-t-brand-primary' : 'border-gray-100 border-t-brand-primary'
+                                        }`}></div>
+                                        <p className="mt-4 text-sm text-gray-400 font-bold">正在讀取 AI 分析報告...</p>
+                                    </div>
+                                ) : reportData ? (
+                                    <div className={`border rounded-2xl overflow-hidden shadow-sm flex flex-col transition-colors duration-300 ${
+                                        isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-150 text-slate-850'
+                                    }`}>
+                                        <div className={`p-6 md:p-8 flex-1 ${isDark ? 'bg-slate-950/20' : 'bg-slate-50/10'}`}>
+                                            <div className="max-w-3xl mx-auto">
+                                                <StructuredReportView reportText={reportData.content} />
+                                            </div>
+                                        </div>
+                                        <div className={`p-6 border-t text-center text-xs ${
+                                            isDark ? 'bg-slate-900/50 border-slate-800 text-slate-500' : 'bg-gray-50 border-gray-100 text-gray-400'
+                                        }`}>
+                                            本報告由台股智能篩選器 AI 自動生成，僅供研究參考，不構成任何投資建議。
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className={`flex-1 flex flex-col items-center justify-center p-12 text-center border border-dashed rounded-2xl min-h-[400px] ${
+                                        isDark ? 'bg-slate-900/40 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-400'
+                                    }`}>
+                                        <div className="w-16 h-16 bg-red-50 dark:bg-red-950/20 rounded-full flex items-center justify-center mb-4">
+                                            <FileText className="w-8 h-8 text-red-300 dark:text-red-800/60" />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-red-800 dark:text-red-400">無可用報告</h3>
+                                        <p className="text-sm mt-2 max-w-xs">{stock.name} 在 {reportDate} 尚未生成 AI 分析報告。</p>
+                                    </div>
+                                )}
+                            </div>
                         ) : activeTab === 'chips' ? (
                             <MainForceView
                                 symbol={stock.symbol}

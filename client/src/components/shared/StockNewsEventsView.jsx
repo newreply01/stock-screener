@@ -55,7 +55,7 @@ export default function StockNewsEventsView({ stock }) {
                             <MessageSquare className="w-6 h-6 text-slate-300 dark:text-slate-500" />
                         </div>
                         <h3 className="text-slate-900 dark:text-slate-200 font-bold mb-1">暫無專屬新聞重訊</h3>
-                        <p className="text-slate-500 dark:text-slate-400 text-xs">目前資料庫中尚無此個股的專屬重大重訊，您可至全域新聞公告查看大盤新聞。</p>
+                        <p className="text-slate-500 dark:text-slate-400 text-xs">目前資料庫中尚無此個股的專屬重大重訊，您可至全域新聞資訊查看大盤新聞。</p>
                     </div>
                 ) : (
                     <div className="space-y-4">

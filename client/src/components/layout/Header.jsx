@@ -104,7 +104,7 @@ export default function Header({ currentView = 'dashboard' }) {
                             onClick={() => dispatchView('news')}
                             className={`h-16 flex items-center transition-colors px-1 border-b-2 ${currentView === 'news' ? 'text-brand-primary font-bold border-brand-primary hover:text-red-400' : 'text-slate-500 dark:text-gray-300 hover:text-brand-primary dark:hover:text-white border-transparent hover:border-brand-primary/30 dark:hover:border-white/20'}`}
                         >
-                            新聞公告
+                            新聞資訊
                         </button>
                         {showMonitor && (
                             <button
@@ -214,7 +214,7 @@ export default function Header({ currentView = 'dashboard' }) {
                         <button onClick={() => { dispatchView('market'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'market' ? 'bg-brand-primary text-white shadow-lg' : 'text-slate-600 dark:text-gray-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10'}`}>市場總覽</button>
                         <button onClick={() => { dispatchView('screener'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'screener' ? 'bg-brand-primary text-white shadow-lg' : 'text-slate-600 dark:text-gray-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10'}`}>智能選股</button>
                         <button onClick={() => { dispatchView('stock-detail'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'stock-detail' ? 'bg-brand-primary text-white shadow-lg' : 'text-slate-600 dark:text-gray-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10'}`}>個股分析</button>
-                        <button onClick={() => { dispatchView('news'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${showMonitor ? '' : 'col-span-2'} ${currentView === 'news' ? 'bg-brand-primary text-white shadow-lg' : 'text-slate-600 dark:text-gray-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10'}`}>新聞公告</button>
+                        <button onClick={() => { dispatchView('news'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${showMonitor ? '' : 'col-span-2'} ${currentView === 'news' ? 'bg-brand-primary text-white shadow-lg' : 'text-slate-600 dark:text-gray-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10'}`}>新聞資訊</button>
                         {showMonitor && (
                             <button onClick={() => { dispatchView('monitor'); setIsMenuOpen(false); }} className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs ${currentView === 'monitor' ? 'bg-brand-primary text-white shadow-lg' : 'text-slate-600 dark:text-gray-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10'}`}>系統監控</button>
                         )}

@@ -1,32 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Database, Server, Clock, RefreshCw, AlertCircle, Calendar, Search, FileText, BarChart2, ChevronRight } from 'lucide-react';
-import StructuredReportView from '../shared/StructuredReportView';
+import { Activity, Database, Server, Clock, RefreshCw, AlertCircle, Calendar, BarChart2 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function MonitorPage() {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
-    const [activeTab, setActiveTab] = useState('system'); // 'system' | 'ai-reports'
     const [statusData, setStatusData] = useState(null);
     const [statsData, setStatsData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [lastFetchTime, setLastFetchTime] = useState(null);
-
-    // AI Report Tab States
-    const [allStocks, setAllStocks] = useState([]);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [showResults, setShowResults] = useState(false);
-    const [selectedStock, setSelectedStock] = useState(null);
-    const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
-    const [reportData, setReportData] = useState(null);
-    const [reportLoading, setReportLoading] = useState(false);
-
-    // New Control States
-    const [sortKey, setSortKey] = useState('volume'); // 'symbol' | 'volume' | 'processed_at'
-    const [sortOrder, setSortOrder] = useState('desc');
-    const [filterOnlyCompleted, setFilterOnlyCompleted] = useState(false);
-    const [isStocksLoading, setIsStocksLoading] = useState(false);
 
     const fetchData = async () => {
         setLoading(true);
@@ -57,78 +40,10 @@ export default function MonitorPage() {
 
     useEffect(() => {
         fetchData();
-        // Optional: Auto-refresh every 5 minutes
+        // Auto-refresh every 5 minutes
         const interval = setInterval(fetchData, 5 * 60 * 1000);
         return () => clearInterval(interval);
     }, []);
-
-    useEffect(() => {
-        fetchStocks();
-    }, [reportDate]);
-
-    const fetchStocks = async () => {
-        if (!reportDate) return;
-        setIsStocksLoading(true);
-        try {
-            const res = await fetch(`/api/monitor/all-stocks?date=${reportDate}`);
-            const json = await res.json();
-            if (json.success) setAllStocks(json.data);
-        } catch (err) {
-            console.error('Error fetching stocks:', err);
-        } finally {
-            setIsStocksLoading(false);
-        }
-    };
-
-    const fetchReport = async (symbol, date) => {
-        if (!symbol || !date) return;
-        setReportLoading(true);
-        try {
-            const res = await fetch(`/api/monitor/report-detail?symbol=${symbol}&date=${date}`);
-            const json = await res.json();
-            if (json.success) setReportData(json.data);
-            else setReportData(null);
-        } catch (err) {
-            console.error('Error fetching report:', err);
-            setReportData(null);
-        } finally {
-            setReportLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (selectedStock && reportDate) {
-            fetchReport(selectedStock.symbol, reportDate);
-        }
-    }, [selectedStock, reportDate]);
-
-    const filteredStocks = allStocks
-        .filter(s => {
-            const queryMatch = searchQuery 
-                ? (s.symbol.includes(searchQuery) || s.name.includes(searchQuery))
-                : true;
-            const completedMatch = filterOnlyCompleted ? s.has_report : true;
-            return queryMatch && completedMatch;
-        })
-        .sort((a, b) => {
-            let valA = a[sortKey];
-            let valB = b[sortKey];
-
-            // Specific logic for processed_at (dates)
-            if (sortKey === 'processed_at') {
-                valA = valA ? new Date(valA).getTime() : 0;
-                valB = valB ? new Date(valB).getTime() : 0;
-            } else if (sortKey === 'volume') {
-                valA = parseInt(valA) || 0;
-                valB = parseInt(valB) || 0;
-            }
-
-            if (sortOrder === 'asc') return valA > valB ? 1 : -1;
-            else return valA < valB ? 1 : -1;
-        });
-
-    const completionCount = allStocks.filter(s => s.has_report).length;
-    const completionRate = allStocks.length > 0 ? (completionCount / allStocks.length * 100).toFixed(1) : 0;
 
     // Helper components
     const StatusBadge = ({ status }) => {
@@ -150,9 +65,8 @@ export default function MonitorPage() {
         });
     };
 
-    // ─── Static definitions (no backend needed) ────────────────────────────────
     // Maps FinMind dataset name → script name + badge colour
-        const DATASET_SCRIPT_MAP = {
+    const DATASET_SCRIPT_MAP = {
         'TaiwanStockPrice': { script: 'twse_fetcher.js', color: 'bg-blue-100 text-blue-800 border border-blue-200' },
         'TaiwanStockPriceTick': { script: 'realtime_crawler.js', color: 'bg-green-100 text-green-800 border border-green-200' },
         'TaiwanStockInstitutional': { script: 'twse_fetcher.js', color: 'bg-blue-100 text-blue-800 border border-blue-200' },
@@ -190,41 +104,12 @@ export default function MonitorPage() {
         { script: 'update_ai_reports.js', desc: 'AI 報告生成中心 (Ollama/Gemini)', schedule: '每交易日 22:30 (常駐 Worker)' },
         { script: 'updateDailyStats', desc: '每日系統寫入筆數匯總計算', schedule: '每天 23:55' },
     ];
-    // ──────────────────────────────────────────────────────────────────────────
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 fade-in-20">
-            {/* Tab Switcher */}
-            <div className={`flex p-1 rounded-2xl w-fit transition-colors ${isDark ? 'bg-slate-800' : 'bg-gray-100'}`}>
-                <button
-                    onClick={() => setActiveTab('system')}
-                    className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all ${
-                        activeTab === 'system'
-                            ? (isDark ? 'bg-slate-700 text-white shadow-sm' : 'bg-white text-gray-900 shadow-sm')
-                            : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-gray-500 hover:text-gray-700')
-                    }`}
-                >
-                    <Server className="w-4 h-4" />
-                    系統健康狀態
-                </button>
-                <button
-                    onClick={() => setActiveTab('ai-reports')}
-                    className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all ${
-                        activeTab === 'ai-reports'
-                            ? (isDark ? 'bg-slate-700 text-white shadow-sm' : 'bg-white text-gray-900 shadow-sm')
-                            : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-gray-500 hover:text-gray-700')
-                    }`}
-                >
-                    <FileText className="w-4 h-4" />
-                    AI 投資報告查詢
-                </button>
-            </div>
-
-            {activeTab === 'system' ? (
-                <>
-                {/* Header section */}
+            {/* Header section */}
             <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-5 rounded-2xl border shadow-sm transition-colors duration-300 ${
-                isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-gray-800'
+                isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-gray-805'
             }`}>
                 <div>
                     <h1 className={`text-2xl font-bold tracking-tight flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -272,11 +157,11 @@ export default function MonitorPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {/* Database Status */}
                     <div className={`p-5 rounded-2xl border shadow-sm flex flex-col pt-6 transition-colors duration-300 ${
-                        isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-gray-800'
+                        isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-gray-850'
                     }`}>
                         <div className="flex justify-between items-start mb-4">
                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                                isDark ? 'bg-blue-950/40 text-blue-400' : 'bg-blue-50 text-blue-600'
+                                  isDark ? 'bg-blue-950/40 text-blue-400' : 'bg-blue-50 text-blue-600'
                             }`}>
                                 <Database className="w-5 h-5" />
                             </div>
@@ -288,11 +173,11 @@ export default function MonitorPage() {
 
                     {/* Backend API Status */}
                     <div className={`p-5 rounded-2xl border shadow-sm flex flex-col pt-6 transition-colors duration-300 ${
-                        isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-gray-800'
+                        isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-gray-850'
                     }`}>
                         <div className="flex justify-between items-start mb-4">
                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                                isDark ? 'bg-indigo-950/40 text-indigo-400' : 'bg-indigo-50 text-indigo-600'
+                                  isDark ? 'bg-indigo-950/40 text-indigo-400' : 'bg-indigo-50 text-indigo-600'
                             }`}>
                                 <Server className="w-5 h-5" />
                             </div>
@@ -304,11 +189,11 @@ export default function MonitorPage() {
 
                     {/* Scheduler Status */}
                     <div className={`p-5 rounded-2xl border shadow-sm flex flex-col pt-6 lg:col-span-2 transition-colors duration-300 ${
-                        isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-gray-800'
+                        isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-gray-850'
                     }`}>
                         <div className="flex justify-between items-start mb-4">
                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                                isDark ? 'bg-purple-950/40 text-purple-400' : 'bg-purple-50 text-purple-600'
+                                  isDark ? 'bg-purple-950/40 text-purple-400' : 'bg-purple-50 text-purple-600'
                             }`}>
                                 <Activity className="w-5 h-5" />
                             </div>
@@ -321,7 +206,7 @@ export default function MonitorPage() {
                             </div>
                             <div className="text-right">
                                 <div className={`text-xs ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>上次檢查</div>
-                                <div className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>{formatDate(statusData.status.scheduler_last_check)}</div>
+                                <div className={`text-sm font-medium ${isDark ? 'text-slate-350' : 'text-gray-655'}`}>{formatDate(statusData.status.scheduler_last_check)}</div>
                             </div>
                         </div>
                     </div>
@@ -330,21 +215,19 @@ export default function MonitorPage() {
 
             {/* Ingestion Stats Chart (Bar Chart visualization) */}
             <div className={`p-6 rounded-2xl border shadow-sm transition-colors duration-300 ${
-                isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-gray-800'
+                isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-gray-805'
             }`}>
                 <div className="flex items-center gap-2 mb-6">
-                    <Calendar className="w-5 h-5 text-brand-primary" />
+                    <BarChart2 className="w-5 h-5 text-brand-primary" />
                     <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>近 7 天資料擷取筆數 (寫入趨勢)</h2>
                 </div>
 
                 {statsData.length > 0 ? (
                     <div className="pt-10 pb-4 overflow-visible">
                         <div className="w-full">
-                            {/* Simple Bar Chart Implementation using divs */}
                             <div className={`flex items-end gap-1 h-64 relative border-b pb-2 overflow-visible ${
-                                isDark ? 'border-slate-800' : 'border-gray-200'
+                                  isDark ? 'border-slate-800' : 'border-gray-200'
                             }`}>
-                                {/* Find max value for scaling */}
                                 {(() => {
                                     const maxVal = Math.max(1, ...statsData.map(d =>
                                         d.price_count + d.inst_count + d.margin_count + (d.news_count || 0) +
@@ -358,9 +241,9 @@ export default function MonitorPage() {
 
                                         return (
                                             <div key={idx} className="flex-1 flex flex-col items-center group relative h-full justify-end">
-                                                {/* Tooltip (now with space to render) */}
+                                                {/* Tooltip */}
                                                 <div className={`absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-xl text-xs rounded-lg p-2.5 whitespace-nowrap z-[100] pointer-events-none transform -translate-x-1/2 left-1/2 border ${
-                                                    isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-900 border-gray-800 text-white'
+                                                      isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-900 border-gray-800 text-white'
                                                 }`}>
                                                     <div className="font-bold border-b border-white/20 pb-1.5 mb-1.5 text-center">{day.date}</div>
                                                     <div className="flex justify-between gap-4">
@@ -376,7 +259,7 @@ export default function MonitorPage() {
 
                                                 {/* Date Label */}
                                                 <div className={`text-[10px] mt-2 rotate-45 origin-left w-full h-8 flex-shrink-0 leading-none ${
-                                                    isDark ? 'text-slate-400' : 'text-gray-500'
+                                                      isDark ? 'text-slate-400' : 'text-gray-500'
                                                 }`}>{day.date.substring(5)}</div>
                                             </div>
                                         );
@@ -396,7 +279,7 @@ export default function MonitorPage() {
 
             {/* Daily Ingestion Details Table */}
             <div className={`p-6 rounded-2xl border shadow-sm mt-6 transition-colors duration-300 ${
-                isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-gray-800'
+                isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-gray-805'
             }`}>
                 <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                     <Database className="w-5 h-5 text-blue-500" />
@@ -404,8 +287,8 @@ export default function MonitorPage() {
                 </h2>
 
                 <div className={`overflow-x-auto rounded-xl border ${isDark ? 'border-slate-800' : 'border-gray-200'}`}>
-                    <table className={`w-full text-left text-sm ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
-                        <thead className={`border-b text-gray-700 ${
+                    <table className={`w-full text-left text-sm ${isDark ? 'text-slate-300' : 'text-gray-655'}`}>
+                        <thead className={`border-b text-gray-705 ${
                             isDark ? 'bg-slate-800/80 border-slate-850 text-slate-200 font-bold' : 'bg-gray-50 border-gray-200 text-gray-700'
                         }`}>
                             <tr>
@@ -439,7 +322,7 @@ export default function MonitorPage() {
                                         <td className={`px-5 py-3.5 text-right font-mono ${isDark ? 'text-white' : 'text-gray-900'}`}>{(day.inst_count + day.margin_count).toLocaleString()}</td>
                                         <td className="px-5 py-3.5 text-right font-mono text-blue-500 font-bold">{(day.realtime_count || 0).toLocaleString()}</td>
                                         <td className={`px-5 py-3.5 text-right font-mono ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>{((day.stats_count || 0) + (day.health_count || 0)).toLocaleString()}</td>
-                                        <td className={`px-5 py-3.5 text-right font-mono ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{(day.news_count || 0).toLocaleString()}</td>
+                                        <td className={`px-5 py-3.5 text-right font-mono ${isDark ? 'text-slate-400' : 'text-gray-555'}`}>{(day.news_count || 0).toLocaleString()}</td>
                                         <td className="px-5 py-3.5 text-right font-mono font-bold text-brand-primary">{total.toLocaleString()}</td>
                                     </tr>
                                 );
@@ -456,7 +339,7 @@ export default function MonitorPage() {
 
             {/* Synchronization Details Table */}
             <div className={`p-6 rounded-2xl border shadow-sm mt-6 transition-colors duration-300 ${
-                isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-gray-800'
+                isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-gray-850'
             }`}>
                 <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                     <Database className="w-5 h-5 text-blue-500" />
@@ -464,8 +347,8 @@ export default function MonitorPage() {
                 </h2>
 
                 <div className={`overflow-x-auto rounded-xl border ${isDark ? 'border-slate-800' : 'border-gray-200'}`}>
-                    <table className={`w-full text-left text-sm ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
-                        <thead className={`border-b text-gray-700 ${
+                    <table className={`w-full text-left text-sm ${isDark ? 'text-slate-300' : 'text-gray-655'}`}>
+                        <thead className={`border-b text-gray-705 ${
                             isDark ? 'bg-slate-800/80 border-slate-850 text-slate-200 font-bold' : 'bg-gray-50 border-gray-200 text-gray-700'
                         }`}>
                             <tr>
@@ -479,7 +362,7 @@ export default function MonitorPage() {
                         <tbody className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-gray-100'}`}>
                             {statusData?.sync_progress?.filter(d => DATASET_SCRIPT_MAP[d.id])?.map((item, idx) => {
                                 const isStale = new Date() - new Date(item.last_updated) > 3 * 24 * 60 * 60 * 1000;
-                                const scriptInfo = DATASET_SCRIPT_MAP[item.id] || { script: '未知', color: 'bg-gray-100 text-gray-600' };
+                                const scriptInfo = DATASET_SCRIPT_MAP[item.id] || { script: '未知', color: 'bg-gray-100 text-gray-605' };
 
                                 // 在深色模式下稍微調整標籤色彩
                                 const dynamicBadgeColor = isDark 
@@ -530,7 +413,7 @@ export default function MonitorPage() {
 
             {/* JS Script Monitoring Table */}
             <div className={`p-6 rounded-2xl border shadow-sm mt-6 transition-colors duration-300 ${
-                isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-gray-800'
+                isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-gray-850'
             }`}>
                 <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                     <Server className="w-5 h-5 text-indigo-500" />
@@ -538,8 +421,8 @@ export default function MonitorPage() {
                 </h2>
 
                 <div className={`overflow-x-auto rounded-xl border ${isDark ? 'border-slate-800' : 'border-gray-200'}`}>
-                    <table className={`w-full text-left text-sm ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
-                        <thead className={`border-b text-gray-700 ${
+                    <table className={`w-full text-left text-sm ${isDark ? 'text-slate-300' : 'text-gray-655'}`}>
+                        <thead className={`border-b text-gray-705 ${
                             isDark ? 'bg-slate-800/80 border-slate-850 text-slate-200 font-bold' : 'bg-gray-50 border-gray-200 text-gray-700'
                         }`}>
                             <tr>
@@ -622,7 +505,7 @@ export default function MonitorPage() {
                                                 <div className={`text-xs line-clamp-2 ${isDark ? 'text-slate-400' : 'text-gray-500'}`} title={message}>{message}</div>
                                             </div>
                                         </td>
-                                        <td className={`px-5 py-4 text-right font-mono text-xs ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>{formatDate(lastRun)}</td>
+                                        <td className={`px-5 py-4 text-right font-mono text-xs ${isDark ? 'text-slate-400' : 'text-gray-650'}`}>{formatDate(lastRun)}</td>
                                     </tr>
                                 );
                             })}
@@ -630,304 +513,6 @@ export default function MonitorPage() {
                     </table>
                 </div>
             </div>
-                </>
-            ) : (
-                <div className="space-y-6">
-                    {/* Search & Filter Header */}
-                    <div className={`p-6 rounded-2xl border shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6 transition-colors duration-300 ${
-                        isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-gray-805'
-                    }`}>
-                        {/* Autocomplete Search */}
-                        <div className="relative col-span-2">
-                            <label className={`block text-sm font-bold mb-2 ${isDark ? 'text-slate-205' : 'text-gray-700'}`}>搜尋個股 (代號或名稱)</label>
-                            <div className="relative">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="輸入如 2330 或 台積電..."
-                                    className={`w-full pl-12 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all font-medium ${
-                                        isDark ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-gray-50 border-gray-200 text-gray-800'
-                                    }`}
-                                    value={selectedStock ? `${selectedStock.symbol} ${selectedStock.name}` : searchQuery}
-                                    onChange={(e) => {
-                                        setSearchQuery(e.target.value);
-                                        setSelectedStock(null);
-                                        setShowResults(true);
-                                    }}
-                                    onFocus={() => setShowResults(true)}
-                                />
-                                {selectedStock && (
-                                    <button 
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-600 font-bold"
-                                        onClick={() => { setSelectedStock(null); setSearchQuery(''); }}
-                                    >
-                                        清除
-                                    </button>
-                                )}
-                            </div>
-                            
-                            {/* Dropdown Results */}
-                            {showResults && filteredStocks.length > 0 && (
-                                <div className={`absolute z-50 w-full mt-2 border rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 ${
-                                    isDark ? 'bg-slate-800 border-slate-700 text-white shadow-slate-950/50' : 'bg-white border-gray-200'
-                                }`}>
-                                    {filteredStocks.map(s => (
-                                        <button
-                                            key={s.symbol}
-                                            className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors border-b last:border-0 ${
-                                                isDark ? 'hover:bg-slate-700/50 border-slate-700 text-white' : 'hover:bg-gray-50 border-gray-100 text-gray-800'
-                                            }`}
-                                            onClick={() => {
-                                                setSelectedStock(s);
-                                                setShowResults(false);
-                                                setSearchQuery('');
-                                            }}
-                                        >
-                                            <div>
-                                                <span className={`font-bold mr-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>{s.symbol}</span>
-                                                <span className={isDark ? 'text-slate-300' : 'text-gray-600'}>{s.name}</span>
-                                            </div>
-                                            <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                                isDark ? 'text-slate-400 bg-slate-700' : 'text-gray-400 bg-gray-100'
-                                            }`}>{s.industry}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Date Filter */}
-                        <div>
-                            <label className={`block text-sm font-bold mb-2 ${isDark ? 'text-slate-205' : 'text-gray-700'}`}>報告日期</label>
-                            <div className="relative">
-                                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="date"
-                                    className={`w-full pl-12 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all font-medium ${
-                                        isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'
-                                    }`}
-                                    value={reportDate}
-                                    onChange={(e) => setReportDate(e.target.value)}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Report Display */}
-                    <div className={`min-h-[700px] rounded-3xl border shadow-md overflow-hidden flex flex-col transition-colors duration-300 ${
-                        isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-gray-800'
-                    }`}>
-                        {!selectedStock ? (
-                            <div className="flex-1 flex flex-col p-8">
-                                {/* Dashboard Controls */}
-                                <div className={`flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 border-b pb-6 ${
-                                    isDark ? 'border-slate-800/80' : 'border-gray-100'
-                                }`}>
-                                    <div>
-                                        <h3 className={`text-xl font-black flex items-center gap-2 mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                            <BarChart2 className="w-6 h-6 text-brand-primary" />
-                                            全市場 AI 報告進度
-                                        </h3>
-                                        <div className="flex items-center gap-4">
-                                            <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-                                                <span className={`font-bold ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{completionCount}</span> / {allStocks.length} 家已完成
-                                            </div>
-                                            <div className={`flex-1 w-32 h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-gray-100'}`}>
-                                                <div 
-                                                    className="h-full bg-brand-primary transition-all duration-1000" 
-                                                    style={{ width: `${completionRate}%` }}
-                                                ></div>
-                                            </div>
-                                            <div className="text-sm font-black text-brand-primary">{completionRate}%</div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-wrap items-center gap-3">
-                                        {/* Sort Controls */}
-                                        <div className={`flex p-0.5 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
-                                            {[
-                                                { key: 'volume', label: '成交量', icon: <BarChart2 className="w-3 h-3"/> },
-                                                { key: 'symbol', label: '代號', icon: <Search className="w-3 h-3"/> },
-                                                { key: 'processed_at', label: '處理時間', icon: <Clock className="w-3 h-3"/> }
-                                            ].map(opt => (
-                                                <button
-                                                    key={opt.key}
-                                                    onClick={() => {
-                                                        if (sortKey === opt.key) setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
-                                                        else { setSortKey(opt.key); setSortOrder('desc'); }
-                                                    }}
-                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                                                        sortKey === opt.key 
-                                                            ? (isDark ? 'bg-slate-700 text-white shadow-sm' : 'bg-white text-gray-900 shadow-sm') 
-                                                            : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-gray-400 hover:text-gray-600')
-                                                    }`}
-                                                >
-                                                    {opt.icon}
-                                                    {opt.label}
-                                                    {sortKey === opt.key && (sortOrder === 'asc' ? '↑' : '↓')}
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        {/* Filter Toggle */}
-                                        <button
-                                            onClick={() => setFilterOnlyCompleted(!filterOnlyCompleted)}
-                                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
-                                                filterOnlyCompleted 
-                                                    ? (isDark ? 'bg-green-950/40 border-green-800/80 text-green-405' : 'bg-green-50 border-green-200 text-green-700') 
-                                                    : (isDark ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300')
-                                            }`}
-                                        >
-                                            <div className={`w-2 h-2 rounded-full ${
-                                                filterOnlyCompleted 
-                                                    ? 'bg-green-500 animate-pulse' 
-                                                    : (isDark ? 'bg-slate-600' : 'bg-gray-300')
-                                            }`}></div>
-                                            僅顯示已完成
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                {isStocksLoading ? (
-                                    <div className="flex-1 flex flex-col items-center justify-center py-20">
-                                        <div className={`w-10 h-10 border-4 rounded-full animate-spin ${
-                                            isDark ? 'border-slate-800 border-t-brand-primary' : 'border-gray-100 border-t-brand-primary'
-                                        }`}></div>
-                                        <p className="mt-4 text-sm text-gray-400 font-bold">載入清單數據中...</p>
-                                    </div>
-                                ) : (
-                                    <div className="flex-1 overflow-y-auto max-h-[700px] pr-2 custom-scrollbar">
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 pb-12">
-                                            {filteredStocks.map(s => (
-                                                <button
-                                                    key={s.symbol}
-                                                    onClick={() => setSelectedStock(s)}
-                                                    className={`group text-left p-4 rounded-3xl border transition-all duration-300 relative overflow-hidden ${
-                                                        s.has_report 
-                                                            ? (isDark ? 'bg-slate-800/80 border-green-900/50 shadow-sm shadow-green-950/10 hover:border-green-500' : 'bg-white border-green-100 shadow-sm shadow-green-500/5 hover:border-green-300') 
-                                                            : (isDark ? 'bg-slate-900/40 border-slate-800/80 hover:bg-slate-800 hover:border-brand-primary' : 'bg-gray-50 border-gray-100 hover:bg-white hover:border-brand-primary')
-                                                    }`}
-                                                >
-                                                    {s.has_report && (
-                                                        <div className="absolute top-3 right-3 w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-green-500/20 animate-in zoom-in duration-500">
-                                                            <Activity className="w-3 h-3" />
-                                                        </div>
-                                                    )}
-                                                    <div className={`text-xs font-black mb-1 group-hover:text-brand-primary transition-colors flex items-center justify-between ${
-                                                        isDark ? 'text-slate-500' : 'text-gray-400'
-                                                    }`}>
-                                                        {s.symbol}
-                                                        {s.processed_at && (
-                                                            <span className="text-[9px] text-green-500 font-bold">
-                                                                {new Date(s.processed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className={`font-bold group-hover:scale-105 transition-transform origin-left truncate mb-2 ${
-                                                        isDark ? 'text-white' : 'text-gray-900'
-                                                    }`}>{s.name}</div>
-                                                    
-                                                    <div className="flex items-center gap-1.5 opacity-60">
-                                                        <BarChart2 className="w-3 h-3 text-gray-400" />
-                                                        <span className={`text-[10px] font-bold ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-                                                            {(s.volume / 1000).toLocaleString(undefined, { maximumFractionDigits: 0 })} 張
-                                                        </span>
-                                                    </div>
-                                                </button>
-                                            ))}
-                                            {filteredStocks.length === 0 && (
-                                                <div className="col-span-full py-20 text-center text-gray-400 font-bold">
-                                                    沒有符合條件的標的
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        ) : reportLoading ? (
-                            <div className="flex-1 flex flex-col items-center justify-center p-12">
-                                <div className="w-12 h-12 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
-                                <p className="mt-4 text-gray-600 font-bold">正在讀取 AI 分析報告...</p>
-                            </div>
-                        ) : reportData ? (
-                            <>
-                                <div className={`p-6 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-colors duration-300 ${
-                                    isDark 
-                                        ? 'bg-slate-900 border-slate-800 text-white' 
-                                        : 'bg-slate-50 border-slate-200 text-slate-800'
-                                }`}>
-                                    <div className="flex items-center gap-4">
-                                        <button 
-                                            onClick={() => setSelectedStock(null)}
-                                            className={`p-2 rounded-xl transition-colors group ${
-                                                isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-slate-200/50 hover:bg-slate-200'
-                                            }`}
-                                            title="返回總覽"
-                                        >
-                                            <ChevronRight className={`w-5 h-5 rotate-180 transition-colors ${isDark ? 'text-white' : 'text-slate-700'}`} />
-                                        </button>
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <h2 className="text-2xl font-bold">{selectedStock.symbol} {selectedStock.name}</h2>
-                                                <span className={`text-sm px-2 py-0.5 rounded-full transition-colors ${
-                                                    isDark ? 'opacity-80 bg-white/10 text-white' : 'bg-slate-200 text-slate-600 font-bold'
-                                                }`}>{selectedStock.industry}</span>
-                                            </div>
-                                            <div className={`text-sm flex items-center gap-2 transition-colors ${
-                                                isDark ? 'opacity-60 text-white' : 'text-slate-500'
-                                            }`}>
-                                                <Calendar className="w-4 h-4" />
-                                                分析基準日: {reportData.report_date}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className={`flex items-center gap-4 p-3 px-5 rounded-2xl border transition-all ${
-                                        isDark 
-                                            ? 'bg-white/10 border-white/10' 
-                                            : 'bg-slate-100 border-slate-200/80 shadow-sm'
-                                    }`}>
-                                        <div className="text-right">
-                                            <div className={`text-[10px] uppercase tracking-wider font-bold transition-colors ${
-                                                isDark ? 'opacity-60 text-white' : 'text-slate-500'
-                                            }`}>情緒綜合評分</div>
-                                            <div className={`text-xs uppercase tracking-widest mt-0.5 transition-colors ${
-                                                isDark ? 'opacity-40 text-white' : 'text-slate-400'
-                                            }`}>Sentiment Score</div>
-                                        </div>
-                                        <div className={`w-12 h-12 rounded-full border-4 border-brand-primary flex items-center justify-center text-sm font-black shadow-lg shadow-brand-primary/20 ${
-                                            isDark ? 'text-white bg-brand-primary/10' : 'text-brand-primary bg-brand-primary/5'
-                                        }`}>
-                                            {(reportData.sentiment_score * 100).toFixed(0)}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="p-6 md:p-8 overflow-y-auto">
-                                    <StructuredReportView reportText={reportData.content} />
-                                </div>
-                                <div className={`p-6 border-t text-center text-xs ${
-                                    isDark ? 'bg-slate-900/50 border-slate-800 text-slate-500' : 'bg-gray-50 border-gray-100 text-gray-400'
-                                }`}>
-                                    本報告由台股智能篩選器 AI 自動生成，僅供研究參考，不構成任何投資建議。
-                                </div>
-                            </>
-                        ) : (
-                            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-gray-400">
-                                <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-4">
-                                    <AlertCircle className="w-10 h-10 text-red-200" />
-                                </div>
-                                <h3 className="text-lg font-bold text-red-800">無可用報告</h3>
-                                <p className="text-sm mt-2 max-w-xs">{selectedStock.name} 在 {reportDate} 尚未生成 AI 分析報告。</p>
-                                <button 
-                                    className="mt-6 px-6 py-2 bg-brand-primary text-white rounded-xl font-bold shadow-lg shadow-brand-primary/20"
-                                    onClick={() => alert('手動生成功能開發中...')}
-                                >
-                                    立即觸發生成任務
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-        </div >
+        </div>
     );
 }
