@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useTheme } from '../../context/ThemeContext';
 import {
     FileText, BarChart3, Users, Building2, Newspaper, Target,
     ArrowUp, Shield, ChevronDown, TrendingUp, TrendingDown,
@@ -112,18 +113,51 @@ export function parseReport(markdown) {
 }
 
 // ─── Score gauge (circular) ──────────────────────────────────────────
-function ScoreGauge({ score }) {
+function ScoreGauge({ score, isDark }) {
     const size = 160, stroke = 12;
     const radius = (size - stroke) / 2;
     const circumference = 2 * Math.PI * radius;
     const progress = (score / 100) * circumference;
 
     const getInfo = (s) => {
-        if (s >= 70) return { main: '#ef4444', trail: '#fecaca', label: '偏多看漲', Icon: TrendingUp };
-        if (s >= 55) return { main: '#f97316', trail: '#fed7aa', label: '微偏多', Icon: TrendingUp };
-        if (s >= 45) return { main: '#94a3b8', trail: '#e2e8f0', label: '中性震盪', Icon: Activity };
-        if (s >= 30) return { main: '#22c55e', trail: '#bbf7d0', label: '微偏空', Icon: TrendingDown };
-        return { main: '#16a34a', trail: '#86efac', label: '偏空看跌', Icon: TrendingDown };
+        if (s >= 70) {
+            return {
+                main: '#ef4444',
+                trail: isDark ? 'rgba(239, 68, 68, 0.15)' : '#fecaca',
+                label: '偏多看漲',
+                Icon: TrendingUp
+            };
+        }
+        if (s >= 55) {
+            return {
+                main: '#f97316',
+                trail: isDark ? 'rgba(249, 115, 22, 0.15)' : '#fed7aa',
+                label: '微偏多',
+                Icon: TrendingUp
+            };
+        }
+        if (s >= 45) {
+            return {
+                main: '#94a3b8',
+                trail: isDark ? 'rgba(148, 163, 184, 0.15)' : '#e2e8f0',
+                label: '中性震盪',
+                Icon: Activity
+            };
+        }
+        if (s >= 30) {
+            return {
+                main: '#22c55e',
+                trail: isDark ? 'rgba(34, 197, 94, 0.15)' : '#bbf7d0',
+                label: '微偏空',
+                Icon: TrendingDown
+            };
+        }
+        return {
+            main: '#16a34a',
+            trail: isDark ? 'rgba(22, 163, 74, 0.15)' : '#86efac',
+            label: '偏空看跌',
+            Icon: TrendingDown
+        };
     };
     const { main, trail, label, Icon } = getInfo(score);
 
@@ -142,7 +176,7 @@ function ScoreGauge({ score }) {
                     <span className="text-[11px] font-bold text-slate-400 tracking-widest">/ 100</span>
                 </div>
             </div>
-            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black shadow-sm"
+            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black shadow-sm animate-in fade-in duration-300"
                 style={{ backgroundColor: trail, color: main }}>
                 <Icon className="w-3.5 h-3.5" />
                 {label}
@@ -152,25 +186,44 @@ function ScoreGauge({ score }) {
 }
 
 // ─── Sub-score bar ────────────────────────────────────────────────────
-function SubScoreBar({ name, score, max }) {
+function SubScoreBar({ name, score, max, isDark }) {
     const pct = Math.round((score / max) * 100);
     const getBarStyle = (p) => {
-        if (p >= 70) return { bar: 'from-red-400 to-rose-500', text: 'text-rose-600', bg: 'bg-rose-50', num: 'text-rose-700' };
-        if (p >= 50) return { bar: 'from-amber-400 to-orange-500', text: 'text-amber-600', bg: 'bg-amber-50', num: 'text-amber-700' };
-        return { bar: 'from-slate-300 to-slate-400', text: 'text-slate-500', bg: 'bg-slate-50', num: 'text-slate-600' };
+        if (p >= 70) {
+            return {
+                bar: 'from-red-400 to-rose-500',
+                text: isDark ? 'text-rose-400' : 'text-rose-600',
+                bg: isDark ? 'bg-rose-950/30' : 'bg-rose-50',
+                num: isDark ? 'text-rose-300' : 'text-rose-700'
+            };
+        }
+        if (p >= 50) {
+            return {
+                bar: 'from-amber-400 to-orange-500',
+                text: isDark ? 'text-amber-400' : 'text-amber-600',
+                bg: isDark ? 'bg-amber-950/30' : 'bg-amber-50',
+                num: isDark ? 'text-amber-300' : 'text-amber-700'
+            };
+        }
+        return {
+            bar: 'from-slate-400 to-slate-500',
+            text: isDark ? 'text-slate-400' : 'text-slate-500',
+            bg: isDark ? 'bg-slate-800/50' : 'bg-slate-50',
+            num: isDark ? 'text-slate-300' : 'text-slate-600'
+        };
     };
     const style = getBarStyle(pct);
     return (
         <div className="space-y-2">
             <div className="flex justify-between items-center">
                 <span className={`text-[11px] font-black uppercase tracking-wider ${style.text}`}>{name}</span>
-                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black ${style.bg}`}>
+                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black ${style.bg} border ${isDark ? 'border-slate-800' : 'border-transparent'}`}>
                     <span className={style.num}>{score}</span>
-                    <span className="text-slate-300">/</span>
+                    <span className="text-slate-400 opacity-60">/</span>
                     <span className="text-slate-400">{max}</span>
                 </div>
             </div>
-            <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+            <div className={`h-2.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
                 <div className={`h-full rounded-full bg-gradient-to-r ${style.bar} transition-all duration-700 ease-out`}
                     style={{ width: `${pct}%` }} />
             </div>
@@ -179,7 +232,7 @@ function SubScoreBar({ name, score, max }) {
 }
 
 // ─── Bullet list renderer (parse markdown bullets cleanly) ────────────
-function BulletContent({ content }) {
+function BulletContent({ content, isDark }) {
     // Split into bullet blocks and sub-bullets
     const lines = content.split('\n');
     const items = [];
@@ -227,7 +280,7 @@ function BulletContent({ content }) {
     if (items.length === 0) {
         // Fallback: render raw markdown
         return (
-            <div className="prose prose-slate prose-sm max-w-none">
+            <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert text-slate-300' : 'prose-slate text-slate-750'}`}>
                 <ReactMarkdown>{content}</ReactMarkdown>
             </div>
         );
@@ -237,22 +290,22 @@ function BulletContent({ content }) {
         <div className="space-y-3">
             {items.map((item, idx) => (
                 <div key={idx} className="flex gap-3">
-                    <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-current mt-2 opacity-40" />
+                    <div className={`flex-shrink-0 w-1.5 h-1.5 rounded-full bg-current mt-2.5 opacity-40 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                     <div className="flex-1 min-w-0">
                         {item.keyword ? (
-                            <p className="text-base text-slate-700 leading-relaxed">
-                                <span className="font-black text-slate-900">{item.keyword}：</span>
+                            <p className={`text-sm md:text-base leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                <span className={`font-black ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{item.keyword}：</span>
                                 {item.text.replace(/\*\*/g, '')}
                             </p>
                         ) : (
-                            <p className="text-base text-slate-700 leading-relaxed">
+                            <p className={`text-sm md:text-base leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                                 {item.text.replace(/\*\*/g, '')}
                             </p>
                         )}
                         {item.subs.length > 0 && (
-                            <ul className="mt-2 space-y-2 pl-3 border-l-2 border-slate-200">
+                            <ul className={`mt-2 space-y-2 pl-3 border-l-2 ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
                                 {item.subs.map((sub, si) => (
-                                    <li key={si} className="text-sm text-slate-600 leading-relaxed">
+                                    <li key={si} className={`text-xs md:text-sm leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                                         {sub.replace(/\*\*/g, '')}
                                     </li>
                                 ))}
@@ -266,28 +319,32 @@ function BulletContent({ content }) {
 }
 
 // ─── Collapsible section card ─────────────────────────────────────────
-function SectionCard({ number, title, content, defaultOpen = true }) {
+function SectionCard({ number, title, content, defaultOpen = true, isDark }) {
     const [open, setOpen] = useState(defaultOpen);
     const meta = SECTION_META[number];
     if (!meta) return null;
     const Icon = meta.icon;
     const cleanContent = content.replace(/>\s*\[!(TIP|IMPORTANT|NOTE|WARNING)\]\s*/g, '').replace(/^>\s*/gm, '');
 
+    const borderClass = isDark ? 'border-slate-800/80 bg-slate-900/20' : `${meta.border} bg-white`;
+    const headerBgClass = isDark ? 'bg-slate-900/60 text-slate-100 hover:bg-slate-900/80' : `${meta.lightBg} hover:brightness-95 text-slate-800`;
+    const bodyBgClass = isDark ? 'bg-slate-950/40 border-t border-slate-800/80 text-slate-300' : 'bg-white border-t border-slate-50 text-slate-700';
+
     return (
-        <div className={`rounded-2xl border ${meta.border} overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group`}>
+        <div className={`rounded-2xl border ${borderClass} overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group`}>
             {/* Header */}
             <button
                 onClick={() => setOpen(o => !o)}
-                className={`w-full flex items-center justify-between gap-3 px-5 py-4 ${meta.lightBg} hover:brightness-95 transition-all`}
+                className={`w-full flex items-center justify-between gap-3 px-5 py-4 ${headerBgClass} transition-all cursor-pointer`}
             >
                 <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-xl bg-gradient-to-br ${meta.gradient} shadow-sm`}>
                         <Icon className="w-4 h-4 text-white" />
                     </div>
                     <div className="text-left">
-                        <div className="text-[9px] font-black tracking-[0.2em] opacity-50 uppercase mb-0.5"
-                            style={{ color: meta.accent }}>{meta.tag}</div>
-                        <h3 className="font-black text-sm text-slate-800 tracking-tight">{title}</h3>
+                        <div className={`text-[9px] font-black tracking-[0.2em] uppercase mb-0.5 ${isDark ? 'text-slate-400' : ''}`}
+                            style={isDark ? {} : { color: meta.accent }}>{meta.tag}</div>
+                        <h3 className={`font-black text-sm tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{title}</h3>
                     </div>
                 </div>
                 <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
@@ -295,9 +352,9 @@ function SectionCard({ number, title, content, defaultOpen = true }) {
 
             {/* Body */}
             {open && (
-                <div className="bg-white px-5 py-5 border-t border-slate-50" style={{ borderColor: `${meta.accent}20` }}>
-                    <div style={{ color: meta.accent }}>
-                        <BulletContent content={cleanContent} />
+                <div className={`${bodyBgClass} px-5 py-5`} style={isDark ? {} : { borderColor: `${meta.accent}20` }}>
+                    <div style={isDark ? {} : { color: meta.accent }}>
+                        <BulletContent content={cleanContent} isDark={isDark} />
                     </div>
                 </div>
             )}
@@ -306,51 +363,66 @@ function SectionCard({ number, title, content, defaultOpen = true }) {
 }
 
 // ─── Trading advice card ──────────────────────────────────────────────
-function TradingAdviceCard({ advice }) {
+function TradingAdviceCard({ advice, isDark }) {
     if (!advice.entry && !advice.target && !advice.stop) return null;
 
     const items = [
         {
             key: 'target', label: '目標位階', shortLabel: 'TARGET',
-            icon: TrendingUp, color: 'text-rose-600', bg: 'bg-rose-50',
-            border: 'border-rose-200', numColor: 'text-rose-700',
-            barColor: 'bg-rose-500', value: advice.target
+            icon: TrendingUp,
+            color: isDark ? 'text-rose-400' : 'text-rose-600',
+            bg: isDark ? 'bg-rose-950/30' : 'bg-rose-50',
+            border: isDark ? 'border-rose-900/30' : 'border-rose-200',
+            value: advice.target
         },
         {
             key: 'entry', label: '進場位階', shortLabel: 'ENTRY',
-            icon: Target, color: 'text-blue-600', bg: 'bg-blue-50',
-            border: 'border-blue-200', numColor: 'text-blue-700',
-            barColor: 'bg-blue-500', value: advice.entry
+            icon: Target,
+            color: isDark ? 'text-blue-400' : 'text-blue-600',
+            bg: isDark ? 'bg-blue-950/30' : 'bg-blue-50',
+            border: isDark ? 'border-blue-900/30' : 'border-blue-200',
+            value: advice.entry
         },
         {
             key: 'stop', label: '風險防衛 (停損)', shortLabel: 'STOP LOSS',
-            icon: Shield, color: 'text-emerald-600', bg: 'bg-emerald-50',
-            border: 'border-emerald-200', numColor: 'text-emerald-700',
-            barColor: 'bg-emerald-500', value: advice.stop
+            icon: Shield,
+            color: isDark ? 'text-emerald-400' : 'text-emerald-600',
+            bg: isDark ? 'bg-emerald-950/30' : 'bg-emerald-50',
+            border: isDark ? 'border-emerald-900/30' : 'border-emerald-200',
+            value: advice.stop
         },
     ];
 
+    const cardBgClass = isDark
+        ? "bg-gradient-to-br from-slate-900 to-slate-800 border-slate-800 text-white"
+        : "bg-white border-slate-200 shadow-sm text-slate-800";
+    const headerBorderClass = isDark ? "border-white/10" : "border-slate-100 bg-slate-50/50";
+    const titleClass = isDark ? "text-white" : "text-slate-800";
+    const subTitleClass = isDark ? "text-slate-400" : "text-slate-500";
+    const gridBgClass = isDark ? "bg-white/5" : "bg-slate-100";
+    const itemBgClass = isDark ? "bg-slate-900/50" : "bg-white";
+
     return (
-        <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-md bg-gradient-to-br from-slate-900 to-slate-800">
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-white/10">
-                <div className="p-2 rounded-xl bg-white/10">
-                    <Zap className="w-4 h-4 text-yellow-400" />
+        <div className={`rounded-2xl border ${cardBgClass} overflow-hidden shadow-md`}>
+            <div className={`flex items-center gap-3 px-6 py-4 border-b ${headerBorderClass}`}>
+                <div className={`p-2 rounded-xl ${isDark ? 'bg-white/10' : 'bg-brand-primary/10'}`}>
+                    <Zap className={`w-4 h-4 ${isDark ? 'text-yellow-400' : 'text-brand-primary'}`} />
                 </div>
                 <div>
-                    <div className="text-[9px] font-black tracking-[0.2em] text-slate-400 uppercase">AI Strategy</div>
-                    <h3 className="font-black text-sm text-white">具體操盤建議</h3>
+                    <div className={`text-[9px] font-black tracking-[0.2em] uppercase ${subTitleClass}`}>AI Strategy</div>
+                    <h3 className={`font-black text-sm ${titleClass}`}>具體操盤建議</h3>
                 </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-white/5">
+            <div className={`grid grid-cols-1 md:grid-cols-3 gap-px ${gridBgClass}`}>
                 {items.map(item => item.value && (
-                    <div key={item.key} className="bg-slate-900/50 p-5 flex flex-col gap-3">
+                    <div key={item.key} className={`${itemBgClass} p-5 flex flex-col gap-3`}>
                         <div className="flex items-center gap-2">
                             <div className={`p-1.5 rounded-lg ${item.bg} border ${item.border}`}>
                                 <item.icon className={`w-3.5 h-3.5 ${item.color}`} />
                             </div>
                             <div>
-                                <div className="text-[9px] font-black tracking-widest text-slate-500 uppercase">{item.shortLabel}</div>
-                                <div className="text-[11px] font-bold text-slate-300">{item.label}</div>
+                                <div className={`text-[9px] font-black tracking-widest uppercase ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{item.shortLabel}</div>
+                                <div className={`text-[11px] font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{item.label}</div>
                             </div>
                         </div>
                         <p className={`text-sm font-bold ${item.color} leading-relaxed`}>{item.value}</p>
@@ -363,6 +435,8 @@ function TradingAdviceCard({ advice }) {
 
 // ─── Main structured report renderer ─────────────────────────────────
 export default function StructuredReportView({ reportText, compact = false }) {
+    const { theme } = useTheme();
+    const isDark = theme === 'dark';
     const parsed = useMemo(() => parseReport(reportText), [reportText]);
 
     const radarData = useMemo(() => {
@@ -378,7 +452,7 @@ export default function StructuredReportView({ reportText, compact = false }) {
 
     if (!hasParsed) {
         return (
-            <div className="prose prose-slate prose-sm max-w-none px-2 ai-section-content">
+            <div className={`prose prose-sm max-w-none px-2 ai-section-content ${isDark ? 'prose-invert text-slate-300' : 'prose-slate text-slate-705'}`}>
                 <ReactMarkdown>{reportText}</ReactMarkdown>
             </div>
         );
@@ -391,20 +465,24 @@ export default function StructuredReportView({ reportText, compact = false }) {
 
             {/* ── Score overview card ── */}
             {hasScores && (
-                <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-sm bg-white">
-                    <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-100 bg-gradient-to-r from-rose-50 to-white">
+                <div className={`rounded-2xl border overflow-hidden shadow-sm transition-colors duration-300 ${
+                    isDark ? 'bg-slate-900/40 border-slate-800 text-white' : 'bg-white border-slate-200'
+                }`}>
+                    <div className={`flex items-center gap-3 px-5 py-3.5 border-b ${
+                        isDark ? 'border-slate-800 bg-gradient-to-r from-rose-950/20 to-slate-900/20' : 'border-slate-100 bg-gradient-to-r from-rose-50 to-white'
+                    }`}>
                         <div className="p-2 rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 shadow-sm">
                             <Brain className="w-4 h-4 text-white" />
                         </div>
                         <div>
                             <div className="text-[9px] font-black tracking-[0.2em] text-rose-400 uppercase">AI Score</div>
-                            <h3 className="font-black text-sm text-slate-800">多空評分總覽</h3>
+                            <h3 className={`font-black text-sm ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>多空評分總覽</h3>
                         </div>
                     </div>
                     <div className={`p-6 flex ${compact ? 'flex-col items-center gap-6' : 'flex-col md:flex-row items-center gap-8'}`}>
                         {/* Circular gauge */}
                         <div className="flex-shrink-0">
-                            <ScoreGauge score={parsed.mainScore} />
+                            <ScoreGauge score={parsed.mainScore} isDark={isDark} />
                         </div>
 
                         {/* Radar chart */}
@@ -412,12 +490,12 @@ export default function StructuredReportView({ reportText, compact = false }) {
                             <div className="w-full md:w-[200px] h-[180px] flex-shrink-0">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="65%">
-                                        <PolarGrid stroke="#e2e8f0" />
+                                        <PolarGrid stroke={isDark ? '#334155' : '#e2e8f0'} />
                                         <PolarAngleAxis dataKey="subject"
-                                            tick={{ fontSize: 11, fontWeight: 700, fill: '#64748b' }} />
+                                            tick={{ fontSize: 11, fontWeight: 700, fill: isDark ? '#94a3b8' : '#64748b' }} />
                                         <Radar dataKey="score" stroke="#6366f1" fill="#6366f1"
-                                            fillOpacity={0.15} strokeWidth={2}
-                                            dot={{ r: 4, fill: '#6366f1', strokeWidth: 2, stroke: '#fff' }} />
+                                            fillOpacity={isDark ? 0.25 : 0.15} strokeWidth={2}
+                                            dot={{ r: 4, fill: '#6366f1', strokeWidth: 2, stroke: isDark ? '#0f172a' : '#fff' }} />
                                     </RadarChart>
                                 </ResponsiveContainer>
                             </div>
@@ -425,7 +503,7 @@ export default function StructuredReportView({ reportText, compact = false }) {
 
                         {/* Sub-score bars */}
                         <div className="flex-1 w-full space-y-4">
-                            {parsed.subScores.map(s => <SubScoreBar key={s.name} {...s} />)}
+                            {parsed.subScores.map(s => <SubScoreBar key={s.name} {...s} isDark={isDark} />)}
                         </div>
                     </div>
                 </div>
@@ -441,12 +519,13 @@ export default function StructuredReportView({ reportText, compact = false }) {
                         title={s.title}
                         content={s.content}
                         defaultOpen={true}
+                        isDark={isDark}
                     />
                 ))
             }
 
             {/* ── Trading advice ── */}
-            <TradingAdviceCard advice={parsed.tradingAdvice} />
+            <TradingAdviceCard advice={parsed.tradingAdvice} isDark={isDark} />
         </div>
     );
 }
